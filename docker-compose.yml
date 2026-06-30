@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ledgermind
       POSTGRES_USER: ledger
-      POSTGRES_PASSWORD: ledger_dev_pass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -49,7 +49,6 @@ services:
     environment:
       DATABASE_URL: postgresql://ledgermind_app:app_dev_pass@postgres:5432/ledgermind
       REDIS_URL: redis://redis:6379/0
-      QDRANT_URL: http://qdrant:6333
       ENVIRONMENT: development
     depends_on:
       postgres:
@@ -82,7 +81,6 @@ services:
     environment:
       DATABASE_URL: postgresql://ledgermind_app:app_dev_pass@postgres:5432/ledgermind
       REDIS_URL: redis://redis:6379/0
-      QDRANT_URL: http://qdrant:6333
       ENVIRONMENT: development
     depends_on:
       postgres:
