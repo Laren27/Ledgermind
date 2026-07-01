@@ -1,0 +1,107 @@
+[
+  {
+    "id": "Q016",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated revenue grow from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": 168.56,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Revenue grew 168.56% year-over-year, from \u20b920,243.0 Cr in FY25 to \u20b954,364.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q017",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated PAT change from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": -30.55,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated PAT declined 30.55% year-over-year, from \u20b9527.0 Cr in FY25 to \u20b9366.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q018",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated employee benefits expense change from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": 38.23,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Employee Benefits Expense grew 38.23% year-over-year, from \u20b92,558.0 Cr in FY25 to \u20b93,536.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q019",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated finance costs change from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": 154.55,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Finance Costs grew 154.55% year-over-year, from \u20b9154.0 Cr in FY25 to \u20b9392.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q020",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated delivery charges change from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": 58.26,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Delivery and Related Charges grew 58.26% year-over-year, from \u20b95,728.0 Cr in FY25 to \u20b99,065.0 Cr in FY26."
+    }
+  }
+]
