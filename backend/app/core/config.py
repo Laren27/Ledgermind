@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     groq_api_key: str = ""
     environment: str = "development"
-
+    JWT_SECRET: str
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 
