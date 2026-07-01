@@ -93,6 +93,8 @@ services:
   scheduler:
     build: ./backend
     command: celery -A app.worker:celery_app beat --loglevel=info
+    env_file:
+      - .env
     environment:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
