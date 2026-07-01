@@ -1,32 +1,48 @@
 """
-LedgerMind — Phase 4: Query API Endpoint
+LedgerMind — Phase 5: Query API Endpoint (JWT-authenticated)
 ============================================
-The single FastAPI route that exposes the compiled LangGraph engine.
+Phase 5 changes from the Phase 4 version:
 
-Request body is intentionally minimal — tenant_id/user_id are plain fields
-for now because JWT auth (Phase 5) doesn't exist yet. Once Phase 5 lands,
-these will be extracted from the JWT instead of trusted from the request
-body directly; this endpoint signature will need a follow-up pass then.
+1. tenant_id/user_id are NO LONGER trusted from the request body. They come
+   from the verified JWT (via require_role), so a caller cannot claim to be
+   a different tenant by editing the request payload. QueryRequest now only
+   carries `query`.
 
-Response body returns the FULL QueryState (not a trimmed subset). Phase 6's
-Streamlit UI needs citations, contradictions, dsl_object, and confidence
-all available — trimming now just means rebuilding this schema later.
+2. No injected DB connection is needed here. quant_engine.py's
+   _execute_sql() already opens its own connection per call and runs
+   `SET LOCAL app.tenant_id = %s` using tenant_id read from state — and
+   state["tenant_id"] is set below from the verified JWT, not client input.
+   That's the entire RLS correctness requirement for Phase 5: as long as
+   this endpoint never lets request.tenant_id reach state, every downstream
+   SQL call (quant_engine, presumably contradiction.py/audit_writer.py
+   following the same pattern) is automatically scoped to the right tenant.
+   (Earlier draft of this file added a Depends(get_db_conn) connection-
+   injection layer assuming engines needed a shared connection -- they
+   don't, since each engine call is already self-contained. Removed.)
 
-graph.invoke() is synchronous (LangGraph nodes use psycopg2 sync calls and
-blocking Gemini SDK calls, not asyncpg). The endpoint itself is async def
-so FastAPI's event loop isn't blocked during the 2-30 second round trip —
-run_in_threadpool offloads the blocking call to a worker thread.
+3. Full QueryResponse is still built exactly as in Phase 4 (nothing trimmed
+   at the graph layer -- audit_log always gets the complete record).
+   Only the HTTP response returned to the client is filtered by role via
+   role_filtered_response(), so viewers don't see DSL/SQL/raw scores while
+   analysts and admins do.
+
+NOTE: db/session.py's db_transaction()/get_db_conn() are still used, but
+only by auth/service.py for the login lookup (the one query that runs
+before a tenant_id is known at all). They are not used here.
 """
 
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from app.engines.graph import get_graph
 from app.engines.state import make_initial_state
+
+from app.auth.dependencies import require_role
+from app.api.response_shaping import role_filtered_response
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +54,9 @@ router = APIRouter(prefix="/api", tags=["query"])
 # ---------------------------------------------------------------------------
 
 class QueryRequest(BaseModel):
+    # tenant_id / user_id REMOVED as of Phase 5 -- sourced from the verified
+    # JWT instead (see require_role dependency below), never from client input.
     query: str = Field(..., min_length=1, max_length=2000, description="The user's natural language question")
-    tenant_id: str = Field(..., description="Tenant UUID — temporary plain field until Phase 5 JWT auth")
-    user_id: str = Field(..., description="User UUID — temporary plain field until Phase 5 JWT auth")
 
 
 class CitationResponse(BaseModel):
@@ -67,9 +83,9 @@ class ContradictionResponse(BaseModel):
 
 class QueryResponse(BaseModel):
     """
-    Full QueryState surfaced to the client. Mirrors the internal state
-    shape closely so Phase 6 Streamlit can consume citations/contradictions
-    without a second round of schema design.
+    Full QueryState surfaced internally. role_filtered_response() trims this
+    down per-role before it goes out over HTTP -- this model itself stays
+    the complete, ungated shape, same as Phase 4.
     """
     request_id: str
     query: str
@@ -108,32 +124,37 @@ class QueryResponse(BaseModel):
 # Endpoint
 # ---------------------------------------------------------------------------
 
-@router.post("/query", response_model=QueryResponse)
-async def query_endpoint(request: QueryRequest) -> QueryResponse:
+@router.post("/query")
+async def query_endpoint(
+    request: QueryRequest,
+    user: dict = Depends(require_role("viewer")),  # any authenticated role may query;
+                                                      # field-level restriction happens in
+                                                      # role_filtered_response below
+):
     """
     Single entry point for all LedgerMind queries.
 
-    Builds initial state → invokes the compiled graph in a thread pool →
-    returns the full final state as the response.
+    tenant_id and user_id come from the verified JWT (`user`), not from the
+    request body -- this is the entire Phase 5 security boundary for this
+    endpoint. Builds initial state -> invokes the compiled graph in a thread
+    pool -> filters the full result by the caller's role -> returns.
 
     Does not raise HTTPException for query-level failures (blocked queries,
-    low confidence refusals, DSL/SQL failures) — those are valid, well-formed
+    low confidence refusals, DSL/SQL failures) -- those are valid, well-formed
     responses with error fields populated, not HTTP errors. HTTPException is
-    reserved for actual infrastructure failures (e.g. graph invocation itself
-    throwing an unhandled exception, which audit_writer's try/except should
-    already prevent in most cases, but this is the outer safety net).
+    reserved for actual infrastructure failures.
     """
     request_id = str(uuid.uuid4())
 
     logger.info(
-        "Query received | request_id=%s tenant_id=%s query='%s'",
-        request_id, request.tenant_id, request.query[:80],
+        "Query received | request_id=%s tenant_id=%s user_id=%s role=%s query='%s'",
+        request_id, user["tenant_id"], user["user_id"], user["role"], request.query[:80],
     )
 
     state = make_initial_state(
         query=request.query,
-        tenant_id=request.tenant_id,
-        user_id=request.user_id,
+        tenant_id=user["tenant_id"],   # from JWT -- never client input
+        user_id=user["user_id"],       # from JWT -- never client input
         request_id=request_id,
     )
 
@@ -147,7 +168,7 @@ async def query_endpoint(request: QueryRequest) -> QueryResponse:
             detail="An internal error occurred while processing your query. Please try again.",
         )
 
-    return QueryResponse(
+    full_response = QueryResponse(
         request_id=result["request_id"],
         query=result["query"],
         path=result.get("path"),
@@ -174,3 +195,5 @@ async def query_endpoint(request: QueryRequest) -> QueryResponse:
         tokens_used=result.get("tokens_used", 0),
         cache_hit=result.get("cache_hit", False),
     )
+
+    return role_filtered_response(full_response.model_dump(), user["role"])
