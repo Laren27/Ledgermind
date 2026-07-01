@@ -1,0 +1,317 @@
+[
+  {
+    "id": "Q001",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated revenue for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 54364.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Revenue for FY26 was \u20b954,364.0 Cr."
+    }
+  },
+  {
+    "id": "Q002",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated total income for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 55760.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Total Income for FY26 was \u20b955,760.0 Cr."
+    }
+  },
+  {
+    "id": "Q003",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated PAT for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 366.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Pat for FY26 was \u20b9366.0 Cr."
+    }
+  },
+  {
+    "id": "Q004",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated employee benefits expenses for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 3536.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Employee Benefits Expense for FY26 was \u20b93,536.0 Cr."
+    }
+  },
+  {
+    "id": "Q005",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated delivery and related charges for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 9065.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Delivery And Related Charges for FY26 was \u20b99,065.0 Cr."
+    }
+  },
+  {
+    "id": "Q006",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated depreciation and amortisation expense for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 1597.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Depreciation And Amortisation Expenses for FY26 was \u20b91,597.0 Cr."
+    }
+  },
+  {
+    "id": "Q007",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated finance costs for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 392.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Finance Costs for FY26 was \u20b9392.0 Cr."
+    }
+  },
+  {
+    "id": "Q008",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated other income for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 1396.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Other Income for FY26 was \u20b91,396.0 Cr."
+    }
+  },
+  {
+    "id": "Q009",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated total expenses for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 55145.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Total Expenses for FY26 was \u20b955,145.0 Cr."
+    }
+  },
+  {
+    "id": "Q010",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated advertisement and sales promotion expense for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 3350.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Advertisement And Sales Promotion for FY26 was \u20b93,350.0 Cr."
+    }
+  },
+  {
+    "id": "Q011",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated revenue for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 20243.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Revenue for FY25 was \u20b920,243.0 Cr."
+    }
+  },
+  {
+    "id": "Q012",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated PAT for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 527.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Pat for FY25 was \u20b9527.0 Cr."
+    }
+  },
+  {
+    "id": "Q013",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated delivery charges for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 5728.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Delivery And Related Charges for FY25 was \u20b95,728.0 Cr."
+    }
+  },
+  {
+    "id": "Q014",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated total income for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 21320.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Total Income for FY25 was \u20b921,320.0 Cr."
+    }
+  },
+  {
+    "id": "Q015",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated finance costs for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 154.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Finance Costs for FY25 was \u20b9154.0 Cr."
+    }
+  }
+]
