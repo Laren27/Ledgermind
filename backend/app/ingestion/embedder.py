@@ -201,6 +201,7 @@ def embed_chunks(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    import argparse
     import os
     import sys
     import time
@@ -213,19 +214,23 @@ if __name__ == "__main__":
     from .section_classifier import classify_blocks
     from .chunker import chunk_blocks
 
-    pdf_path = Path(
-        sys.argv[1] if len(sys.argv) > 1
-        else os.path.expanduser(
-            "~/ledgermind/docs/raw/"
-            "ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"
-        )
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pdf_path", nargs="?", default=os.path.expanduser(
+        "~/ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"))
+    parser.add_argument("--company", default="ETERNAL")
+    parser.add_argument("--ticker", default="ETERNAL")
+    parser.add_argument("--fiscal-year", default="FY26")
+    parser.add_argument("--quarter", default="Q4")
+    parser.add_argument("--doc-type", default="quarterly_result")
+    parser.add_argument("--filing-date", default="2026-04-28")
+    parser.add_argument("--batch-size", type=int, default=None,
+                         help="Override embed batch size — lower this for large docs on WSL2")
+    args = parser.parse_args()
 
+    pdf_path = Path(args.pdf_path)
+    quarter = args.quarter if args.quarter.lower() != "none" else None
     ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
 
-    # ----------------------------------------------------------------
-    # Full pipeline up to chunker
-    # ----------------------------------------------------------------
     print(f"\nParsing: {pdf_path.name}")
     blocks = parse_pdf(str(pdf_path))
     sections = detect_sections(blocks)
@@ -233,89 +238,55 @@ if __name__ == "__main__":
     conn = get_connection()
     try:
         sections = classify_and_register(
-            blocks=blocks,
-            pdf_path=pdf_path,
-            tenant_id=ALPHA_TENANT,
-            company="ETERNAL",
-            ticker="ETERNAL",
-            fiscal_year="FY26",
-            quarter="Q4",
-            doc_type="quarterly_result",
-            filing_date="2026-04-28",
-            conn=conn,
+            blocks=blocks, pdf_path=pdf_path, tenant_id=ALPHA_TENANT,
+            company=args.company, ticker=args.ticker, fiscal_year=args.fiscal_year,
+            quarter=quarter, doc_type=args.doc_type,
+            filing_date=args.filing_date, conn=conn,
         )
     finally:
         conn.close()
 
     blocks = classify_blocks(blocks, sections)
-
     chunks = chunk_blocks(
-        blocks=blocks,
-        sections=sections,
-        tenant_id=ALPHA_TENANT,
-        company="ETERNAL",
-        ticker="ETERNAL",
-        fiscal_year="FY26",
-        quarter="Q4",
-        document_type="quarterly_result",
-        filing_date="2026-04-28",
+        blocks=blocks, sections=sections, tenant_id=ALPHA_TENANT,
+        company=args.company, ticker=args.ticker, fiscal_year=args.fiscal_year,
+        quarter=quarter, document_type=args.doc_type, filing_date=args.filing_date,
     )
     print(f"Chunks to embed: {len(chunks)}")
 
-    # ----------------------------------------------------------------
-    # Embed — time it so we know CPU performance
-    # ----------------------------------------------------------------
     print("\n--- Embedding ---")
     t0 = time.time()
-    embedded = embed_chunks(chunks)
+    embedded = embed_chunks(chunks, batch_size=args.batch_size)
     elapsed = time.time() - t0
 
     print(f"\nEmbedded      : {len(embedded)} chunks")
     print(f"Time elapsed  : {elapsed:.1f}s")
     print(f"Throughput    : {len(embedded)/elapsed:.1f} chunks/sec")
 
-    # ----------------------------------------------------------------
-    # Spot checks
-    # ----------------------------------------------------------------
     print("\n--- Vector spot checks ---")
-
     first = embedded[0]
     print(f"  chunk_id     : {first.chunk.chunk_id}")
     print(f"  text preview : {first.chunk.text[:80].replace(chr(10), ' ')}...")
     print(f"  dense dim    : {len(first.dense_vector)}")
     print(f"  sparse terms : {len(first.sparse_indices)} non-zero indices")
-    print(f"  dense[0:3]   : {first.dense_vector[:3]}")
 
-    # Dense norm should be ≈ 1.0 (normalized)
     import math
     norm = math.sqrt(sum(x**2 for x in first.dense_vector))
     print(f"  dense norm   : {norm:.6f} (should be ≈ 1.0)")
 
-    # ----------------------------------------------------------------
-    # Assertions
-    # ----------------------------------------------------------------
-    assert len(embedded) == len(chunks), \
-        f"Expected {len(chunks)} EmbeddedChunks, got {len(embedded)}"
-
+    assert len(embedded) == len(chunks)
     for ec in embedded:
-        assert len(ec.dense_vector) == DENSE_DIMENSIONS, \
-            f"Dense dim wrong on chunk {ec.chunk.chunk_id}"
-        assert ec.chunk.chunk_id, "Missing chunk_id"
-        assert ec.chunk.metadata.doc_id, "Missing doc_id"
+        assert len(ec.dense_vector) == DENSE_DIMENSIONS
+        assert ec.chunk.chunk_id
+        assert ec.chunk.metadata.doc_id
 
-    # Verify normalized (norm within 1% of 1.0)
     for ec in embedded[:10]:
         n = math.sqrt(sum(x**2 for x in ec.dense_vector))
         assert 0.99 < n < 1.01, f"Vector not normalized: norm={n}"
 
-    # FINANCIAL_STATEMENT chunks should have non-trivial sparse vectors
-    # (they contain enough financial terms for BM25 to find signal)
-    fs_chunks = [ec for ec in embedded
-                 if ec.chunk.metadata.chunk_type == "FINANCIAL_STATEMENT"]
+    fs_chunks = [ec for ec in embedded if ec.chunk.metadata.chunk_type == "FINANCIAL_STATEMENT"]
     for ec in fs_chunks:
-        assert len(ec.sparse_indices) > 0, \
-            f"FINANCIAL_STATEMENT chunk {ec.chunk.chunk_id} has empty sparse vector"
+        assert len(ec.sparse_indices) > 0
 
     print(f"\nAll assertions passed.")
     print(f"\nEmbeddedChunks are ready for qdrant_writer.py")
-    print(f"Next: qdrant_writer.py will upsert these {len(embedded)} chunks to Qdrant Cloud.")
