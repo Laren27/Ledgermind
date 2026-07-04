@@ -33,11 +33,11 @@ Entity Resolver ──→ company, fiscal year, quarter, financial_type
     ↓
 Router (LangGraph) ──→ classifies intent, picks a path
     ↓
-┌───────────────┬─────────────────────┬──────────────────────┐
-│   Path 1       │      Path 2          │       Path 3          │
-│  Semantic RAG  │  DSL → SQL Engine    │  Cross-Examination    │
-│  (qualitative) │  (quantitative)      │  (contradiction check)│
-└───────────────┴─────────────────────┴──────────────────────┘
+┌────────────────┬─────────────────────┬───────────────────────┐
+│     Path 1     │       Path 2        │        Path 3         │
+│  Semantic RAG  │  DSL → SQL Engine   │  Cross-Examination    │
+│  (qualitative) │   (quantitative)    │ (contradiction check) │
+└────────────────┴─────────────────────┴───────────────────────┘
     ↓
 Confidence Scoring + Citation Attachment
     ↓
@@ -55,7 +55,7 @@ Every table enforces PostgreSQL Row-Level Security via `SET LOCAL app.tenant_id`
 ### Full tech stack
 
 | Layer | Tool |
-|---|---|
+|-------|------|
 | Backend | FastAPI, LangGraph, psycopg2 |
 | Frontend | Streamlit |
 | LLM | Gemini Flash 2.0 (free tier), Groq llama-3.1-70b (fallback) |
@@ -104,7 +104,7 @@ Log in with different roles to see the same query return different levels of det
 The same query returns different response shapes depending on who's asking — this is the RBAC layer proving real data governance, not just endpoint gatekeeping:
 
 | Field | Viewer | Analyst | Admin |
-|---|:---:|:---:|:---:|
+|-------|:------:|:-------:|:-----:|
 | Answer + citations | ✅ | ✅ | ✅ |
 | Confidence tier | ✅ | ✅ | ✅ |
 | DSL object | ❌ | ✅ | ✅ |
@@ -119,7 +119,7 @@ The same query returns different response shapes depending on who's asking — t
 50-question golden dataset, grounded entirely in verified corpus data (Eternal Q4FY26 shareholder letter + results). Every quantitative expected value was cross-checked against the `financials` table before the question was written — no estimated or assumed answers.
 
 | Category | Score | What it tests |
-|---|---|---|
+|----------|-------|---------------|
 | Quantitative — point-in-time | 15/15 | Exact SQL value match across 10 metrics, 2 fiscal years |
 | Quantitative — YoY growth | 5/5 | Two-period SQL compilation + Python arithmetic, ±0.5% tolerance |
 | Quantitative — standalone/consolidated isolation | 5/5 | `financial_type` filter never leaks between report types |
@@ -147,7 +147,7 @@ python3 scripts/eval_runner.py --delay 15
 Documented here to preempt "why didn't you build X" — these were conscious scope decisions for a solo portfolio project, not oversights:
 
 | Item | Reasoning |
-|---|---|
+|------|-----------|
 | Microservices | Python modules inside FastAPI are sufficient at this scale |
 | Kafka / Airflow | PostgreSQL event log + Celery Beat cover the same need |
 | React frontend | Streamlit is sufficient for a portfolio demo |
