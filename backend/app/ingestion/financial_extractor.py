@@ -66,12 +66,14 @@ _TRAILING_JUNK_RE = re.compile(
     re.IGNORECASE,
 )
 
+_LEADING_ROMAN_RE = re.compile(r"^\s*[IVXLCDMivxlcdm]{1,5}\.?\s+")
 
 def _clean_description(raw: str) -> str:
     """
-    Remove trailing Roman numeral references from financial statement descriptions.
+    Remove leading and trailing Roman numeral references from financial statement descriptions.
     """
-    cleaned = _TRAILING_JUNK_RE.sub("", raw).strip()
+    cleaned = _LEADING_ROMAN_RE.sub("", raw).strip()
+    cleaned = _TRAILING_JUNK_RE.sub("", cleaned).strip()
     cleaned = re.sub(r"[/\-\s]+$", "", cleaned).strip()
     return cleaned
 
