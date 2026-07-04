@@ -309,6 +309,13 @@ def _rows_to_records(
         description = str(row[0]).strip()
         values = row[1:] 
 
+        # --- THE RIGHT-ALIGNMENT FIX ---
+        # If a "Note No." column is parsed, the values list will be longer than the column map.
+        # True financial amounts are always the right-most columns.
+        if len(values) > len(column_map):
+            values = values[-len(column_map):]
+        # -------------------------------
+
         if _should_skip_row(description, values):
             logger.debug("Skipping row: '%s'", description)
             continue
