@@ -91,6 +91,7 @@ def run_one(doc: dict) -> bool:
     print(f"  MANAGEMENT_DISCUSSION={md_count} | RISK_DISCLOSURE={risk_count}")
 
     # --- Layer 2: extracted record sanity ---
+    # --- Layer 2: extracted record sanity ---
     doc_id_map = {s.financial_type: f"diagnostic-{s.financial_type}" for s in sections}
     records = extract_all_financial_records(
         blocks=blocks, pdf_path=str(pdf_path), tenant_id=ALPHA_TENANT,
@@ -99,19 +100,25 @@ def run_one(doc: dict) -> bool:
     )
     print(f"\n  Records extracted: {len(records)}")
 
+    # Golden comparison always targets the ANNUAL figure (quarter=None),
+    # since that's the only value verified against known ground truth for
+    # every document in this corpus — quarterly filings additionally report
+    # a cumulative annual column (SEBI col3/col4), and annual reports are
+    # annual-only by definition. Checking the raw quarter-scoped figure
+    # here previously produced false failures on correctly extracted data.
     revenue_records = [
         r for r in records
         if r.metric == "revenue" and r.fiscal_year == doc["fiscal_year"]
-        and r.quarter == doc["quarter"]
+        and r.quarter is None
     ]
     revenue_ok = False
     if revenue_records:
         for r in revenue_records:
             in_range = doc["expect_revenue_min"] <= r.value <= doc["expect_revenue_max"]
             revenue_ok = revenue_ok or in_range
-            print(f"    revenue | {r.financial_type:13s} | {r.value:>10.1f} cr "
+            print(f"    revenue (annual) | {r.financial_type:13s} | {r.value:>10.1f} cr "
                   f"{'✓' if in_range else '✗ OUT OF RANGE'}")
-    print(f"  [{'PASS' if revenue_ok else 'FAIL'}] revenue in expected range "
+    print(f"  [{'PASS' if revenue_ok else 'FAIL'}] annual revenue in expected range "
           f"({doc['expect_revenue_min']}-{doc['expect_revenue_max']} cr)")
 
     records_ok = len(records) > 0
