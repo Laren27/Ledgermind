@@ -173,6 +173,44 @@ AUDITOR_KEYWORDS = {
 AUDITOR_MIN_KEYWORDS = 1
 
 
+# Anchor phrases that appear ONLY on genuine primary statement pages —
+# never in Notes, Board Report, CGR, or the running page header/footer.
+# This is the actual distinguishing signal; keyword-count alone (below)
+# cannot tell "page about financial statements" from "page mentioning
+# financial concepts," since the document's running header contains
+# "Financial Statements" on every single page.
+STATEMENT_TITLE_ANCHORS = {
+    "statement of profit and loss",
+    "statement of profit & loss",
+    "balance sheet",
+    "statement of cash flow",
+    "consolidated balance sheet",
+    "standalone balance sheet",
+    # SEBI quarterly results filings use a regulatory heading instead of
+    # the Companies Act statement titles above — different document class,
+    # same underlying content.
+    "statement of standalone",
+    "statement of consolidated",
+    "financial results for the quarter",
+    "financial results for the year",
+    "unaudited financial results",
+    "audited financial results",
+}
+
+# Multi-page statement handling: only the FIRST page of a statement carries
+# the title (e.g. "Statement of Cash Flows"); continuation pages are bare
+# numeric tables. ANCHOR_HEADING_CHARS restricts anchor matching to the top
+# of the page (where titles physically sit) so the same phrase appearing
+# mid-paragraph in Notes-to-Accounts prose doesn't trigger a false positive.
+# CONTINUATION_MAX_PAGES lets a small, bounded run of subsequent TABLE pages
+# in the same section inherit the label without re-matching the anchor —
+# this is the direct fix for the blueprint's Trap 6 (headers lost on
+# multi-page tables) applied one layer up, at classification rather than
+# chunking.
+ANCHOR_HEADING_CHARS = 400
+CONTINUATION_MAX_PAGES = 4
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -201,40 +239,34 @@ def _build_page_to_section(sections: list[DocSection]) -> dict[int, DocSection]:
 def _classify_table_block(
     block: PageBlock,
     section: DocSection | None,
+    true_anchor_page: Optional[int],
+    true_anchor_financial_type,
 ) -> str:
-    """
-    Classify a TABLE block.
-
-    Returns FINANCIAL_STATEMENT if ALL THREE signals align:
-      1. Structural  — block is a TABLE (caller already verified)
-      2. Location    — page is within a known DocSection
-      3. Content     — ≥ FINANCIAL_STATEMENT_MIN_KEYWORDS financial keywords
-
-    Returns TABLE otherwise.
-    """
-    # Signal 2: location
     if section is None:
-        logger.debug(
-            "Page %d TABLE not in any DocSection — keeping as TABLE",
-            block.page_number,
-        )
         return BlockType.TABLE
 
-    # Signal 3: content
     content_lower = block.content.lower()
-    keyword_count = _count_keyword_matches(content_lower, ALL_FINANCIAL_SIGNALS)
+    heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
 
-    if keyword_count >= FINANCIAL_STATEMENT_MIN_KEYWORDS:
-        logger.debug(
-            "Page %d TABLE → FINANCIAL_STATEMENT (%s, %d keywords matched)",
-            block.page_number, section.financial_type, keyword_count,
-        )
+    has_anchor = any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS)
+    if has_anchor:
         return BlockType.FINANCIAL_STATEMENT
 
-    logger.debug(
-        "Page %d TABLE in DocSection but only %d financial keywords — keeping as TABLE",
-        block.page_number, keyword_count,
+    # Continuation distance is measured from the TRUE anchor page only —
+    # never from a prior continuation page. This bounds the window to a
+    # fixed span regardless of how many continuation pages appear inside
+    # it, preventing the chain from propagating indefinitely through a
+    # long, keyword-rich section like Notes to Accounts.
+    is_continuation = (
+        true_anchor_page is not None
+        and section.financial_type == true_anchor_financial_type
+        and 0 < (block.page_number - true_anchor_page) <= CONTINUATION_MAX_PAGES
     )
+    if is_continuation:
+        keyword_count = _count_keyword_matches(content_lower, ALL_FINANCIAL_SIGNALS)
+        if keyword_count >= FINANCIAL_STATEMENT_MIN_KEYWORDS:
+            return BlockType.FINANCIAL_STATEMENT
+
     return BlockType.TABLE
 
 
@@ -247,7 +279,7 @@ def _classify_text_block(block: PageBlock) -> str:
       MANAGEMENT_DISCUSSION — MD&A / business narrative
       TEXT                  — everything else (letters, preambles, auditor reports)
 
-    Note: auditor report pages (36-39 in Eternal Q4FY26) stay as TEXT.
+    Note: auditor report pages (36-39 in Eternal Q4FY26) stay as TEXT.  
     They're qualitative content but not MD&A — a distinct category handled
     by the retrieval layer's metadata filtering.
     """
@@ -306,18 +338,16 @@ def classify_blocks(
         BlockType.UNKNOWN,
     ]}
 
+    true_anchor_page = None
+    true_anchor_financial_type = None
+
     for block in blocks:
         section = page_to_section.get(block.page_number)
         content_lower = block.content.lower()
-        original_type = block.block_type   # capture BEFORE any mutation
+        original_type = block.block_type
 
         risk_matches = _count_keyword_matches(content_lower, RISK_KEYWORDS)
         md_matches = _count_keyword_matches(content_lower, MANAGEMENT_DISCUSSION_KEYWORDS)
-
-        # Narrative-style MD&A (Eternal's format): only applies to blocks
-        # pdf_parser originally tagged TEXT — never TABLE. This prevents
-        # financial-vocabulary overlap from hijacking real FINANCIAL_STATEMENT
-        # tables, since real tables are structurally TABLE, not prose.
         is_narrative_md = (
             original_type == BlockType.TEXT
             and (
@@ -329,14 +359,29 @@ def classify_blocks(
             )
         )
 
+        heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
+        is_true_anchor = (
+            original_type == BlockType.TABLE
+            and any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS)
+        )
+
         if risk_matches >= RISK_MIN_KEYWORDS:
             block.block_type = BlockType.RISK_DISCLOSURE
         elif md_matches >= MANAGEMENT_DISCUSSION_MIN_KEYWORDS or is_narrative_md:
             block.block_type = BlockType.MANAGEMENT_DISCUSSION
         elif original_type == BlockType.TABLE:
-            block.block_type = _classify_table_block(block, section)
+            block.block_type = _classify_table_block(block, section, true_anchor_page, true_anchor_financial_type)
         else:
             block.block_type = BlockType.TEXT
+
+        block.financial_type = section.financial_type if section else FinancialType.UNKNOWN
+
+        # Only a genuine title-anchor hit resets the anchor point — a
+        # continuation page inheriting the label does NOT extend the window.
+        if is_true_anchor:
+            true_anchor_page = block.page_number
+            true_anchor_financial_type = block.financial_type
+
     return blocks
 
 def get_blocks_by_type(
