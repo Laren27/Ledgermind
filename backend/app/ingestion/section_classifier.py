@@ -188,6 +188,10 @@ AUDITOR_REPORT_EXCLUSION_PHRASES = {
     "review of the standalone financial",
     "independent auditor",
     "limited review report",
+    "we did not audit",       # auditor qualification paragraphs naming
+    "other auditors",         # subsidiary statements they reviewed — these
+                               # commonly enumerate "Balance Sheet" / "Statement
+                               # of Profit and Loss" as prose, not as a table
 }
 
 
@@ -266,22 +270,53 @@ def _build_page_to_section(sections: list[DocSection]) -> dict[int, DocSection]:
 # Core classification logic
 # ---------------------------------------------------------------------------
 
-def _classify_table_block(block, section, true_anchor_page, true_anchor_financial_type, is_excluded_page):
-    if section is None or is_excluded_page:
+def _classify_table_block(
+    block, section, true_anchor_page, true_anchor_financial_type,
+    is_notes_or_auditor_self, is_auditor_continuation,
+):
+    if section is None:
         return BlockType.TABLE
 
     content_lower = block.content.lower().replace('\n', ' ')
+    heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
+
+    # Hard veto: a page that IS a Notes page or IS the auditor's own report
+    # (declares itself as such in its own heading) is never a statement,
+    # full stop — no anchor phrase overrides this.
+    if is_notes_or_auditor_self:
+        return BlockType.TABLE
+
+    # A genuine title anchor ALWAYS wins, even if this page also falls
+    # inside a derived auditor-continuation window. The continuation
+    # window is a heuristic guess about "probably still auditor content";
+    # an explicit statement title on the page itself is direct evidence
+    # and must override a guess. Restricted to heading_zone — matching
+    # anywhere in the full page text is what let stray mentions ("...as
+    # per the Balance Sheet...") in auditor prose falsely re-anchor pages.
     has_anchor = any(anchor in content_lower for anchor in STATEMENT_TITLE_ANCHORS)
     if has_anchor:
-        return BlockType.FINANCIAL_STATEMENT
+        # A genuine statement page shows the standard Ind AS row-label
+        # column header near its title. Auditor-report pages routinely
+        # NAME the statements they reviewed in prose (e.g. "the
+        # Consolidated Balance Sheet, the Consolidated Statement of
+        # Profit and Loss...") without being one — this structural
+        # check is what actually distinguishes the two, since phrase
+        # exclusion lists are fighting a losing battle against pages
+        # that legitimately discuss statement titles in narrative form.
+        if "particulars" in content_lower:
+            return BlockType.FINANCIAL_STATEMENT
+        return BlockType.TABLE
 
+    # Otherwise, standard statement-continuation logic (unrelated to
+    # auditor exclusion): bounded window from the last TRUE anchor.
     is_continuation = (
         true_anchor_page is not None
         and section.financial_type == true_anchor_financial_type
         and 0 < (block.page_number - true_anchor_page) <= CONTINUATION_MAX_PAGES
     )
     if is_continuation:
-        keyword_count = _count_keyword_matches(content_lower, ALL_FINANCIAL_SIGNALS)
+        keyword_count = _count_keyword_matches(heading_zone, ALL_FINANCIAL_SIGNALS) \
+            or _count_keyword_matches(content_lower, ALL_FINANCIAL_SIGNALS)
         has_table_structure = "particulars" in content_lower
         if keyword_count >= FINANCIAL_STATEMENT_MIN_KEYWORDS and has_table_structure:
             return BlockType.FINANCIAL_STATEMENT
@@ -381,8 +416,9 @@ def classify_blocks(
         )
 
         heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
-        is_auditor_hit = any(p in heading_zone for p in AUDITOR_REPORT_EXCLUSION_PHRASES)
         is_notes_hit = any(p in heading_zone for p in NOTES_EXCLUSION_PHRASES)
+        is_auditor_hit = any(p in heading_zone for p in AUDITOR_REPORT_EXCLUSION_PHRASES)
+        is_notes_or_auditor_self = is_notes_hit or is_auditor_hit
 
         is_in_auditor_continuation = (
             last_auditor_page is not None
@@ -391,11 +427,12 @@ def classify_blocks(
             and 0 < (block.page_number - last_auditor_page) <= AUDITOR_CONTINUATION_MAX_PAGES
         )
 
-        is_excluded_page = is_notes_hit or is_auditor_hit or is_in_auditor_continuation
-
+        # Consistent with _classify_table_block: heading-zone-only anchor
+        # match, and only genuine self-declared Notes/Auditor pages veto —
+        # the continuation guess never blocks anchor detection here either.
         is_true_anchor = (
             original_type == BlockType.TABLE
-            and not is_excluded_page
+            and not is_notes_or_auditor_self
             and any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS)
         )
 
@@ -405,7 +442,8 @@ def classify_blocks(
             block.block_type = BlockType.MANAGEMENT_DISCUSSION
         elif original_type == BlockType.TABLE:
             block.block_type = _classify_table_block(
-                block, section, true_anchor_page, true_anchor_financial_type, is_excluded_page
+                block, section, true_anchor_page, true_anchor_financial_type,
+                is_notes_or_auditor_self, is_in_auditor_continuation,
             )
         else:
             block.block_type = BlockType.TEXT
