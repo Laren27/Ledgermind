@@ -235,6 +235,11 @@ STATEMENT_TITLE_ANCHORS = {
 ANCHOR_HEADING_CHARS = 400
 CONTINUATION_MAX_PAGES = 4
 
+AUDITOR_CONTINUATION_MAX_PAGES = 6  # auditor reports commonly run 3-8 pages;
+                                     # only the first page repeats the
+                                     # identifying phrase, same problem as
+                                     # multi-page statements losing their title
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -261,19 +266,12 @@ def _build_page_to_section(sections: list[DocSection]) -> dict[int, DocSection]:
 # Core classification logic
 # ---------------------------------------------------------------------------
 
-def _classify_table_block(block, section, true_anchor_page, true_anchor_financial_type):
-    if section is None:
+def _classify_table_block(block, section, true_anchor_page, true_anchor_financial_type, is_excluded_page):
+    if section is None or is_excluded_page:
         return BlockType.TABLE
 
     content_lower = block.content.lower().replace('\n', ' ')
-    heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
-
-    if any(p in heading_zone for p in NOTES_EXCLUSION_PHRASES):
-        return BlockType.TABLE
-    if any(p in heading_zone for p in AUDITOR_REPORT_EXCLUSION_PHRASES):
-        return BlockType.TABLE
-
-    has_anchor = any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS)
+    has_anchor = any(anchor in content_lower for anchor in STATEMENT_TITLE_ANCHORS)
     if has_anchor:
         return BlockType.FINANCIAL_STATEMENT
 
@@ -284,10 +282,6 @@ def _classify_table_block(block, section, true_anchor_page, true_anchor_financia
     )
     if is_continuation:
         keyword_count = _count_keyword_matches(content_lower, ALL_FINANCIAL_SIGNALS)
-        # "particulars" is the standard Ind AS row-label column header —
-        # present on every real statement continuation page, absent from
-        # footnotes and boilerplate cover pages that happen to mention
-        # financial terms in passing.
         has_table_structure = "particulars" in content_lower
         if keyword_count >= FINANCIAL_STATEMENT_MIN_KEYWORDS and has_table_structure:
             return BlockType.FINANCIAL_STATEMENT
@@ -365,6 +359,8 @@ def classify_blocks(
 
     true_anchor_page = None
     true_anchor_financial_type = None
+    last_auditor_page = None
+    last_auditor_financial_type = None
 
     for block in blocks:
         section = page_to_section.get(block.page_number)
@@ -385,28 +381,43 @@ def classify_blocks(
         )
 
         heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
-        is_excluded_page = (
-            any(p in heading_zone for p in NOTES_EXCLUSION_PHRASES)
-            or any(p in heading_zone for p in AUDITOR_REPORT_EXCLUSION_PHRASES)
+        is_auditor_hit = any(p in heading_zone for p in AUDITOR_REPORT_EXCLUSION_PHRASES)
+        is_notes_hit = any(p in heading_zone for p in NOTES_EXCLUSION_PHRASES)
+
+        is_in_auditor_continuation = (
+            last_auditor_page is not None
+            and section is not None
+            and section.financial_type == last_auditor_financial_type
+            and 0 < (block.page_number - last_auditor_page) <= AUDITOR_CONTINUATION_MAX_PAGES
         )
-        is_true_anchor = (original_type == BlockType.TABLE and not is_excluded_page and any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS))
+
+        is_excluded_page = is_notes_hit or is_auditor_hit or is_in_auditor_continuation
+
+        is_true_anchor = (
+            original_type == BlockType.TABLE
+            and not is_excluded_page
+            and any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS)
+        )
 
         if risk_matches >= RISK_MIN_KEYWORDS:
             block.block_type = BlockType.RISK_DISCLOSURE
         elif md_matches >= MANAGEMENT_DISCUSSION_MIN_KEYWORDS or is_narrative_md:
             block.block_type = BlockType.MANAGEMENT_DISCUSSION
         elif original_type == BlockType.TABLE:
-            block.block_type = _classify_table_block(block, section, true_anchor_page, true_anchor_financial_type)
+            block.block_type = _classify_table_block(
+                block, section, true_anchor_page, true_anchor_financial_type, is_excluded_page
+            )
         else:
             block.block_type = BlockType.TEXT
 
         block.financial_type = section.financial_type if section else FinancialType.UNKNOWN
 
-        # Only a genuine title-anchor hit resets the anchor point — a
-        # continuation page inheriting the label does NOT extend the window.
         if is_true_anchor:
             true_anchor_page = block.page_number
             true_anchor_financial_type = block.financial_type
+        if is_auditor_hit and section is not None:
+            last_auditor_page = block.page_number
+            last_auditor_financial_type = section.financial_type
 
     return blocks
 
