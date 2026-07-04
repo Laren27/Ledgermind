@@ -271,7 +271,7 @@ def _should_skip_row(description: str, values: list) -> bool:
         return True
 
     max_val = max((abs(v) for v in values if v is not None), default=0)
-    if max_val > 500_000:
+    if max_val > 10_000_000:
         import logging
         logging.getLogger(__name__).warning(
             "Implausible value %.0f in row '%s' — skipping", max_val, description
