@@ -54,7 +54,7 @@ MONTH_TO_QUARTER = {
     1: "Q4", 2: "Q4", 3: "Q4",
 }
 
-_YEAR_WORD_RE = re.compile(r"^\d{4}$")
+_YEAR_WORD_RE = re.compile(r"^(?:20\d{2}|FY\d{2})", re.IGNORECASE)
 _NUMERIC_DATE_RE = re.compile(r"(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})")
 
 _TRAILING_JUNK_RE = re.compile(
@@ -66,7 +66,8 @@ _TRAILING_JUNK_RE = re.compile(
     re.IGNORECASE,
 )
 
-_LEADING_ROMAN_RE = re.compile(r"^\s*[IVXLCDMivxlcdm]{1,5}\.?\s+")
+# Matches Roman numerals followed by a dot/paren, OR bare uppercase numerals followed by an Uppercase word
+_LEADING_ROMAN_RE = re.compile(r"^\s*(?:[IVXLCDMivxlcdm]{1,5}[\.\)]|[IVXLCDM]{1,5}(?=\s+[A-Z]))\s+")
 
 def _clean_description(raw: str) -> str:
     """
@@ -94,7 +95,7 @@ def _date_to_period(month: int, year: int) -> tuple[str, str]:
 def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, Optional[str]]]]:
     """
     Detects SEBI column structures using Spatial Alignment.
-    Adapts seamlessly to both Quarterly (5 columns) and Annual (2 columns) layouts.
+    Adapts seamlessly to Quarterly (5 cols), Annual (2 cols), and handles double-stacked headers.
     """
     with pdfplumber.open(pdf_path) as pdf:
         page = pdf.pages[page_idx]
@@ -118,7 +119,7 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
         for x0, top, month, year in numeric_dates:
             found = False
             for row_top in rows.keys():
-                if abs(top - row_top) <= 20.0:
+                if abs(top - row_top) <= 30.0:
                     rows[row_top].append((x0, month, year))
                     found = True
                     break
@@ -143,27 +144,18 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
                     column_map.append((fy, None))
                 else:
                     column_map.append((fy, q if i < 3 else None))
-            
-            logger.info("Column map detected via Numeric Dates: %s", column_map)
-
-            if len(set(column_map)) != len(column_map):
-                if not is_annual and len(column_map) == 5 and column_map[1] == column_map[0]:
-                    column_map[1] = (column_map[0][0], 'Q3') # Force Q3 fallback
-                else:
-                    logger.warning("Duplicate periods in detected map %s. Skipping.", column_map)
-                    return None
-
             return column_map
 
     # --- Strategy 2: Geometric Partitioning & Structural Inference ---
-    year_words = [w for w in words if _YEAR_WORD_RE.match(w["text"].strip(".,()[]"))]
+    year_words = [w for w in words if _YEAR_WORD_RE.match(w["text"].strip(".,()[]*#"))]
     
     year_rows = {}
     for y_w in year_words:
         top = y_w["top"]
         found = False
+        # 30-pixel tolerance ensures double-stacked column headers group correctly
         for row_top in year_rows.keys():
-            if abs(top - row_top) <= 10.0:
+            if abs(top - row_top) <= 30.0: 
                 year_rows[row_top].append(y_w)
                 found = True
                 break
@@ -171,7 +163,6 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
             year_rows[top] = [y_w]
 
     if not year_rows:
-        logger.warning("Column map detection failed: no numeric or English dates found (page_idx=%d).", page_idx)
         return None
 
     header_row_top = max(year_rows.keys(), key=lambda t: len(year_rows[t]))
@@ -186,42 +177,50 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
     num_cols = len(unique_years)
     column_map = []
 
+    def _extract_year(text: str) -> int:
+        text = text.strip(".,()[]*#").upper()
+        if text.startswith("FY"): return 2000 + int(text[2:4])
+        return int(text[:4])
+
     # --- ANNUAL REPORT LAYOUT (1 to 3 columns) ---
     if num_cols <= 3:
         for y_w in unique_years:
-            year_val = int(y_w["text"].strip(".,()[]"))
+            year_val = _extract_year(y_w["text"])
             fy, _ = _date_to_period(3, year_val)
-            column_map.append((fy, None)) # Quarter is ALWAYS None for Annual Reports
+            column_map.append((fy, None))
             
+        # Deduplicate sequential identical years (e.g. FY24, FY24 -> FY24, FY23)
         if len(set(column_map)) != len(column_map):
-            base_year = int(unique_years[0]["text"].strip(".,()[]"))
+            base_year = _extract_year(unique_years[0]["text"])
             column_map = [(_date_to_period(3, base_year - i)[0], None) for i in range(num_cols)]
             
-        logger.info("Detected Annual Report column map: %s", column_map)
         return column_map
 
     # --- QUARTERLY RESULTS LAYOUT (4 to 6 columns) ---
     if num_cols >= 4:
-        base_year = int(unique_years[0]["text"].strip(".,()[]"))
+        base_year = _extract_year(unique_years[0]["text"])
         col_0_center = (unique_years[0]["x0"] + unique_years[0]["x1"]) / 2
         month_val = 3 # Default to March
         
-        # Only scan text near Col 0 to find the base month; ignore the rest
+        # Scan text near Col 0 to find the closest base month
+        best_dist = 999
         for w in words:
-            if abs(w["top"] - header_row_top) < 60 and abs((w["x0"] + w["x1"])/2 - col_0_center) < 100:
-                text_lower = w["text"].lower()
-                if 'jan' in text_lower: month_val = 1
-                elif 'feb' in text_lower: month_val = 2
-                elif 'mar' in text_lower or 'rch' in text_lower: month_val = 3
-                elif 'apr' in text_lower: month_val = 4
-                elif 'may' in text_lower: month_val = 5
-                elif 'jun' in text_lower: month_val = 6
-                elif 'jul' in text_lower: month_val = 7
-                elif 'aug' in text_lower: month_val = 8
-                elif 'sep' in text_lower: month_val = 9
-                elif 'oct' in text_lower: month_val = 10
-                elif 'nov' in text_lower: month_val = 11
-                elif 'dec' in text_lower or 'cem' in text_lower: month_val = 12
+            if abs(w["top"] - header_row_top) < 60:
+                dist = abs((w["x0"] + w["x1"])/2 - col_0_center)
+                if dist < 60 and dist < best_dist:
+                    text_lower = w["text"].lower()
+                    if 'jan' in text_lower: month_val = 1; best_dist = dist
+                    elif 'feb' in text_lower: month_val = 2; best_dist = dist
+                    elif 'mar' in text_lower or 'rch' in text_lower: month_val = 3; best_dist = dist
+                    elif 'apr' in text_lower: month_val = 4; best_dist = dist
+                    elif 'may' in text_lower: month_val = 5; best_dist = dist
+                    elif 'jun' in text_lower: month_val = 6; best_dist = dist
+                    elif 'jul' in text_lower: month_val = 7; best_dist = dist
+                    elif 'aug' in text_lower: month_val = 8; best_dist = dist
+                    elif 'sep' in text_lower: month_val = 9; best_dist = dist
+                    elif 'oct' in text_lower: month_val = 10; best_dist = dist
+                    elif 'nov' in text_lower: month_val = 11; best_dist = dist
+                    elif 'dec' in text_lower or 'cem' in text_lower: month_val = 12; best_dist = dist
         
         base_fy, base_q = _date_to_period(month_val, base_year)
         q_num = int(base_q[-1])
@@ -229,14 +228,12 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
         prev_q_fy = f"FY{int(base_fy[2:]) - 1}" if q_num == 1 else base_fy
         last_year_fy = f"FY{int(base_fy[2:]) - 1}"
 
-        # Structurally map the SEBI layout, ignoring all OCR typos
-        column_map.append((base_fy, base_q))                        # Col 0: Current Quarter
-        column_map.append((prev_q_fy, f"Q{prev_q_num}"))            # Col 1: Prev Quarter
-        column_map.append((last_year_fy, base_q))                   # Col 2: Same Quarter Last Year
-        if num_cols >= 4: column_map.append((base_fy, None))        # Col 3: Current Annual
-        if num_cols >= 5: column_map.append((last_year_fy, None))   # Col 4: Prev Annual
+        column_map.append((base_fy, base_q))                        
+        column_map.append((prev_q_fy, f"Q{prev_q_num}"))            
+        column_map.append((last_year_fy, base_q))                   
+        if num_cols >= 4: column_map.append((base_fy, None))        
+        if num_cols >= 5: column_map.append((last_year_fy, None))   
             
-        logger.info("Detected structural Quarterly column map: %s", column_map)
         return column_map[:num_cols]
 
     return None
@@ -259,6 +256,9 @@ _SKIP_DESCRIPTIONS = {
 
 def _should_skip_row(description: str, values: list) -> bool:
     desc_lower = description.lower().strip()
+
+    if "deferred revenue" in desc_lower or "contract liabilities" in desc_lower or "segment revenue" in desc_lower:
+        return True
 
     if desc_lower in _SKIP_DESCRIPTIONS:
         return True
@@ -368,7 +368,8 @@ def extract_all_financial_records(
     logger.info("Processing %d FINANCIAL_STATEMENT blocks", len(financial_blocks))
 
     all_records: list[FinancialRecord] = []
-    processed_pages: set[int] = set() 
+    processed_pages: set[int] = set()
+    seen_keys = set() 
 
     for block in financial_blocks:
         page_number = block.page_number          
@@ -429,7 +430,14 @@ def extract_all_financial_records(
             "Page %d (%s): %d rows → %d records",
             page_number, financial_type, len(rows), len(records),
         )
-        all_records.extend(records)
+        for r in records:
+            # Create a unique signature for this exact metric and time period
+            key = (r.financial_type, r.fiscal_year, r.quarter, r.metric)
+            
+            # If we haven't seen it yet, it's from the primary statement. Keep it!
+            if key not in seen_keys:
+                seen_keys.add(key)
+                all_records.append(r)
 
     logger.info(
         "Extraction complete: %d total FinancialRecord objects from %d pages",
