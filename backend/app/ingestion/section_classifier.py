@@ -143,6 +143,19 @@ MANAGEMENT_DISCUSSION_KEYWORDS = {
     "operational review",
 }
 
+# These headers are UNIQUE to Notes pages in this document family and never
+# appear on a genuine primary statement page. Checking this first is a hard
+# veto — cheaper and more reliable than trying to make the positive anchor
+# list precise enough to never overlap with Notes content.
+NOTES_EXCLUSION_PHRASES = {
+    "notes to the consolidated financial",
+    "notes to the standalone financial",
+    "notes to financial statements",
+}
+
+
+
+
 MANAGEMENT_DISCUSSION_MIN_KEYWORDS = 2
 
 MD_LETTERED_HEADER_RE = re.compile(
@@ -170,6 +183,14 @@ AUDITOR_KEYWORDS = {
     "engagement partner",
 }
 
+AUDITOR_REPORT_EXCLUSION_PHRASES = {
+    "review of the consolidated financial",
+    "review of the standalone financial",
+    "independent auditor",
+    "limited review report",
+}
+
+
 AUDITOR_MIN_KEYWORDS = 1
 
 
@@ -195,6 +216,9 @@ STATEMENT_TITLE_ANCHORS = {
     "financial results for the year",
     "unaudited financial results",
     "audited financial results",
+    # --- OCR Corruptions for this specific document family ---
+    "statement of consolidalcd", 
+    "financial rcsulls",
 }
 
 # Multi-page statement handling: only the FIRST page of a statement carries
@@ -236,27 +260,22 @@ def _build_page_to_section(sections: list[DocSection]) -> dict[int, DocSection]:
 # Core classification logic
 # ---------------------------------------------------------------------------
 
-def _classify_table_block(
-    block: PageBlock,
-    section: DocSection | None,
-    true_anchor_page: Optional[int],
-    true_anchor_financial_type,
-) -> str:
+def _classify_table_block(block, section, true_anchor_page, true_anchor_financial_type):
     if section is None:
         return BlockType.TABLE
 
     content_lower = block.content.lower()
     heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
 
+    if any(p in heading_zone for p in NOTES_EXCLUSION_PHRASES):
+        return BlockType.TABLE
+    if any(p in heading_zone for p in AUDITOR_REPORT_EXCLUSION_PHRASES):
+        return BlockType.TABLE
+
     has_anchor = any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS)
     if has_anchor:
         return BlockType.FINANCIAL_STATEMENT
 
-    # Continuation distance is measured from the TRUE anchor page only —
-    # never from a prior continuation page. This bounds the window to a
-    # fixed span regardless of how many continuation pages appear inside
-    # it, preventing the chain from propagating indefinitely through a
-    # long, keyword-rich section like Notes to Accounts.
     is_continuation = (
         true_anchor_page is not None
         and section.financial_type == true_anchor_financial_type
@@ -264,7 +283,12 @@ def _classify_table_block(
     )
     if is_continuation:
         keyword_count = _count_keyword_matches(content_lower, ALL_FINANCIAL_SIGNALS)
-        if keyword_count >= FINANCIAL_STATEMENT_MIN_KEYWORDS:
+        # "particulars" is the standard Ind AS row-label column header —
+        # present on every real statement continuation page, absent from
+        # footnotes and boilerplate cover pages that happen to mention
+        # financial terms in passing.
+        has_table_structure = "particulars" in content_lower
+        if keyword_count >= FINANCIAL_STATEMENT_MIN_KEYWORDS and has_table_structure:
             return BlockType.FINANCIAL_STATEMENT
 
     return BlockType.TABLE
@@ -360,10 +384,11 @@ def classify_blocks(
         )
 
         heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
-        is_true_anchor = (
-            original_type == BlockType.TABLE
-            and any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS)
+        is_excluded_page = (
+            any(p in heading_zone for p in NOTES_EXCLUSION_PHRASES)
+            or any(p in heading_zone for p in AUDITOR_REPORT_EXCLUSION_PHRASES)
         )
+        is_true_anchor = (original_type == BlockType.TABLE and not is_excluded_page and any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS))
 
         if risk_matches >= RISK_MIN_KEYWORDS:
             block.block_type = BlockType.RISK_DISCLOSURE
