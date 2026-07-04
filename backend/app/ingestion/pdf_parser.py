@@ -18,11 +18,10 @@ Downstream consumers:
   - section_classifier.py reads block_type
   - table_extractor.py reads PageBlock.table for header stitching
 """
-from .models import BlockType, PageBlock
-import pdfplumber
 import re
+import pdfplumber
+from .models import BlockType, PageBlock
 
-# 1. TYPO MAPPING: Fix consistent OCR artifacts
 # 1. TYPO MAPPING: Fix consistent OCR artifacts
 TYPO_MAP = {
     "Ill": "III",
@@ -41,23 +40,32 @@ TYPO_MAP = {
     "Advcniscmcnt": "Advertisement"
 }
 
+_VALUE_TOKEN_RE = re.compile(r"^\(?-?[\d,]*\.?\d+\)?$|^-$")
+MIN_VALUE_COLUMNS = 2  # a real financial data row always has at least 2 periods
+
 
 def parse_pdf(pdf_path: str) -> list:
-    import pdfplumber
-    # Adjust your import path for PageBlock/BlockType if needed
-    from .models import PageBlock, BlockType 
-
     blocks = []
     with pdfplumber.open(pdf_path) as pdf:
         for i, page in enumerate(pdf.pages):
             text = page.extract_text() or ""
-            
-            # THE FIX: Check if pdfplumber sees a table on this page
-            if page.find_tables():
+            text_lower = text.lower()
+
+            # Multiple independent signals for "this page contains a real table":
+            has_table_borders = bool(page.find_tables())
+            has_financial_header_markers = (
+                "quarter ended" in text_lower or "year ended" in text_lower
+            )
+            # Catch borderless tables using numeric dates (e.g. 30-06-2025)
+            has_numeric_dates = bool(re.search(r"\d{1,2}[./-]\d{1,2}[./-]\d{2,4}", text_lower))
+            # Catch borderless tables using core P&L structural words
+            has_pnl_anchors = bool(re.search(r"(revenue from operations|sale of products|total income|profit before tax)", text_lower))
+
+            if has_table_borders or has_financial_header_markers or has_numeric_dates or has_pnl_anchors:
                 b_type = BlockType.TABLE
             else:
                 b_type = BlockType.TEXT
-                
+
             blocks.append(PageBlock(
                 page_number=i + 1,
                 content=text,
@@ -74,7 +82,7 @@ def get_page_count(pdf_path: str) -> int:
 
 def clean_financial_number(val):
     """
-    2. NUMBER NORMALIZATION: Converts OCR strings to standard floats.
+    NUMBER NORMALIZATION: Converts OCR strings to standard floats.
     Handles negatives in parentheses, nil dashes, and OCR comma/period confusion.
     """
     if not val or val == '-':
@@ -95,40 +103,62 @@ def clean_financial_number(val):
     except ValueError:
         return None
 
+
 def parse_financial_line(line):
-    """Applies right-to-left regex extraction to pull the description and 5 values."""
-    line = line.strip()
-    if not line:
+    """
+    Split a financial statement line into [description, value1, value2, ...]
+    """
+    line = line.rstrip("\n")
+    if not line.strip():
         return None
-        
-    # Apply Typo Mapping
-    for wrong, right in TYPO_MAP.items():
-        line = line.replace(wrong, right)
-        
-    # Clean Roman numerals at the very start of the line
-    line = re.sub(r'^(I{1,3}|IV|V|VI{1,3}|IX|X)\s+', '', line)
-    
-    # Fix internal spaces inside numbers ('16 663' -> '16663')
-    # AFTER — only merges Indian-format grouped numbers (e.g. "16 663" → "16663")
-    # Requires the second group to be exactly 3 digits followed by non-digit or end
+
+    # Strip common footnote references that glue to descriptions and confuse the parser
+    line = re.sub(r'\(refer note \d+\)', '', line, flags=re.IGNORECASE)
+
+    # Apply Typo Mapping (word-boundary matches only)
+    for wrong, right in sorted(TYPO_MAP.items(), key=lambda kv: -len(kv[0])):
+        pattern = r'\b' + re.escape(wrong) + r'\b'
+        line = re.sub(pattern, right, line)
+
+    # Strip leading Roman numeral / letter prefixes: "I.", "V.", "(a)" etc.
+    line = re.sub(r'^(I{1,3}|IV|V|VI{1,3}|IX|X)\.?\s+', '', line)
+
+    # RESTORED: merge OCR-artifact spaces inside Indian comma-grouped numbers
+    # ("16 663" -> "16663"). Must run BEFORE line.split() below — without
+    # this, a single mis-extracted comma-as-space corrupts the entire
+    # column count for the rest of the row. This was present in the
+    # original ETERNAL-verified parser and was accidentally dropped when
+    # switching to bare line.split() for Titan's single-space columns.
+    # Safe for both filings: only merges a digit + space + exactly-3-digits
+    # pattern; Titan's numbers extract with commas intact and never match.
     line = re.sub(r'(?<=\d) (?=\d{3}(?:[^\d]|$))', '', line)
-    
-    # Match right-to-left financial values (numbers, parens, dashes)
-    val_pattern = r'(?:\([\d.,]+\)|[\d.,]+|-)'
-    matches = list(re.finditer(val_pattern, line))
-    
-    # If we find at least 5 values, safely split the row
-    if len(matches) >= 5:
-        first_val_idx = matches[-5].start()
-        description = line[:first_val_idx].strip()
-        
-        # Extract the raw strings and pass them through the cleaner
-        raw_values = [m.group() for m in matches[-5:]]
-        clean_values = [clean_financial_number(v) for v in raw_values]
-        
-        return [description] + clean_values
-        
-    return None
+
+    # Split on ANY whitespace (handles Titan's tightly-squeezed columns).
+    parts = line.split()
+    if len(parts) < 1:
+        return None
+
+    # Scan from the right: collect trailing tokens that look like a value
+    value_tokens = []
+    split_idx = len(parts)
+    for i in range(len(parts) - 1, -1, -1):
+        token = parts[i].strip()
+        if _VALUE_TOKEN_RE.match(token):
+            value_tokens.insert(0, token)
+            split_idx = i
+        else:
+            break
+
+    if len(value_tokens) < MIN_VALUE_COLUMNS:
+        return None
+
+    description = " ".join(parts[:split_idx]).strip()
+    if not description:
+        return None
+
+    clean_values = [clean_financial_number(v) for v in value_tokens]
+    return [description] + clean_values
+
 
 def extract_financials(pdf_path, page_index):
     """Main extraction function with Header Skipping."""
@@ -140,9 +170,10 @@ def extract_financials(pdf_path, page_index):
         text = page.extract_text(layout=True)
         
         for line in text.split('\n'):
-            # 3. HEADER SKIPPING: Ignore dates/headers until we hit the first real row
+            # HEADER SKIPPING: Ignore dates/headers until we hit the first real row
             if not parsing_started:
-                if "Revenue from operations" in line or "Other income" in line:
+                lower_line = line.lower()
+                if "revenue" in lower_line or "income" in lower_line or "sale" in lower_line:
                     parsing_started = True
                 else:
                     continue
@@ -152,14 +183,3 @@ def extract_financials(pdf_path, page_index):
                 financial_data.append(parsed_row)
                 
     return financial_data
-
-# --- Execution ---
-if __name__ == "__main__":
-    pdf_path = "/home/laren/ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"
-    
-    # Extract Page 31 (Index 30) - Consolidated Results
-    print("Extracting Consolidated Results...")
-    extracted_data = extract_financials(pdf_path, 30)
-    
-    for row in extracted_data[:10]:
-        print(row)
