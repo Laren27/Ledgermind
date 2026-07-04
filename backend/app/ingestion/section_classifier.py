@@ -219,6 +219,7 @@ STATEMENT_TITLE_ANCHORS = {
     # --- OCR Corruptions for this specific document family ---
     "statement of consolidalcd", 
     "financial rcsulls",
+    "consolidated statement of profit and loss",
 }
 
 # Multi-page statement handling: only the FIRST page of a statement carries
