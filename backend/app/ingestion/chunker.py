@@ -358,6 +358,7 @@ def chunk_blocks(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    import argparse
     import os
     import sys
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -370,14 +371,20 @@ if __name__ == "__main__":
     from .pdf_parser import parse_pdf
     from .section_classifier import classify_blocks, get_blocks_by_type
 
-    pdf_path = Path(
-        sys.argv[1] if len(sys.argv) > 1
-        else os.path.expanduser(
-            "~/ledgermind/docs/raw/"
-            "ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"
-        )
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pdf_path", nargs="?", default=os.path.expanduser(
+        "~/ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"))
+    parser.add_argument("--company", default="ETERNAL")
+    parser.add_argument("--ticker", default="ETERNAL")
+    parser.add_argument("--fiscal-year", default="FY26")
+    parser.add_argument("--quarter", default="Q4")
+    parser.add_argument("--doc-type", default="quarterly_result")
+    parser.add_argument("--filing-date", default="2026-04-28")
+    parser.add_argument("--min-chunks", type=int, default=100)
+    args = parser.parse_args()
 
+    pdf_path = Path(args.pdf_path)
+    quarter = args.quarter if args.quarter.lower() != "none" else None
     ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
 
     print(f"\nParsing: {pdf_path.name}")
@@ -388,9 +395,9 @@ if __name__ == "__main__":
     try:
         sections = classify_and_register(
             blocks=blocks, pdf_path=pdf_path, tenant_id=ALPHA_TENANT,
-            company="ETERNAL", ticker="ETERNAL", fiscal_year="FY26",
-            quarter="Q4", doc_type="quarterly_result",
-            filing_date="2026-04-28", conn=conn,
+            company=args.company, ticker=args.ticker, fiscal_year=args.fiscal_year,
+            quarter=quarter, doc_type=args.doc_type,
+            filing_date=args.filing_date, conn=conn,
         )
     finally:
         conn.close()
@@ -400,8 +407,8 @@ if __name__ == "__main__":
     print("\n--- Chunking ---")
     chunks = chunk_blocks(
         blocks=blocks, sections=sections, tenant_id=ALPHA_TENANT,
-        company="ETERNAL", ticker="ETERNAL", fiscal_year="FY26",
-        quarter="Q4", document_type="quarterly_result", filing_date="2026-04-28",
+        company=args.company, ticker=args.ticker, fiscal_year=args.fiscal_year,
+        quarter=quarter, document_type=args.doc_type, filing_date=args.filing_date,
     )
 
     type_counts = Counter(c.metadata.chunk_type for c in chunks)
@@ -411,18 +418,18 @@ if __name__ == "__main__":
     print(f"By block type     : {dict(type_counts)}")
     print(f"By financial_type : {dict(ft_counts)}")
 
-    # Determinism check — run chunking twice, IDs must match
     chunks2 = chunk_blocks(
         blocks=blocks, sections=sections, tenant_id=ALPHA_TENANT,
-        company="ETERNAL", ticker="ETERNAL", fiscal_year="FY26",
-        quarter="Q4", document_type="quarterly_result", filing_date="2026-04-28",
+        company=args.company, ticker=args.ticker, fiscal_year=args.fiscal_year,
+        quarter=quarter, document_type=args.doc_type, filing_date=args.filing_date,
     )
     ids1 = {c.chunk_id for c in chunks}
     ids2 = {c.chunk_id for c in chunks2}
     assert ids1 == ids2, "Chunk IDs not deterministic — upserts will create duplicates"
     print("\nDeterminism check: PASS — same chunk_ids on second run")
 
-    assert len(chunks) >= 100
+    assert len(chunks) >= args.min_chunks, \
+        f"Expected >= {args.min_chunks} chunks, got {len(chunks)}"
     for c in chunks:
         assert c.chunk_id
         assert c.text.strip()
