@@ -1,15 +1,21 @@
+import sys
 from pathlib import Path
-from app.ingestion.pdf_parser import parse_pdf
-from app.ingestion.document_classifier import detect_sections
-from app.ingestion.section_classifier import classify_blocks, get_blocks_by_type
-from app.ingestion.models import BlockType
+from app.ingestion.pdf_parser import parse_pdf, extract_financials
 
-pdf_path = str(Path.home() / "ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf")
-blocks = parse_pdf(pdf_path)
-sections = detect_sections(blocks)
-blocks = classify_blocks(blocks, sections)
+def run_debug():
+    print("=== ETERNAL PAGE 31 ROWS ===")
+    eternal_path = str(Path.home() / "ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf")
+    # Page 31 is index 30 in the zero-indexed list
+    rows = extract_financials(eternal_path, 30)
+    for r in rows[:15]:
+        print(r)
 
-for b in get_blocks_by_type(blocks, BlockType.FINANCIAL_STATEMENT):
-    print(f"--- page {b.page_number} ---")
-    print(b.content[:200].replace("\n", " "))
-    print()
+    print("\n=== ZOMATO PAGE 164 TEXT ===")
+    zomato_path = str(Path.home() / "ledgermind/docs/raw/ZOMATO_ANNUAL_REPORT_2023-24.pdf")
+    blocks = parse_pdf(zomato_path)
+    # Print the first 800 characters to see exactly where the title is
+    p164_text = "\n".join(b.content for b in blocks if b.page_number == 164)
+    print(p164_text[:800].replace('\n', ' | '))
+
+if __name__ == "__main__":
+    run_debug()
