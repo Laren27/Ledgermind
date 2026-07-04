@@ -106,10 +106,19 @@ def run_one(doc: dict) -> bool:
     # a cumulative annual column (SEBI col3/col4), and annual reports are
     # annual-only by definition. Checking the raw quarter-scoped figure
     # here previously produced false failures on correctly extracted data.
+    # Golden comparison targets Annual (quarter=None) for Q4/Annual reports, 
+    # but looks at the specific quarter for Q1-Q3 filings.
+    if doc["doc_type"] == "annual_report" or doc["quarter"] == "Q4":
+        target_quarter = None
+        label = "annual"
+    else:
+        target_quarter = doc["quarter"]
+        label = f"quarterly ({doc['quarter']})"
+
     revenue_records = [
         r for r in records
         if r.metric == "revenue" and r.fiscal_year == doc["fiscal_year"]
-        and r.quarter is None
+        and r.quarter == target_quarter
     ]
     revenue_ok = False
     if revenue_records:
