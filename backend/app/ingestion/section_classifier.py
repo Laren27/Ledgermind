@@ -264,7 +264,7 @@ def _classify_table_block(block, section, true_anchor_page, true_anchor_financia
     if section is None:
         return BlockType.TABLE
 
-    content_lower = block.content.lower()
+    content_lower = block.content.lower().replace('\n', ' ')
     heading_zone = content_lower[:ANCHOR_HEADING_CHARS]
 
     if any(p in heading_zone for p in NOTES_EXCLUSION_PHRASES):
@@ -307,7 +307,7 @@ def _classify_text_block(block: PageBlock) -> str:
     They're qualitative content but not MD&A — a distinct category handled
     by the retrieval layer's metadata filtering.
     """
-    content_lower = block.content.lower()
+    content_lower = block.content.lower().replace('\n', ' ')
 
     # Risk disclosure check
     risk_matches = _count_keyword_matches(content_lower, RISK_KEYWORDS)
