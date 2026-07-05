@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 # Returns the existing row's filing_date so we can compare.
 # IS NOT DISTINCT FROM handles NULL quarter (annual reports).
 _SQL_LOCK_LATEST = """
-SELECT id, filing_date
+SELECT id, filing_date, doc_id
 FROM   financials
 WHERE  company        = %(company)s
   AND  metric         = %(metric)s
@@ -161,11 +161,8 @@ def _upsert_one(
     outcome = "inserted"
 
     if existing:
-        existing_id, existing_filing_date = existing
+        existing_id, existing_filing_date, existing_doc_id = existing
 
-        # Compare filing dates
-        # record.filing_date is an ISO string "YYYY-MM-DD"
-        # existing_filing_date comes back as a datetime.date object from psycopg2
         from datetime import date
         new_date_str = record.filing_date
         try:
@@ -177,9 +174,21 @@ def _upsert_one(
             )
             return "skipped"
 
+        # Same doc_id re-ingested: this is the SAME document being replayed
+        # (e.g. a retried Celery task, or a manual smoke-test re-run) — not a
+        # new filing. Do NOT retire is_latest here. Fall through to the
+        # ON CONFLICT DO NOTHING insert, which will correctly no-op since
+        # the (doc_id, metric, period) key already exists.
+        if str(existing_doc_id) == str(record.doc_id):
+            cursor.execute(_SQL_INSERT_SAFE, params)
+            inserted_id = cursor.fetchone()
+            if inserted_id is None:
+                return "skipped"
+            # Should not normally happen (same doc_id + same key should always
+            # conflict), but if it somehow inserts, treat as a fresh insert.
+            return "inserted"
+
         if new_date < existing_filing_date:
-            # The filing we're trying to load is OLDER than what's already in DB.
-            # This would be a regression. Skip entirely.
             logger.warning(
                 "Skipping %s/%s/%s: new filing_date %s is older than existing %s",
                 record.company, record.metric, record.fiscal_year,
@@ -187,22 +196,29 @@ def _upsert_one(
             )
             return "skipped"
 
-        if new_date == existing_filing_date:
-            # Same filing date — likely a re-ingestion of the same document.
-            # The ON CONFLICT DO NOTHING in the INSERT handles the exact duplicate.
-            # Fall through to INSERT — it will no-op if doc_id+metric already exists.
-            pass
-
+        # Different doc_id, new_date >= existing_filing_date: this is either
+        # a genuine restatement (newer date) or a re-ingestion under a fresh
+        # doc_id with the same filing_date (e.g. iterative debugging re-runs
+        # that regenerate doc_id each time). Both require retiring the old
+        # row — the ON CONFLICT guard can't help here since doc_id differs,
+        # so without this retirement duplicate is_latest=TRUE rows
+        # accumulate silently. Confirmed root cause of a 142-row duplicate
+        # incident during Phase 3 finalization testing.
+        cursor.execute(_SQL_RETIRE_LATEST, {"existing_id": existing_id})
         if new_date > existing_filing_date:
-            # New filing is genuinely newer — this is a restatement.
-            # Retire the old row first.
-            cursor.execute(_SQL_RETIRE_LATEST, {"existing_id": existing_id})
             logger.info(
                 "Restatement: retired %s/%s/%s (filing_date %s) → new filing_date %s",
                 record.company, record.metric, record.fiscal_year,
                 existing_filing_date, new_date,
             )
             outcome = "restated"
+        else:
+            logger.info(
+                "Re-ingestion: retired stale is_latest row for %s/%s/%s "
+                "(same filing_date %s, new doc_id) before re-inserting",
+                record.company, record.metric, record.fiscal_year, new_date,
+            )
+            outcome = "reingested"
 
     # --- Step 2: Insert new row ---
     cursor.execute(_SQL_INSERT_SAFE, params)
@@ -246,10 +262,13 @@ def load_financial_records(
 
     Returns:
         {
-          "inserted":  int,   # new rows
-          "restated":  int,   # rows where an older is_latest was retired
-          "skipped":   int,   # duplicates or older-filing attempts
-          "errors":    int,   # records that failed (logged, not raised)
+          "inserted":   int,   # new rows, no prior is_latest row existed
+          "restated":   int,   # newer filing_date retired an older is_latest row
+          "reingested": int,   # same filing_date retired a stale is_latest row
+                                # (happens during iterative re-ingestion with a
+                                # fresh doc_id each run)
+          "skipped":    int,   # duplicates or older-filing attempts
+          "errors":     int,   # records that failed (logged, not raised)
         }
 
     Guarantees:
@@ -261,13 +280,13 @@ def load_financial_records(
     """
     if not records:
         logger.info("load_financial_records called with empty list — nothing to do")
-        return {"inserted": 0, "restated": 0, "skipped": 0, "errors": 0}
+        return {"inserted": 0, "restated": 0, "reingested": 0, "skipped": 0, "errors": 0}
 
     owns_conn = conn is None
     if owns_conn:
         conn = get_connection()
 
-    counts = {"inserted": 0, "restated": 0, "skipped": 0, "errors": 0}
+    counts = {"inserted": 0, "restated": 0, "reingested": 0, "skipped": 0, "errors": 0}
 
     try:
         # Set tenant context once for the session (RLS enforcement)
@@ -302,8 +321,8 @@ def load_financial_records(
             conn.close()
 
     logger.info(
-        "load_financial_records complete: %d inserted, %d restated, %d skipped, %d errors",
-        counts["inserted"], counts["restated"], counts["skipped"], counts["errors"],
+        "load_financial_records complete: %d inserted, %d restated, %d reingested, %d skipped, %d errors",
+        counts["inserted"], counts["restated"], counts["reingested"], counts["skipped"], counts["errors"],
     )
     return counts
 
@@ -402,9 +421,10 @@ if __name__ == "__main__":
     import uuid
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    ALPHA_TENANT  = "a0000000-0000-0000-0000-000000000001"
-    TEST_DOC_ID   = str(uuid.uuid4())
+    ALPHA_TENANT   = "a0000000-0000-0000-0000-000000000001"
+    TEST_DOC_ID    = str(uuid.uuid4())
     RESTATE_DOC_ID = str(uuid.uuid4())
+    RUN_TAG = uuid.uuid4().hex[:8]   # unique per invocation
 
     conn = get_connection()
 
@@ -415,8 +435,8 @@ if __name__ == "__main__":
         # ----------------------------------------------------------------
         with conn.cursor() as cur:
             cur.execute(_SQL_SET_TENANT, (ALPHA_TENANT,))
-            _insert_test_document(cur, TEST_DOC_ID,    ALPHA_TENANT, "2026-04-28", "test_checksum_v1")
-            _insert_test_document(cur, RESTATE_DOC_ID, ALPHA_TENANT, "2026-07-01", "test_checksum_v2")
+            _insert_test_document(cur, TEST_DOC_ID,    ALPHA_TENANT, "2026-04-28", f"test_checksum_v1_{RUN_TAG}")
+            _insert_test_document(cur, RESTATE_DOC_ID, ALPHA_TENANT, "2026-07-01", f"test_checksum_v2_{RUN_TAG}")
         conn.commit()
         print("Test documents inserted.")
 
@@ -484,6 +504,39 @@ if __name__ == "__main__":
         result3 = load_financial_records(restated, ALPHA_TENANT, conn)
         print(f"Result: {result3}")
         assert result3["restated"] == 1, f"Expected 1 restated, got {result3}"
+
+        # ----------------------------------------------------------------
+        print("\n--- Scenario 4: Same filing_date, different doc_id → "
+              "reingested, not duplicated ---")
+        same_date_doc_id = str(uuid.uuid4())
+        with conn.cursor() as cur:
+            cur.execute(_SQL_SET_TENANT, (ALPHA_TENANT,))
+            _insert_test_document(cur, same_date_doc_id, ALPHA_TENANT, "2026-04-28", f"test_checksum_v3_{RUN_TAG}")
+        conn.commit()
+
+        same_date_record = [
+            FinancialRecord(
+                tenant_id=ALPHA_TENANT,
+                doc_id=same_date_doc_id,
+                company="ETERNAL", ticker="ETERNAL",
+                fiscal_year="FY26", quarter="Q4",
+                financial_type="consolidated",
+                metric="blinkit_nov",          # untouched by Scenario 3 — still at 2026-04-28
+                value=14500.0,                 # different value, same period, same filing_date
+                unit="crore_inr",
+                filing_date="2026-04-28",      # matches existing blinkit_nov row exactly
+            ),
+        ]
+        result4 = load_financial_records(same_date_record, ALPHA_TENANT, conn)
+        print(f"Result: {result4}")
+        assert result4["reingested"] == 1, f"Expected 1 reingested, got {result4}"
+
+        rows = verify_financials("ETERNAL", "FY26", "consolidated", ALPHA_TENANT, conn)
+        matching = [r for r in rows if r["metric"] == "blinkit_nov"]
+        assert len(matching) == 1, \
+            f"Expected exactly 1 is_latest row after re-ingestion, got {len(matching)}"
+        assert float(matching[0]["value"]) == 14500.0, \
+            f"Expected updated value 14500.0 after reingestion, got {matching[0]['value']}"
 
         # ----------------------------------------------------------------
         print("\n--- Verification: is_latest values after restatement ---")
