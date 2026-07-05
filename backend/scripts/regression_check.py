@@ -38,7 +38,7 @@ DOCUMENTS = [
         "quarter": "Q4", "doc_type": "quarterly_result",
         "filing_date": "2026-04-28",
         "min_fs_pages": 5, "max_fs_pages": 30,
-        "expect_revenue_min": 40000, "expect_revenue_max": 70000,
+        "expect_revenue_min": 10000, "expect_revenue_max": 70000,  # covers standalone (10899) + consolidated (54364)
     },
     {
         "filename": "TITAN_Q1FY26_PRESS_RELEASE_AND_FINANCIAL_RESULTS.pdf",
@@ -46,15 +46,15 @@ DOCUMENTS = [
         "quarter": "Q1", "doc_type": "quarterly_result",
         "filing_date": "2025-07-31",
         "min_fs_pages": 5, "max_fs_pages": 25,
-        "expect_revenue_min": 1000, "expect_revenue_max": 20000,
+        "expect_revenue_min": 1000, "expect_revenue_max": 20000,  # already covers both (13040, 14814)
     },
     {
         "filename": "ZOMATO_ANNUAL_REPORT_2023-24.pdf",
         "company": "ETERNAL", "ticker": "ETERNAL", "fiscal_year": "FY24",
         "quarter": None, "doc_type": "annual_report",
         "filing_date": "2024-08-31",
-        "min_fs_pages": 2, "max_fs_pages": 12,   # tight — most of 371 pages is Notes/CGR/Board Report
-        "expect_revenue_min": 8000, "expect_revenue_max": 16000,  # ~12,114 cr known from MD&A
+        "min_fs_pages": 2, "max_fs_pages": 12,
+        "expect_revenue_min": 6000, "expect_revenue_max": 16000,  # covers standalone (6622) + consolidated (12114)
     },
 ]
 

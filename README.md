@@ -142,6 +142,47 @@ python3 scripts/eval_runner.py --delay 15
 
 ---
 
+## Known Limitations & Classification Caveats
+
+The document classification pipeline (`section_classifier.py`, `financial_extractor.py`)
+uses deterministic keyword/regex heuristics rather than ML classification, per the
+project's design philosophy (see Section 2, Principle 1). This approach is
+transparent and debuggable, but requires re-validation against each new document
+type or company. Three confirmed failure patterns from Phase 3 finalization testing:
+
+1. **Statement-title vocabulary differs by filing type.** SEBI quarterly results
+   use regulatory headings ("Statement of Consolidated Financial Results for the
+   Quarter Ended..."); Companies Act annual reports use formal statutory titles
+   ("Statement of Profit and Loss," "Balance Sheet"). A classifier tuned on one
+   filing type will under-classify the other unless both vocabularies are present
+   in `STATEMENT_TITLE_ANCHORS`.
+
+2. **Auditor reports name statements without being one.** Auditor's Report pages
+   routinely enumerate the statements they reviewed ("...the Consolidated Balance
+   Sheet, the Consolidated Statement of Profit and Loss...") in prose. A pure
+   keyword/phrase classifier can misclassify these as primary statement pages.
+   Mitigation: require the standard Ind AS "Particulars" column header as a
+   structural co-signal alongside any title-phrase match, and maintain an
+   explicit auditor-report exclusion list with a bounded continuation window
+   (auditor reports lose their identifying header after the first page, same
+   as multi-page statements).
+
+3. **`is_latest` retirement must distinguish same-`doc_id` replay from
+   different-`doc_id` re-ingestion.** A naive `filing_date >` comparison fails
+   silently on same-date re-ingestion (common during iterative debugging, where
+   a document is re-run with a fresh `doc_id` each time) — either accumulating
+   duplicate `is_latest=TRUE` rows, or (if retirement is added naively) deleting
+   the only `is_latest` row without a replacement. `db_loader.py`'s `_upsert_one()`
+   now checks `doc_id` identity first: same `doc_id` → true no-op via
+   `ON CONFLICT DO NOTHING`; different `doc_id` with `filing_date >=` existing →
+   retire-then-insert.
+
+    **Practical implication:** any new document type or company added to the corpus
+    should be run through `scripts/regression_check.py` before trusting extracted
+    figures — this script checks both classification precision (are the right pages
+    tagged FINANCIAL_STATEMENT?) and extraction correctness (does the revenue figure
+    match a known-good value?) across all reference documents in one pass.
+
 ## What's Deliberately Out of Scope
 
 Documented here to preempt "why didn't you build X" — these were conscious scope decisions for a solo portfolio project, not oversights:
