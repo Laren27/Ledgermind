@@ -181,3 +181,17 @@ class FinancialRecord:
     unit: str = "crore_inr"
     filing_date: str = ""              # ISO date string
     is_latest: bool = True
+
+
+def normalize_quarter(raw: str | None) -> str | None:
+    """
+    Canonical form: None means 'no quarter' (annual data).
+    Collapses argparse '--quarter none' / '--quarter ""' / omitted flag
+    to the same value, so every downstream consumer (chunker, extractor,
+    pipeline, db_loader) compares like-for-like.
+    """
+    if raw is None:
+        return None
+    if raw.strip().lower() in ("", "none", "null"):
+        return None
+    return raw
