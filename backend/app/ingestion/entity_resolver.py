@@ -183,6 +183,31 @@ METRIC_ALIASES: dict[str, str] = {
     "deferred ta": "deferred_tax",                # OCR variant
 }
 
+
+# ---------------------------------------------------------------------------
+# OCR spurious-space repair
+# pdfplumber's text extraction occasionally inserts a stray space after the
+# first letter of a word (e.g. "Investment" → "I nvestment", "Proceeds" →
+# "P roceeds", "Owners" → "O wners"). This pattern — a single capital letter,
+# a space, then a lowercase letter — never occurs in legitimate financial
+# terminology, so it's safe to collapse unconditionally rather than
+# maintaining a hand-written list of every OCR variant seen so far.
+# Confirmed present across multiple metric names in the FY24 Zomato/Eternal
+# annual report extraction (Phase 3 finalization, July 2026).
+# ---------------------------------------------------------------------------
+
+_SPURIOUS_SPACE_RE = re.compile(r'\b([A-Z])\s+([a-z])')
+
+
+def _fix_spurious_spacing(text: str) -> str:
+    """
+    Collapse 'X word' → 'Xword' where X is a lone capital letter
+    immediately followed by a space and a lowercase letter.
+    """
+    return _SPURIOUS_SPACE_RE.sub(r'\1\2', text)
+
+
+
 def normalize_metric(raw: str) -> str:
     """
     Normalize a raw metric string from a PDF table to the canonical
@@ -191,6 +216,8 @@ def normalize_metric(raw: str) -> str:
     Returns the raw string lowercased if no mapping found —
     caller should log a warning for unknown metrics.
     """
+    raw = _fix_spurious_spacing(raw)
+
     normalized = METRIC_ALIASES.get(raw.lower().strip())
     if normalized:
         return normalized
@@ -207,7 +234,6 @@ def normalize_metric(raw: str) -> str:
 
     logger.warning("Unknown metric: '%s' — storing as-is", raw)
     return raw_lower.replace(" ", "_")
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -291,6 +317,7 @@ if __name__ == "__main__":
         ("Blinkit NOV", "blinkit_nov"),
         ("profit after tax", "pat"),
         ("Current ta", "current_tax"),
+        ("I nvestment in mutual fund units", "investment_in_mutual_fund_units"),  # OCR repair check
     ]
     for raw, expected in metric_cases:
         actual = normalize_metric(raw)
