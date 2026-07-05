@@ -1,21 +1,60 @@
-import sys
+import os
 from pathlib import Path
-from app.ingestion.pdf_parser import parse_pdf, extract_financials
 
-def run_debug():
-    print("=== ETERNAL PAGE 31 ROWS ===")
-    eternal_path = str(Path.home() / "ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf")
-    # Page 31 is index 30 in the zero-indexed list
-    rows = extract_financials(eternal_path, 30)
-    for r in rows[:15]:
-        print(r)
+# Load .env the same way every other script in this session does
+env_path = Path.home() / ".env"
+if env_path.exists():
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, _, v = line.partition("=")
+            os.environ.setdefault(k.strip(), v.strip())
 
-    print("\n=== ZOMATO PAGE 164 TEXT ===")
-    zomato_path = str(Path.home() / "ledgermind/docs/raw/ZOMATO_ANNUAL_REPORT_2023-24.pdf")
-    blocks = parse_pdf(zomato_path)
-    # Print the first 800 characters to see exactly where the title is
-    p164_text = "\n".join(b.content for b in blocks if b.page_number == 164)
-    print(p164_text[:800].replace('\n', ' | '))
+from app.ingestion.qdrant_writer import _get_client, COLLECTION_NAME, DENSE_VECTOR_NAME
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 
-if __name__ == "__main__":
-    run_debug()
+client = _get_client()
+
+results = client.query_points(
+    collection_name=COLLECTION_NAME,
+    query=[0.0] * 384,
+    using=DENSE_VECTOR_NAME,
+    query_filter=Filter(must=[
+        FieldCondition(key="company", match=MatchValue(value="ETERNAL")),
+        FieldCondition(key="fiscal_year", match=MatchValue(value="FY24")),
+        FieldCondition(key="is_latest", match=MatchValue(value=True)),
+    ]),
+    limit=5,
+    with_payload=True,
+).points
+
+for r in results:
+    print(r.payload.get("fiscal_year"), r.payload.get("page_number"), r.payload.get("chunk_type"))
+
+results = client.query_points(
+    collection_name=COLLECTION_NAME,
+    query=[0.0] * 384,
+    using=DENSE_VECTOR_NAME,
+    query_filter=Filter(must=[
+        FieldCondition(key="company", match=MatchValue(value="ETERNAL")),
+        FieldCondition(key="fiscal_year", match=MatchValue(value="FY24")),
+        FieldCondition(key="is_latest", match=MatchValue(value=True)),
+        FieldCondition(key="chunk_type", match=MatchValue(value="FINANCIAL_STATEMENT")),
+    ]),
+    limit=5,
+    with_payload=True,
+).points
+
+print(f"FINANCIAL_STATEMENT chunks found: {len(results)}")
+for r in results:
+    print(r.payload.get("page_number"), r.payload.get("text", "")[:80])
+
+count = client.count(
+    collection_name=COLLECTION_NAME,
+    count_filter=Filter(must=[
+        FieldCondition(key="company", match=MatchValue(value="ETERNAL")),
+        FieldCondition(key="fiscal_year", match=MatchValue(value="FY24")),
+    ]),
+    exact=True,
+)
+print("Total FY24 points:", count.count)
