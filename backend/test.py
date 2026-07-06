@@ -1,60 +1,32 @@
 import os
-from pathlib import Path
+from app.ingestion.pdf_parser import parse_pdf
+from app.ingestion.document_classifier import detect_sections
+from app.ingestion.section_classifier import classify_blocks
 
-# Load .env the same way every other script in this session does
-env_path = Path.home() / ".env"
-if env_path.exists():
-    for line in env_path.read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, _, v = line.partition("=")
-            os.environ.setdefault(k.strip(), v.strip())
+def run_diagnostic():
+    # Using the absolute path so we don't have to guess relative folders
+    pdf_path = os.path.expanduser("~/ledgermind/docs/raw/FS-Results_Q4-&-Financial-Year-ended-March-31,-2026.pdf")
+    
+    print(f"Scanning missing pages in: {pdf_path}\n")
+    
+    # 1. Extract raw blocks from PDF
+    blocks = parse_pdf(pdf_path)
+    
+    # 2. Detect consolidated vs standalone sections
+    sections = detect_sections(blocks)
+    
+    # 3. Classify the blocks (Risk, Financial Statement, Table, etc.)
+    blocks = classify_blocks(blocks, sections)
+    
+    # 4. Print only our missing balance sheet pages
+    for b in blocks:
+        if b.page_number in (5, 6, 7, 16):
+            # Safely grab text and type regardless of attribute naming
+            content = getattr(b, 'text', getattr(b, 'content', 'No text found'))
+            b_type = getattr(b, 'block_type', getattr(b, 'chunk_type', 'UNKNOWN'))
+            
+            print(f"page={b.page_number} type={b_type}")
+            print(f"preview={content[:150]!r}\n")
 
-from app.ingestion.qdrant_writer import _get_client, COLLECTION_NAME, DENSE_VECTOR_NAME
-from qdrant_client.models import Filter, FieldCondition, MatchValue
-
-client = _get_client()
-
-results = client.query_points(
-    collection_name=COLLECTION_NAME,
-    query=[0.0] * 384,
-    using=DENSE_VECTOR_NAME,
-    query_filter=Filter(must=[
-        FieldCondition(key="company", match=MatchValue(value="ETERNAL")),
-        FieldCondition(key="fiscal_year", match=MatchValue(value="FY24")),
-        FieldCondition(key="is_latest", match=MatchValue(value=True)),
-    ]),
-    limit=5,
-    with_payload=True,
-).points
-
-for r in results:
-    print(r.payload.get("fiscal_year"), r.payload.get("page_number"), r.payload.get("chunk_type"))
-
-results = client.query_points(
-    collection_name=COLLECTION_NAME,
-    query=[0.0] * 384,
-    using=DENSE_VECTOR_NAME,
-    query_filter=Filter(must=[
-        FieldCondition(key="company", match=MatchValue(value="ETERNAL")),
-        FieldCondition(key="fiscal_year", match=MatchValue(value="FY24")),
-        FieldCondition(key="is_latest", match=MatchValue(value=True)),
-        FieldCondition(key="chunk_type", match=MatchValue(value="FINANCIAL_STATEMENT")),
-    ]),
-    limit=5,
-    with_payload=True,
-).points
-
-print(f"FINANCIAL_STATEMENT chunks found: {len(results)}")
-for r in results:
-    print(r.payload.get("page_number"), r.payload.get("text", "")[:80])
-
-count = client.count(
-    collection_name=COLLECTION_NAME,
-    count_filter=Filter(must=[
-        FieldCondition(key="company", match=MatchValue(value="ETERNAL")),
-        FieldCondition(key="fiscal_year", match=MatchValue(value="FY24")),
-    ]),
-    exact=True,
-)
-print("Total FY24 points:", count.count)
+if __name__ == "__main__":
+    run_diagnostic()
