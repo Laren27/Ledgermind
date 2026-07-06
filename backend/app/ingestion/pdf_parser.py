@@ -60,8 +60,15 @@ def parse_pdf(pdf_path: str) -> list:
             has_numeric_dates = bool(re.search(r"\d{1,2}[./-]\d{1,2}[./-]\d{2,4}", text_lower))
             # Catch borderless tables using core P&L structural words
             has_pnl_anchors = bool(re.search(r"(revenue from operations|sale of products|total income|profit before tax)", text_lower))
+            
+            has_balance_sheet_anchors = bool(re.search(
+                r"(statement of assets and liabilities|total assets|"
+                r"total equity and liabilities)",
+                text_lower
+            ))
 
-            if has_table_borders or has_financial_header_markers or has_numeric_dates or has_pnl_anchors:
+            if (has_table_borders or has_financial_header_markers or has_numeric_dates
+              or has_pnl_anchors or has_balance_sheet_anchors):
                 b_type = BlockType.TABLE
             else:
                 b_type = BlockType.TEXT
