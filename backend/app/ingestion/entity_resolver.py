@@ -45,12 +45,14 @@ COMPANY_REGISTRY: list[CompanyProfile] = [
         sector="quick_commerce",
     ),
     CompanyProfile(
-        primary="PAYTM",
-        ticker="PAYTM",
-        aliases=[
-            "paytm", "one97 communications", "one97", "paytm payments bank",
-        ],
-        sector="fintech",
+    primary="PAYTM",
+    ticker="PAYTM",
+    aliases=[
+        "paytm", "one97 communications", "one97", "paytm payments bank",
+        "one 97 communications", "one 97 communications limited",
+        "one 97", "one97 communications limited",
+    ],
+    sector="fintech",
     ),
     CompanyProfile(
         primary="NYKAA",
@@ -295,6 +297,7 @@ if __name__ == "__main__":
         ("ZOMATO LIMITED", "ETERNAL"),
         ("Paytm", "PAYTM"),
         ("One97 Communications", "PAYTM"),
+        ("One 97 Communications Limited", "PAYTM"),  # exact PDF header string — space-separated
         ("Titan Company Ltd", "TITAN"),
         ("Unknown Corp XYZ", None),
     ]
