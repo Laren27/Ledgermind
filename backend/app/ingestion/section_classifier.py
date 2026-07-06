@@ -224,6 +224,9 @@ STATEMENT_TITLE_ANCHORS = {
     "statement of consolidalcd", 
     "financial rcsulls",
     "consolidated statement of profit and loss",
+    "statement of assets and liabilities",          # ADD — SEBI quarterly balance sheet title
+    "consolidated audited statement of assets and liabilities",  # ADD — exact Paytm phrasing
+    "standalone audited statement of assets and liabilities",    # ADD
 }
 
 # Multi-page statement handling: only the FIRST page of a statement carries
@@ -436,15 +439,15 @@ def classify_blocks(
             and any(anchor in heading_zone for anchor in STATEMENT_TITLE_ANCHORS)
         )
 
-        if risk_matches >= RISK_MIN_KEYWORDS:
+        if risk_matches >= RISK_MIN_KEYWORDS and not (is_notes_or_auditor_self or is_in_auditor_continuation):
             block.block_type = BlockType.RISK_DISCLOSURE
         elif md_matches >= MANAGEMENT_DISCUSSION_MIN_KEYWORDS or is_narrative_md:
             block.block_type = BlockType.MANAGEMENT_DISCUSSION
         elif original_type == BlockType.TABLE:
             block.block_type = _classify_table_block(
-                block, section, true_anchor_page, true_anchor_financial_type,
-                is_notes_or_auditor_self, is_in_auditor_continuation,
-            )
+            block, section, true_anchor_page, true_anchor_financial_type,
+            is_notes_or_auditor_self, is_in_auditor_continuation,
+        )
         else:
             block.block_type = BlockType.TEXT
 
