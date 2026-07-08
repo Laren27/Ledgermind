@@ -53,7 +53,7 @@ DOCUMENTS = [
         "company": "ETERNAL", "ticker": "ETERNAL", "fiscal_year": "FY24",
         "quarter": None, "doc_type": "annual_report",
         "filing_date": "2024-08-31",
-        "min_fs_pages": 2, "max_fs_pages": 12,
+        "min_fs_pages": 10, "max_fs_pages": 20,
         "expect_revenue_min": 6000, "expect_revenue_max": 16000,  # covers standalone (6622) + consolidated (12114)
     },
 ]
