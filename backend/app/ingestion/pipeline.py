@@ -84,6 +84,16 @@ def _run_ingestion(
     from .pdf_parser import parse_pdf
     from .qdrant_writer import write_chunks
     from .section_classifier import classify_blocks
+    from .entity_resolver import resolve_company
+
+    profile = resolve_company(company)
+    if profile is None:
+        raise ValueError(
+            f"Cannot ingest — unresolvable company: '{company}'. "
+            f"Add an alias to COMPANY_REGISTRY in entity_resolver.py before retrying."
+        )
+    company = profile.primary
+    ticker  = profile.ticker
 
     pdf_path = str(pdf_path)
     conn     = get_connection()
@@ -484,7 +494,7 @@ if __name__ == "__main__":
         for (ft, metric, q), expected in golden.items():
             actual = all_rows.get((ft, metric, q))
             ok     = actual == expected
-            if not ok:
+            if not ok:  
                 gate3_pass = False
             print(f"  {'✅' if ok else '❌'} {ft}/{metric} = {actual} (expected {expected})")
         assert gate3_pass, "Golden financial assertions failed"
