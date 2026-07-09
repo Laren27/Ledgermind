@@ -103,7 +103,6 @@ class CompileResult:
     operation: Optional[str] = None     # which operation was compiled
     metric_label: Optional[str] = None  # human-readable metric name
     error: Optional[str] = None
-
     # For yoy_growth and comparison: second SQL needed
     sql2: Optional[str] = None
     params2: Optional[tuple] = None
@@ -116,7 +115,6 @@ class CompileResult:
 class DSLValidator:
     """
     Validates a raw dict from the LLM against the metric and operation registries.
-
     Validation order:
       1. Required field presence
       2. financial_type is valid
@@ -148,8 +146,8 @@ class DSLValidator:
                 valid=False,
                 error=f"Invalid financial_type: '{ft}'",
                 repair_hint=(
-                    f"financial_type must be exactly 'consolidated' or 'standalone'. "
-                    f"You provided '{ft}'. Default to 'consolidated' if unsure."
+                    f"financial_type must be exactly 'consolidated' or 'standalone'.\n"
+                    f"You provided '{ft}'.\nDefault to 'consolidated' if unsure."
                 ),
             )
 
@@ -185,7 +183,7 @@ class DSLValidator:
                 valid=False,
                 error=f"Unknown operation: '{operation}'",
                 repair_hint=(
-                    f"operation must be one of: {list(OPERATION_REGISTRY.keys())}. "
+                    f"operation must be one of: {list(OPERATION_REGISTRY.keys())}.\n"
                     f"You provided '{operation}'."
                 ),
             )
@@ -200,6 +198,23 @@ class DSLValidator:
                     "with the second company's ticker (e.g. 'PAYTM')."
                 ),
             )
+
+        # ADD — reject self-comparisons
+        if operation == "comparison" and raw.get("comparison_entity"):
+            primary_resolved = raw["entity"].upper().strip()
+            comp_resolved = raw["comparison_entity"].upper().strip()
+            
+            if primary_resolved == comp_resolved:
+                return ValidationResult(
+                    valid=False,
+                    error=f"comparison_entity resolved to the same company as entity "
+                          f"('{primary_resolved}') — comparison requires two distinct entities.",
+                    repair_hint=(
+                        "A comparison requires two different entities. You provided the same "
+                        "company for both. This may mean the requested comparison spans two "
+                        "different periods per entity, which is not yet supported."
+                    ),
+                )
 
         if operation == "yoy_growth" and not raw.get("fiscal_year"):
             return ValidationResult(
@@ -244,7 +259,6 @@ class DSLValidator:
 class SQLCompiler:
     """
     Compiles a validated DSLObject into parameterised SQL.
-
     Rules:
       - Never string-interpolate user values — always use %s placeholders.
       - Always include financial_type in WHERE (Trap 2 from blueprint §25B).
@@ -469,12 +483,14 @@ compiler = SQLCompiler()
 # ---------------------------------------------------------------------------
 
 def validate_dsl(raw_dict: Dict[str, Any]) -> ValidationResult:
-    """Validate a raw LLM-generated dict. Returns ValidationResult."""
+    """Validate a raw LLM-generated dict.
+    Returns ValidationResult."""
     return validator.validate(raw_dict)
 
 
 def compile_dsl(dsl: DSLObject, tenant_id: str) -> CompileResult:
-    """Compile a validated DSLObject to SQL. Returns CompileResult."""
+    """Compile a validated DSLObject to SQL.
+    Returns CompileResult."""
     return compiler.compile(dsl, tenant_id)
 
 
