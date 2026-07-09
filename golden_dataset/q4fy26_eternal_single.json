@@ -1,0 +1,19 @@
+[
+  {
+    "id": "Q038",
+    "category": "semantic_audit",
+    "question": "What does ETERNAL's audit report say about internal controls?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "internal financial controls",
+      "auditors"
+    ],
+    "expected_source_pages": [
+      160,
+      165
+    ],
+    "notes": "Updated to match plural phrasing found in the actual RAG response."
+  }
+]
