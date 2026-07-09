@@ -22,9 +22,8 @@ finally:
 
 blocks = classify_blocks(blocks, sections)
 
+# --- Fixed loop to target page 7 directly ---
 for b in blocks:
     # Dropped the .name right here!
-    if b.block_type == "FINANCIAL_STATEMENT" and "revenue" in b.content.lower():
-        print(f"--- page {b.page_number} ---")
-        print(b.content[:2000])
-        print()
+    if b.block_type == "FINANCIAL_STATEMENT" and b.page_number == 7:
+        print(b.content[:1200])
