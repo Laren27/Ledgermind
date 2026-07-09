@@ -133,7 +133,13 @@ def _format_quant_response(state: QueryState) -> str:
         diff_pct = row.get("difference_pct")
         unit_label = "Cr" if row.get("unit") == "crore_inr" else row.get("unit", "")
         higher = e1 if v1 > v2 else e2
-        comparison_text = f"{diff_pct:.1f}% higher" if diff_pct else "different"
+        lower_val, higher_val = min(v1, v2), max(v1, v2)
+        if higher_val != 0:
+            pct_magnitude = abs((higher_val - lower_val) / lower_val * 100) if lower_val != 0 else None
+        else:
+            pct_magnitude = None
+
+        comparison_text = f"{pct_magnitude:.1f}% higher" if pct_magnitude is not None else "different"
 
         return (
             f"{e1}'s {metric} was ₹{v1:,.1f} {unit_label}, compared to "
