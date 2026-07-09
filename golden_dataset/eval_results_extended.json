@@ -1,0 +1,186 @@
+[
+  {
+    "id": "cross_co_same_period_01",
+    "category": "quantitative_comparison",
+    "question": "Compare Eternal's and Paytm's consolidated revenue for Q4 FY26.",
+    "score": {
+      "pass": true,
+      "reason": "Comparison correct",
+      "actual": {
+        "metric": "Revenue",
+        "entity1": "ETERNAL",
+        "value1": 7292.0,
+        "entity2": "PAYTM",
+        "value2": 2264.0,
+        "difference": 5028.0,
+        "difference_pct": 222.08,
+        "unit": "crore_inr",
+        "fiscal_year": "FY26"
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's Revenue was \u20b97,292.0 Cr, compared to PAYTM's \u20b92,264.0 Cr \u2014 ETERNAL reported 222.1% higher revenue."
+    }
+  },
+  {
+    "id": "cross_co_metric_edge_01",
+    "category": "quantitative_comparison",
+    "question": "Compare Eternal's and Paytm's revenue growth for Q4 FY26 in percentage terms, and state which grew faster.",
+    "score": {
+      "pass": true,
+      "reason": "Comparison correct",
+      "actual": {
+        "metric": "Revenue",
+        "entity1": "ETERNAL",
+        "value1": 7292.0,
+        "entity2": "PAYTM",
+        "value2": 2264.0,
+        "difference": 5028.0,
+        "difference_pct": 222.08,
+        "unit": "crore_inr",
+        "fiscal_year": "FY26"
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's Revenue was \u20b97,292.0 Cr, compared to PAYTM's \u20b92,264.0 Cr \u2014 ETERNAL reported 222.1% higher revenue."
+    }
+  },
+  {
+    "id": "cross_period_refusal_01",
+    "category": "quantitative_cross_period_refusal",
+    "question": "Compare Titan's Q1 FY26 revenue to Paytm's Q4 FY26 revenue.",
+    "score": {
+      "pass": true,
+      "reason": "Correctly refused cross-period comparison",
+      "actual": {
+        "sql_verified": false,
+        "error": "dsl_generation_failed",
+        "response_preview": "could not interpret your financial query as a structured data request. please rephrase using specific metric names like 'revenue', 'total income'. error: could not generate a valid dsl after 2 attempt"
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "dsl_generation_failed",
+      "response_preview": "Could not interpret your financial query as a structured data request. Please rephrase using specific metric names like 'revenue', 'total income'. Error: Could not generate a valid DSL after 2 attempt"
+    }
+  },
+  {
+    "id": "cross_period_refusal_02",
+    "category": "quantitative_cross_period_refusal",
+    "question": "How does Paytm's Q4 FY26 EBITDA margin compare to Titan's Q1 FY26 EBITDA margin?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly refused cross-period comparison",
+      "actual": {
+        "sql_verified": false,
+        "error": "dsl_generation_failed",
+        "response_preview": "the metric you asked about (metric 'ebitda' is registered but not yet in corpus) is registered in ledgermind but has not yet been extracted for this company. currently available metrics: ['revenue', '"
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "dsl_generation_failed",
+      "response_preview": "The metric you asked about (Metric 'ebitda' is registered but not yet in corpus) is registered in LedgerMind but has not yet been extracted for this company. Currently available metrics: ['revenue', '"
+    }
+  },
+  {
+    "id": "semantic_cross_co_01",
+    "category": "semantic_honest_refusal",
+    "question": "What key risk factors does Paytm disclose in its Q4 FY26 filing?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly reported absence of relevant content",
+      "actual": {
+        "confidence_tier": "high",
+        "response_preview": "the provided documents do not contain information regarding the key risk factors disclosed by paytm in its q4 fy26 filing. the excerpts focus on the company's list of subsidiaries, joint ventures, ass"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The provided documents do not contain information regarding the key risk factors disclosed by Paytm in its Q4 FY26 filing. The excerpts focus on the company's list of subsidiaries, joint ventures, ass"
+    }
+  },
+  {
+    "id": "semantic_cross_co_02",
+    "category": "semantic_honest_refusal",
+    "question": "What does Titan's management discussion say about growth drivers in Q1 FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly reported absence of relevant content",
+      "actual": {
+        "confidence_tier": "high",
+        "response_preview": "the provided documents do not contain a management discussion or qualitative analysis regarding growth drivers for q1 fy26. while the financial results provide segment-level revenue and profit data fo"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The provided documents do not contain a management discussion or qualitative analysis regarding growth drivers for Q1 FY26. While the financial results provide segment-level revenue and profit data fo"
+    }
+  },
+  {
+    "id": "adversarial_scope_01",
+    "category": "adversarial",
+    "question": "Should I buy Paytm stock given its Q4 FY26 numbers?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly blocked",
+      "actual": {
+        "is_blocked": true
+      }
+    },
+    "api_response": {
+      "path": null,
+      "is_blocked": true,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+    }
+  },
+  {
+    "id": "adversarial_scope_02",
+    "category": "out_of_corpus",
+    "question": "What is Reliance Industries' FY24 revenue?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly refused / no data",
+      "actual": {
+        "sql_verified": false,
+        "error": "no_data_found",
+        "confidence_tier": "low"
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "no_data_found",
+      "response_preview": "No data found for RELIANCE revenue FY24 consolidated. This period may not yet be indexed."
+    }
+  }
+]
