@@ -125,7 +125,7 @@ def run_one(doc: dict) -> bool:
         for r in revenue_records:
             in_range = doc["expect_revenue_min"] <= r.value <= doc["expect_revenue_max"]
             revenue_ok = revenue_ok or in_range
-            print(f"    revenue (annual) | {r.financial_type:13s} | {r.value:>10.1f} cr "
+            print(f"    revenue ({label}) | {r.financial_type:13s} | {r.value:>10.1f} cr "
                   f"{'✓' if in_range else '✗ OUT OF RANGE'}")
     print(f"  [{'PASS' if revenue_ok else 'FAIL'}] annual revenue in expected range "
           f"({doc['expect_revenue_min']}-{doc['expect_revenue_max']} cr)")
