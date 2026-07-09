@@ -19,7 +19,8 @@ SEBI mandates a fixed 5-column structure for quarterly results:
   Col 4 → previous full year       (FY25, annual, quarter=None)
 
 Called by: pipeline.py
-Calls:     pdf_parser.extract_financials(), entity_resolver.normalize_metric()
+Calls:     pdf_parser.extract_financials(), pdf_parser.extract_financials_positional(),
+           entity_resolver.normalize_metric()
 """
 
 import logging
@@ -30,7 +31,7 @@ import pdfplumber
 
 from .entity_resolver import normalize_metric, METRIC_ALIASES
 from .models import BlockType, FinancialRecord, FinancialType, PageBlock
-from .pdf_parser import extract_financials
+from .pdf_parser import extract_financials, extract_financials_positional
 from .section_classifier import get_blocks_by_type
 
 logger = logging.getLogger(__name__)
@@ -66,8 +67,10 @@ _TRAILING_JUNK_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Matches Roman numerals followed by a dot/paren, OR bare uppercase numerals followed by an Uppercase word
-_LEADING_ROMAN_RE = re.compile(r"^\s*(?:[IVXLCDMivxlcdm]{1,5}[\.\)]|[IVXLCDM]{1,5}(?=\s+[A-Z]))\s+")
+_LEADING_ROMAN_RE = re.compile(
+    r"^\s*(?:[IVXLCDMivxlcdm]{1,5}[\.\)]|[IVXLCDMivxlcdm]{1,5}(?=\s+[A-Z]))\s+"
+)
+
 
 def _clean_description(raw: str) -> str:
     """
@@ -92,17 +95,32 @@ def _date_to_period(month: int, year: int) -> tuple[str, str]:
     return fiscal_year, quarter
 
 
-def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, Optional[str]]]]:
+def detect_column_layout(pdf_path: str, page_idx: int):
     """
-    Detects SEBI column structures using Spatial Alignment.
-    Adapts seamlessly to Quarterly (5 cols), Annual (2 cols), and handles double-stacked headers.
+    Detects SEBI column structures using Spatial Alignment, AND returns the
+    x-coordinate center of each detected column header.
+
+    Returns: (column_map, column_centers) or (None, None)
+      column_map:      list[tuple[fiscal_year, quarter]], same as the old
+                        detect_column_map()'s return value.
+      column_centers:  list[float], x-center of each column header, same
+                        length and order as column_map. Used by
+                        extract_financials_positional() to bucket row values
+                        by physical position instead of whitespace-splitting
+                        — see pdf_parser.py for why this matters (a
+                        text-only merge regex cannot distinguish an
+                        OCR-broken number from two adjacent independent
+                        short values; position can).
+
+    Adapts seamlessly to Quarterly (5 cols), Annual (2 cols), and handles
+    double-stacked headers.
     """
     with pdfplumber.open(pdf_path) as pdf:
         page = pdf.pages[page_idx]
         words = page.extract_words()
 
     if not words:
-        return None
+        return None, None
 
     # --- Strategy 1: Standard Horizontal Numeric Dates (DD.MM.YYYY) ---
     numeric_dates = []
@@ -112,50 +130,51 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
         if match:
             month, year = int(match.group(2)), int(match.group(3))
             if 1 <= month <= 12 and year > 2000:
-                numeric_dates.append((w["x0"], w["top"], month, year))
-                
+                numeric_dates.append((w["x0"], w["x1"], w["top"], month, year))
+
     if numeric_dates:
         rows = {}
-        for x0, top, month, year in numeric_dates:
+        for x0, x1, top, month, year in numeric_dates:
             found = False
             for row_top in rows.keys():
                 if abs(top - row_top) <= 30.0:
-                    rows[row_top].append((x0, month, year))
+                    rows[row_top].append((x0, x1, month, year))
                     found = True
                     break
             if not found:
-                rows[top] = [(x0, month, year)]
-        
+                rows[top] = [(x0, x1, month, year)]
+
         header_row_top = max(rows.keys(), key=lambda t: len(rows[t]))
         header_dates = rows[header_row_top]
         header_dates.sort(key=lambda d: d[0])
-        
+
         unique_dates = []
         for d in header_dates:
             if not unique_dates or (d[0] - unique_dates[-1][0]) > 20.0:
                 unique_dates.append(d)
-        
+
         if len(unique_dates) >= 1:
             column_map = []
+            centers = []
             is_annual = len(unique_dates) <= 3
-            for i, (x0, month, year) in enumerate(unique_dates[:5]):
+            for i, (x0, x1, month, year) in enumerate(unique_dates[:5]):
                 fy, q = _date_to_period(month, year)
                 if is_annual:
                     column_map.append((fy, None))
                 else:
                     column_map.append((fy, q if i < 3 else None))
-            return column_map
+                centers.append((x0 + x1) / 2)
+            return column_map, centers
 
-    # --- Strategy 2: Geometric Partitioning & Structural Inference ---
+    # --- Strategy 2/3: Geometric Partitioning & Structural Inference ---
     year_words = [w for w in words if _YEAR_WORD_RE.match(w["text"].strip(".,()[]*#"))]
-    
+
     year_rows = {}
     for y_w in year_words:
         top = y_w["top"]
         found = False
-        # 30-pixel tolerance ensures double-stacked column headers group correctly
         for row_top in year_rows.keys():
-            if abs(top - row_top) <= 30.0: 
+            if abs(top - row_top) <= 30.0:
                 year_rows[row_top].append(y_w)
                 found = True
                 break
@@ -163,7 +182,7 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
             year_rows[top] = [y_w]
 
     if not year_rows:
-        return None
+        return None, None
 
     header_row_top = max(year_rows.keys(), key=lambda t: len(year_rows[t]))
     header_years = year_rows[header_row_top]
@@ -173,9 +192,10 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
     for w in header_years:
         if not unique_years or (w["x0"] - unique_years[-1]["x0"]) > 20.0:
             unique_years.append(w)
-    
+
     num_cols = len(unique_years)
     column_map = []
+    centers = [(w["x0"] + w["x1"]) / 2 for w in unique_years]
 
     def _extract_year(text: str) -> int:
         text = text.strip(".,()[]*#").upper()
@@ -188,21 +208,19 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
             year_val = _extract_year(y_w["text"])
             fy, _ = _date_to_period(3, year_val)
             column_map.append((fy, None))
-            
-        # Deduplicate sequential identical years (e.g. FY24, FY24 -> FY24, FY23)
+
         if len(set(column_map)) != len(column_map):
             base_year = _extract_year(unique_years[0]["text"])
             column_map = [(_date_to_period(3, base_year - i)[0], None) for i in range(num_cols)]
-            
-        return column_map
+
+        return column_map, centers
 
     # --- QUARTERLY RESULTS LAYOUT (4 to 6 columns) ---
     if num_cols >= 4:
         base_year = _extract_year(unique_years[0]["text"])
-        col_0_center = (unique_years[0]["x0"] + unique_years[0]["x1"]) / 2
-        month_val = 3 # Default to March
-        
-        # Scan text near Col 0 to find the closest base month
+        col_0_center = centers[0]
+        month_val = 3  # Default to March
+
         best_dist = 999
         for w in words:
             if abs(w["top"] - header_row_top) < 60:
@@ -221,22 +239,33 @@ def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, 
                     elif 'oct' in text_lower: month_val = 10; best_dist = dist
                     elif 'nov' in text_lower: month_val = 11; best_dist = dist
                     elif 'dec' in text_lower or 'cem' in text_lower: month_val = 12; best_dist = dist
-        
+
         base_fy, base_q = _date_to_period(month_val, base_year)
         q_num = int(base_q[-1])
         prev_q_num = 4 if q_num == 1 else q_num - 1
         prev_q_fy = f"FY{int(base_fy[2:]) - 1}" if q_num == 1 else base_fy
         last_year_fy = f"FY{int(base_fy[2:]) - 1}"
 
-        column_map.append((base_fy, base_q))                        
-        column_map.append((prev_q_fy, f"Q{prev_q_num}"))            
-        column_map.append((last_year_fy, base_q))                   
-        if num_cols >= 4: column_map.append((base_fy, None))        
-        if num_cols >= 5: column_map.append((last_year_fy, None))   
-            
-        return column_map[:num_cols]
+        column_map.append((base_fy, base_q))
+        column_map.append((prev_q_fy, f"Q{prev_q_num}"))
+        column_map.append((last_year_fy, base_q))
+        if num_cols >= 4: column_map.append((base_fy, None))
+        if num_cols >= 5: column_map.append((last_year_fy, None))
 
-    return None
+        return column_map[:num_cols], centers[:num_cols]
+
+    return None, None
+
+
+def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, Optional[str]]]]:
+    """
+    Backward-compatible wrapper around detect_column_layout() for any caller
+    that only needs the (fiscal_year, quarter) map and not the x-centers.
+    Prefer detect_column_layout() directly in new code — it's what
+    extract_all_financial_records() uses now.
+    """
+    column_map, _ = detect_column_layout(pdf_path, page_idx)
+    return column_map
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +303,6 @@ def _should_skip_row(description: str, values: list) -> bool:
 
     max_val = max((abs(v) for v in values if v is not None), default=0)
     if max_val > 10_000_000:
-        import logging
         logging.getLogger(__name__).warning(
             "Implausible value %.0f in row '%s' — skipping", max_val, description
         )
@@ -298,7 +326,8 @@ def _rows_to_records(
     doc_id: str,
 ) -> list[FinancialRecord]:
     """
-    Convert parsed rows from extract_financials() into FinancialRecord objects.
+    Convert parsed rows (from either extract_financials() or
+    extract_financials_positional()) into FinancialRecord objects.
     """
     records: list[FinancialRecord] = []
 
@@ -307,11 +336,12 @@ def _rows_to_records(
             continue
 
         description = str(row[0]).strip()
-        values = row[1:] 
+        values = row[1:]
 
         # --- THE RIGHT-ALIGNMENT FIX ---
-        # If a "Note No." column is parsed, the values list will be longer than the column map.
-        # True financial amounts are always the right-most columns.
+        # Only relevant for the legacy whitespace-based path (extract_financials());
+        # the positional path already produces exactly len(column_map) values
+        # (with None for empty buckets), so this is a no-op there.
         if len(values) > len(column_map):
             values = values[-len(column_map):]
         # -------------------------------
@@ -370,17 +400,26 @@ def extract_all_financial_records(
 ) -> list[FinancialRecord]:
     """
     Process all FINANCIAL_STATEMENT blocks and return a flat list of FinancialRecord.
+
+    Uses positional extraction (extract_financials_positional) whenever
+    column-layout detection succeeds and returns x-centers, since that's the
+    only approach that correctly disambiguates OCR-broken numbers from
+    adjacent independent short values (see pdf_parser.py). Falls back to the
+    legacy whitespace-based extract_financials() only if x-centers could not
+    be determined for some reason (column_map itself still succeeded via an
+    older code path, or a future layout strategy that doesn't populate
+    centers) — this should be rare and is logged loudly when it happens.
     """
     financial_blocks = get_blocks_by_type(blocks, BlockType.FINANCIAL_STATEMENT)
     logger.info("Processing %d FINANCIAL_STATEMENT blocks", len(financial_blocks))
 
     all_records: list[FinancialRecord] = []
     processed_pages: set[int] = set()
-    seen_keys = set() 
+    seen_keys = set()
 
     for block in financial_blocks:
-        page_number = block.page_number          
-        page_idx    = page_number - 1            
+        page_number = block.page_number
+        page_idx    = page_number - 1
         financial_type = getattr(block, "financial_type", FinancialType.UNKNOWN)
 
         if page_idx in processed_pages:
@@ -398,7 +437,7 @@ def extract_all_financial_records(
             continue
 
         try:
-            column_map = detect_column_map(pdf_path, page_idx)
+            column_map, column_centers = detect_column_layout(pdf_path, page_idx)
         except Exception as e:
             logger.error("Could not run column detection on page %d: %s", page_number, e)
             continue
@@ -412,7 +451,17 @@ def extract_all_financial_records(
             )
             continue
 
-        rows = extract_financials(pdf_path, page_idx)
+        if column_centers is not None:
+            rows = extract_financials_positional(pdf_path, page_idx, column_centers)
+        else:
+            logger.warning(
+                "Page %d (%s): column_map succeeded but no x-centers were "
+                "returned — falling back to legacy whitespace extraction. "
+                "This is unexpected; check detect_column_layout()'s strategy "
+                "that matched for this page.",
+                page_number, financial_type,
+            )
+            rows = extract_financials(pdf_path, page_idx)
 
         if not rows:
             logger.info(
@@ -438,10 +487,7 @@ def extract_all_financial_records(
             page_number, financial_type, len(rows), len(records),
         )
         for r in records:
-            # Create a unique signature for this exact metric and time period
             key = (r.financial_type, r.fiscal_year, r.quarter, r.metric)
-            
-            # If we haven't seen it yet, it's from the primary statement. Keep it!
             if key not in seen_keys:
                 seen_keys.add(key)
                 all_records.append(r)
@@ -482,7 +528,7 @@ if __name__ == "__main__":
     parser.add_argument("--company", default="ETERNAL")
     parser.add_argument("--ticker", default="ETERNAL")
     parser.add_argument("--fiscal-year", default="FY26")
-    parser.add_argument("--quarter", default="Q4")  # pass --quarter "" for annual reports
+    parser.add_argument("--quarter", default="Q4")
     parser.add_argument("--doc-type", default="quarterly_result")
     parser.add_argument("--filing-date", default="2026-04-28")
     parser.add_argument(
@@ -497,9 +543,6 @@ if __name__ == "__main__":
     quarter = args.quarter or None
     ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
 
-    # ----------------------------------------------------------------
-    # Step 1: Full parse + classify pipeline
-    # ----------------------------------------------------------------
     print(f"\nParsing: {pdf_path.name}")
     blocks = parse_pdf(str(pdf_path))
 
@@ -528,9 +571,6 @@ if __name__ == "__main__":
 
     blocks = classify_blocks(blocks, sections)
 
-    # ----------------------------------------------------------------
-    # Step 2: Extract FinancialRecord objects
-    # ----------------------------------------------------------------
     print("\n--- Extracting financial records ---")
     records = extract_all_financial_records(
         blocks=blocks,
@@ -550,9 +590,6 @@ if __name__ == "__main__":
 
     assert len(records) > 0, "No records extracted — check extract_financials() anchors"
 
-    # ----------------------------------------------------------------
-    # Step 3 & 4: Load and Verify in a SINGLE Database Transaction
-    # ----------------------------------------------------------------
     print("\n--- Loading into PostgreSQL ---")
     conn = get_connection()
     try:
@@ -582,8 +619,6 @@ if __name__ == "__main__":
                 q = None
             all_rows[(ft, met, fy, q)] = float(val)
 
-        # Default golden set (ETERNAL) if none supplied on CLI; otherwise
-        # use whatever was passed via --golden.
         if args.golden:
             golden = {}
             for g in args.golden:
@@ -594,6 +629,17 @@ if __name__ == "__main__":
                 ("consolidated", "revenue",      "FY26", None): 54364.0,
                 ("consolidated", "total_income", "FY26", None): 55760.0,
                 ("standalone",   "revenue",      "FY26", None): 10899.0,
+
+                # --- PAT regression guard for the FY25/FY26 year-swap bug ---
+                # Verified against the raw source PDF (Statement of
+                # Consolidated/Standalone Profit and Loss) this session.
+                # If these ever flip back to the pre-fix swapped values,
+                # the positional extraction fix in pdf_parser.py has
+                # regressed.
+                ("consolidated", "pat", "FY26", None): 366.0,
+                ("consolidated", "pat", "FY25", None): 527.0,
+                ("standalone",   "profit_ror_the_period/_year_(vii-viij)", "FY26", None): 2655.0,
+                ("standalone",   "profit_ror_the_period/_year_(vii-viij)", "FY25", None): 1960.0,
             }
         else:
             golden = {}
