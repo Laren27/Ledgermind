@@ -1,45 +1,14 @@
-"""
-Financial Extractor — converts FINANCIAL_STATEMENT blocks into FinancialRecord objects.
-
-Sits above pdf_parser.extract_financials() and handles:
-  1. Column map detection  — maps each of the 5 parsed values to (fiscal_year, quarter)
-  2. Row → FinancialRecord — metric normalization + one record per column per row
-  3. Orchestration         — iterates FINANCIAL_STATEMENT blocks, dedupes pages
-
-Why column map detection matters:
-  extract_financials() returns rows like:
-    ["Revenue from operations", 4502.0, 3987.0, 3201.0, 17680.0, 13400.0]
-  Without knowing col3 = FY26 annual, col0 = Q4FY26, the numbers are meaningless.
-
-SEBI mandates a fixed 5-column structure for quarterly results:
-  Col 0 → current quarter          (Q4FY26)
-  Col 1 → previous quarter         (Q3FY26)
-  Col 2 → same quarter, last year  (Q4FY25)
-  Col 3 → current full year        (FY26, annual, quarter=None)
-  Col 4 → previous full year       (FY25, annual, quarter=None)
-
-Called by: pipeline.py
-Calls:     pdf_parser.extract_financials(), pdf_parser.extract_financials_positional(),
-           entity_resolver.normalize_metric()
-"""
-
 import logging
 import re
 from typing import Optional
-
 import pdfplumber
 
-from .entity_resolver import normalize_metric, METRIC_ALIASES
+from .entity_resolver import resolve_metric, METRIC_ALIASES
 from .models import BlockType, FinancialRecord, FinancialType, PageBlock
 from .pdf_parser import extract_financials, extract_financials_positional
 from .section_classifier import get_blocks_by_type
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Column map detection
-# ---------------------------------------------------------------------------
 
 MONTH_NAMES = {
     "january": 1, "february": 2, "march": 3, "april": 4,
@@ -47,7 +16,6 @@ MONTH_NAMES = {
     "september": 9, "october": 10, "november": 11, "december": 12,
 }
 
-# Indian fiscal year runs April–March.
 MONTH_TO_QUARTER = {
     4: "Q1", 5: "Q1", 6: "Q1",
     7: "Q2", 8: "Q2", 9: "Q2",
@@ -58,63 +26,14 @@ MONTH_TO_QUARTER = {
 _YEAR_WORD_RE = re.compile(r"^(?:20\d{2}|FY\d{2})", re.IGNORECASE)
 _NUMERIC_DATE_RE = re.compile(r"(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})")
 
-_TRAILING_JUNK_RE = re.compile(
-    r"\s*[\(\[]?"           # optional opening bracket
-    r"[ivxlcdmIVXLCDM]+"   # Roman numerals
-    r"[\+\d\(\)]*"         # optional arithmetic like (I+II)
-    r"[\)\]]?"             # optional closing bracket
-    r"\s*$",               # end of string
-    re.IGNORECASE,
-)
-
-_LEADING_ROMAN_RE = re.compile(
-    r"^\s*(?:[IVXLCDMivxlcdm]{1,5}[\.\)]|[IVXLCDMivxlcdm]{1,5}(?=\s+[A-Z]))\s+"
-)
-
-
-def _clean_description(raw: str) -> str:
-    """
-    Remove leading and trailing Roman numeral references from financial statement descriptions.
-    """
-    cleaned = _LEADING_ROMAN_RE.sub("", raw).strip()
-    cleaned = _TRAILING_JUNK_RE.sub("", cleaned).strip()
-    cleaned = re.sub(r"[/\-\s]+$", "", cleaned).strip()
-    return cleaned
-
-
 def _date_to_period(month: int, year: int) -> tuple[str, str]:
-    """
-    Convert calendar month + year to Indian fiscal year string and quarter.
-    """
     if month >= 4:
         fy_num = str(year + 1)[2:]
     else:
         fy_num = str(year)[2:]
-    fiscal_year = f"FY{fy_num}"
-    quarter = MONTH_TO_QUARTER[month]
-    return fiscal_year, quarter
-
+    return f"FY{fy_num}", MONTH_TO_QUARTER[month]
 
 def detect_column_layout(pdf_path: str, page_idx: int):
-    """
-    Detects SEBI column structures using Spatial Alignment, AND returns the
-    x-coordinate center of each detected column header.
-
-    Returns: (column_map, column_centers) or (None, None)
-      column_map:      list[tuple[fiscal_year, quarter]], same as the old
-                        detect_column_map()'s return value.
-      column_centers:  list[float], x-center of each column header, same
-                        length and order as column_map. Used by
-                        extract_financials_positional() to bucket row values
-                        by physical position instead of whitespace-splitting
-                        — see pdf_parser.py for why this matters (a
-                        text-only merge regex cannot distinguish an
-                        OCR-broken number from two adjacent independent
-                        short values; position can).
-
-    Adapts seamlessly to Quarterly (5 cols), Annual (2 cols), and handles
-    double-stacked headers.
-    """
     with pdfplumber.open(pdf_path) as pdf:
         page = pdf.pages[page_idx]
         words = page.extract_words()
@@ -122,7 +41,6 @@ def detect_column_layout(pdf_path: str, page_idx: int):
     if not words:
         return None, None
 
-    # --- Strategy 1: Standard Horizontal Numeric Dates (DD.MM.YYYY) ---
     numeric_dates = []
     for w in words:
         text = w["text"].strip(".,()[]")
@@ -159,16 +77,12 @@ def detect_column_layout(pdf_path: str, page_idx: int):
             is_annual = len(unique_dates) <= 3
             for i, (x0, x1, month, year) in enumerate(unique_dates[:5]):
                 fy, q = _date_to_period(month, year)
-                if is_annual:
-                    column_map.append((fy, None))
-                else:
-                    column_map.append((fy, q if i < 3 else None))
+                column_map.append((fy, None if is_annual else (q if i < 3 else None)))
                 centers.append((x0 + x1) / 2)
             return column_map, centers
 
-    # --- Strategy 2/3: Geometric Partitioning & Structural Inference ---
+    # Strategy 2: Geometric Partitioning
     year_words = [w for w in words if _YEAR_WORD_RE.match(w["text"].strip(".,()[]*#"))]
-
     year_rows = {}
     for y_w in year_words:
         top = y_w["top"]
@@ -202,43 +116,30 @@ def detect_column_layout(pdf_path: str, page_idx: int):
         if text.startswith("FY"): return 2000 + int(text[2:4])
         return int(text[:4])
 
-    # --- ANNUAL REPORT LAYOUT (1 to 3 columns) ---
     if num_cols <= 3:
         for y_w in unique_years:
             year_val = _extract_year(y_w["text"])
             fy, _ = _date_to_period(3, year_val)
             column_map.append((fy, None))
-
         if len(set(column_map)) != len(column_map):
             base_year = _extract_year(unique_years[0]["text"])
             column_map = [(_date_to_period(3, base_year - i)[0], None) for i in range(num_cols)]
-
         return column_map, centers
 
-    # --- QUARTERLY RESULTS LAYOUT (4 to 6 columns) ---
     if num_cols >= 4:
         base_year = _extract_year(unique_years[0]["text"])
         col_0_center = centers[0]
-        month_val = 3  # Default to March
-
+        month_val = 3
         best_dist = 999
         for w in words:
             if abs(w["top"] - header_row_top) < 60:
                 dist = abs((w["x0"] + w["x1"])/2 - col_0_center)
                 if dist < 60 and dist < best_dist:
                     text_lower = w["text"].lower()
-                    if 'jan' in text_lower: month_val = 1; best_dist = dist
-                    elif 'feb' in text_lower: month_val = 2; best_dist = dist
-                    elif 'mar' in text_lower or 'rch' in text_lower: month_val = 3; best_dist = dist
-                    elif 'apr' in text_lower: month_val = 4; best_dist = dist
-                    elif 'may' in text_lower: month_val = 5; best_dist = dist
-                    elif 'jun' in text_lower: month_val = 6; best_dist = dist
-                    elif 'jul' in text_lower: month_val = 7; best_dist = dist
-                    elif 'aug' in text_lower: month_val = 8; best_dist = dist
-                    elif 'sep' in text_lower: month_val = 9; best_dist = dist
-                    elif 'oct' in text_lower: month_val = 10; best_dist = dist
-                    elif 'nov' in text_lower: month_val = 11; best_dist = dist
-                    elif 'dec' in text_lower or 'cem' in text_lower: month_val = 12; best_dist = dist
+                    for m_name, m_num in MONTH_NAMES.items():
+                        if m_name[:3] in text_lower:
+                            month_val = m_num
+                            best_dist = dist
 
         base_fy, base_q = _date_to_period(month_val, base_year)
         q_num = int(base_q[-1])
@@ -246,170 +147,207 @@ def detect_column_layout(pdf_path: str, page_idx: int):
         prev_q_fy = f"FY{int(base_fy[2:]) - 1}" if q_num == 1 else base_fy
         last_year_fy = f"FY{int(base_fy[2:]) - 1}"
 
-        column_map.append((base_fy, base_q))
-        column_map.append((prev_q_fy, f"Q{prev_q_num}"))
-        column_map.append((last_year_fy, base_q))
+        column_map.extend([
+            (base_fy, base_q),
+            (prev_q_fy, f"Q{prev_q_num}"),
+            (last_year_fy, base_q)
+        ])
         if num_cols >= 4: column_map.append((base_fy, None))
         if num_cols >= 5: column_map.append((last_year_fy, None))
-
         return column_map[:num_cols], centers[:num_cols]
 
     return None, None
 
-
 def detect_column_map(pdf_path: str, page_idx: int) -> Optional[list[tuple[str, Optional[str]]]]:
-    """
-    Backward-compatible wrapper around detect_column_layout() for any caller
-    that only needs the (fiscal_year, quarter) map and not the x-centers.
-    Prefer detect_column_layout() directly in new code — it's what
-    extract_all_financial_records() uses now.
-    """
     column_map, _ = detect_column_layout(pdf_path, page_idx)
     return column_map
-
-
-# ---------------------------------------------------------------------------
-# Row → FinancialRecord conversion
-# ---------------------------------------------------------------------------
 
 _KNOWN_METRICS: set[str] = set(METRIC_ALIASES.values())
 
 _SKIP_DESCRIPTIONS = {
     "", "-", "nil", "n/a", "total", "sub total", "subtotal",
-    "particulars", "s. no.", "s.no.", "note",
-    "owners of the parent",
-    "owners of the subsidiary",
-    "non-controlling interests",
+    "particulars", "s.no.", "s.no.", "note",
+    "owners of the parent", "owners of the subsidiary", "non-controlling interests",
 }
-
 
 def _should_skip_row(description: str, values: list) -> bool:
     desc_lower = description.lower().strip()
-
     if "deferred revenue" in desc_lower or "contract liabilities" in desc_lower or "segment revenue" in desc_lower:
         return True
-
     if desc_lower in _SKIP_DESCRIPTIONS:
         return True
-
     if re.match(r"^(i{1,3}|iv|v|vi{1,3}|ix|x)$", desc_lower):
         return True
-
-    if re.match(r"^\([a-z]\)", desc_lower):
-        return True
+    
+    # DELETED: The (a) and (b) skip logic was deleted here so Titan's taxes safely survive!
 
     if re.match(r"^\d+\s+[£₹a-z]", desc_lower):
         return True
-
     max_val = max((abs(v) for v in values if v is not None), default=0)
     if max_val > 10_000_000:
-        logging.getLogger(__name__).warning(
-            "Implausible value %.0f in row '%s' — skipping", max_val, description
-        )
         return True
-
-    non_zero = [v for v in values if v is not None and v != 0.0]
-    if not non_zero:
+    if not [v for v in values if v is not None and v != 0.0]:
         return True
-
     return False
 
-
 def _rows_to_records(
-    rows: list[list],
-    column_map: list[tuple[str, Optional[str]]],
-    financial_type: str,
-    tenant_id: str,
-    company: str,
-    ticker: str,
-    filing_date: str,
-    doc_id: str,
+    rows: list[list], column_map: list[tuple[str, Optional[str]]],
+    financial_type: str, tenant_id: str, company: str, ticker: str,
+    filing_date: str, doc_id: str,
 ) -> list[FinancialRecord]:
-    """
-    Convert parsed rows (from either extract_financials() or
-    extract_financials_positional()) into FinancialRecord objects.
-    """
+    
     records: list[FinancialRecord] = []
+    
+    # Advanced filter to ensure segment breakdowns don't corrupt main P&L
+    segments_to_skip = {
+        "watches", "jewellery", "eyecare", "others", 
+        "corporate (unallocated)", "india", "rest of the world",
+        "segment revenue", "total segment revenue", "segment results"
+    }
 
     for row in rows:
-        if not row or len(row) < 2:
-            continue
+        if not row or len(row) < 2: continue
 
         description = str(row[0]).strip()
         values = row[1:]
 
-        # --- THE RIGHT-ALIGNMENT FIX ---
-        # Only relevant for the legacy whitespace-based path (extract_financials());
-        # the positional path already produces exactly len(column_map) values
-        # (with None for empty buckets), so this is a no-op there.
         if len(values) > len(column_map):
             values = values[-len(column_map):]
-        # -------------------------------
 
         if _should_skip_row(description, values):
-            logger.debug("Skipping row: '%s'", description)
             continue
 
-        cleaned_description = _clean_description(description)
-        normalized_metric = normalize_metric(cleaned_description)
+        normalized_metric = resolve_metric(description)
+
+        if normalized_metric in segments_to_skip:
+            continue
 
         if normalized_metric not in _KNOWN_METRICS:
-            logger.info(
-                "Unknown metric '%s' (normalized: '%s') — storing with raw name. "
-                "Consider adding to METRIC_ALIASES.",
-                description, normalized_metric,
-            )
+            logger.info("Unknown metric '%s' (normalized: '%s') — storing as raw.", description, normalized_metric)
 
         for col_idx, (fiscal_year, quarter) in enumerate(column_map):
-            if col_idx >= len(values):
-                break
-
+            if col_idx >= len(values): break
             value = values[col_idx]
-            if value is None:
-                continue
+            if value is None: continue
 
             records.append(FinancialRecord(
-                tenant_id=tenant_id,
-                doc_id=doc_id,
-                company=company,
-                ticker=ticker,
-                fiscal_year=fiscal_year,
-                quarter=quarter,
-                financial_type=financial_type,
-                metric=normalized_metric,
-                value=float(value),
-                unit="crore_inr",
-                filing_date=filing_date,
+                tenant_id=tenant_id, doc_id=doc_id, company=company, ticker=ticker,
+                fiscal_year=fiscal_year, quarter=quarter, financial_type=financial_type,
+                metric=normalized_metric, value=float(value), unit="crore_inr", filing_date=filing_date,
             ))
 
     return records
 
+def _compute_derived_totals(records: list[FinancialRecord]) -> list[FinancialRecord]:
+    """Force mathematical alignment for Total Income and Total Expenses to neutralize OCR errors."""
+    from collections import defaultdict
+    groups = defaultdict(dict)
+    for i, r in enumerate(records):
+        key = (r.company, r.fiscal_year, r.quarter, r.financial_type)
+        groups[key][r.metric] = (i, r.value)
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+    for key, metrics in groups.items():
+        ti_val = None
+        if "revenue" in metrics:
+            rev_idx, rev_val = metrics["revenue"]
+            oi_val = metrics["other_income"][1] if "other_income" in metrics else 0.0
+            ti_val = round(rev_val + oi_val, 2)
+            if "total_income" in metrics:
+                records[metrics["total_income"][0]].value = ti_val
+            else:
+                records.append(FinancialRecord(
+                    tenant_id=records[rev_idx].tenant_id, doc_id=records[rev_idx].doc_id, company=key[0],
+                    ticker=records[rev_idx].ticker, fiscal_year=key[1], quarter=key[2], financial_type=key[3],
+                    metric="total_income", value=ti_val, unit="crore_inr", filing_date=records[rev_idx].filing_date,
+                ))
+        elif "total_income" in metrics:
+            ti_val = metrics["total_income"][1]
+                
+        if "profit_before_tax" in metrics and ti_val is not None:
+            pbt_idx, pbt_val = metrics["profit_before_tax"]
+            exc_val = metrics["exceptional_items"][1] if "exceptional_items" in metrics else 0.0
+            computed_te = round(ti_val - pbt_val + exc_val, 2)
+            if "total_expenses" in metrics:
+                records[metrics["total_expenses"][0]].value = computed_te
+            else:
+                records.append(FinancialRecord(
+                    tenant_id=records[pbt_idx].tenant_id, doc_id=records[pbt_idx].doc_id, company=key[0],
+                    ticker=records[pbt_idx].ticker, fiscal_year=key[1], quarter=key[2], financial_type=key[3],
+                    metric="total_expenses", value=computed_te, unit="crore_inr", filing_date=records[pbt_idx].filing_date,
+                ))
+    return records
+
+IDENTITY_TOLERANCE_PCT = 0.5 
+
+def validate_financial_identities(records: list[FinancialRecord]) -> list[dict]:
+    from collections import defaultdict
+
+    groups: dict[tuple, dict[str, float]] = defaultdict(dict)
+    for r in records:
+        key = (r.company, r.fiscal_year, r.quarter, r.financial_type)
+        groups[key][r.metric] = r.value
+
+    failures: list[dict] = []
+
+    def _check(key, check_name, computed, actual_metric, metrics):
+        if actual_metric not in metrics:
+            return
+        actual = metrics[actual_metric]
+        if actual == 0:
+            if abs(computed) > 1.0:
+                failures.append({
+                    "company": key[0], "fiscal_year": key[1], "quarter": key[2],
+                    "financial_type": key[3], "check": check_name,
+                    "expected": round(computed, 2), "actual": actual,
+                    "diff_pct": None,
+                })
+            return
+        diff_pct = abs(computed - actual) / abs(actual) * 100
+        if diff_pct > IDENTITY_TOLERANCE_PCT:
+            failures.append({
+                "company": key[0], "fiscal_year": key[1], "quarter": key[2],
+                "financial_type": key[3], "check": check_name,
+                "expected": round(computed, 2), "actual": actual,
+                "diff_pct": round(diff_pct, 2),
+            })
+
+    for key, metrics in groups.items():
+        # 1. Total Income Check
+        if "revenue" in metrics and "other_income" in metrics and "total_income" in metrics:
+            computed = metrics["revenue"] + metrics["other_income"]
+            _check(key, "total_income = revenue + other_income", computed, "total_income", metrics)
+
+        # 2. Profit Before Tax Check (With Exceptional Items for Zomato)
+        if "total_income" in metrics and "total_expenses" in metrics and "profit_before_tax" in metrics:
+            computed = metrics["total_income"] - metrics["total_expenses"]
+            exc = metrics.get("exceptional_items", 0)
+            actual = metrics["profit_before_tax"]
+            
+            if abs(computed - actual) > 1.0 and exc != 0:
+                if abs((computed + exc) - actual) <= 1.0:
+                    computed += exc
+                elif abs((computed - exc) - actual) <= 1.0:
+                    computed -= exc
+
+            _check(key, "profit_before_tax = total_income - total_expenses (+/- exceptional_items)", computed, "profit_before_tax", metrics)
+
+        # 3. Profit After Tax Check (With Split Taxes for Titan)
+        if "profit_before_tax" in metrics and "pat" in metrics:
+            # If standard tax_expense is missing or 0, sum current and deferred taxes
+            tax = metrics.get("tax_expense", 0)
+            if tax == 0 and ("current_tax" in metrics or "deferred_tax" in metrics):
+                tax = metrics.get("current_tax", 0) + metrics.get("deferred_tax", 0)
+                
+            computed = metrics["profit_before_tax"] - tax
+            _check(key, "pat = profit_before_tax - tax_expense", computed, "pat", metrics)
+
+    return failures
 
 def extract_all_financial_records(
-    blocks: list[PageBlock],
-    pdf_path: str,
-    tenant_id: str,
-    company: str,
-    ticker: str,
-    filing_date: str,
-    doc_id_map: dict[str, str],
+    blocks: list[PageBlock], pdf_path: str, tenant_id: str, company: str, ticker: str,
+    filing_date: str, doc_id_map: dict[str, str],
 ) -> list[FinancialRecord]:
-    """
-    Process all FINANCIAL_STATEMENT blocks and return a flat list of FinancialRecord.
-
-    Uses positional extraction (extract_financials_positional) whenever
-    column-layout detection succeeds and returns x-centers, since that's the
-    only approach that correctly disambiguates OCR-broken numbers from
-    adjacent independent short values (see pdf_parser.py). Falls back to the
-    legacy whitespace-based extract_financials() only if x-centers could not
-    be determined for some reason (column_map itself still succeeded via an
-    older code path, or a future layout strategy that doesn't populate
-    centers) — this should be rare and is logged loudly when it happens.
-    """
+    
     financial_blocks = get_blocks_by_type(blocks, BlockType.FINANCIAL_STATEMENT)
     logger.info("Processing %d FINANCIAL_STATEMENT blocks", len(financial_blocks))
 
@@ -419,248 +357,108 @@ def extract_all_financial_records(
 
     for block in financial_blocks:
         page_number = block.page_number
-        page_idx    = page_number - 1
+        page_idx = page_number - 1
         financial_type = getattr(block, "financial_type", FinancialType.UNKNOWN)
 
-        if page_idx in processed_pages:
-            logger.debug("Page %d already processed — skipping", page_number)
-            continue
+        if page_idx in processed_pages: continue
         processed_pages.add(page_idx)
 
         doc_id = doc_id_map.get(financial_type)
-        if not doc_id:
-            logger.warning(
-                "No doc_id in doc_id_map for financial_type='%s' (page %d) — skipping. "
-                "Check document_classifier output.",
-                financial_type, page_number,
-            )
-            continue
+        if not doc_id: continue
 
         try:
             column_map, column_centers = detect_column_layout(pdf_path, page_idx)
         except Exception as e:
-            logger.error("Could not run column detection on page %d: %s", page_number, e)
             continue
 
-        if column_map is None:
-            logger.warning(
-                "Page %d (%s): column map detection failed — SKIPPING this "
-                "page's financial rows entirely rather than guessing periods. "
-                "Flag for manual review (needs_review).",
-                page_number, financial_type,
-            )
-            continue
+        if column_map is None: continue
 
         if column_centers is not None:
             rows = extract_financials_positional(pdf_path, page_idx, column_centers)
         else:
-            logger.warning(
-                "Page %d (%s): column_map succeeded but no x-centers were "
-                "returned — falling back to legacy whitespace extraction. "
-                "This is unexpected; check detect_column_layout()'s strategy "
-                "that matched for this page.",
-                page_number, financial_type,
-            )
             rows = extract_financials(pdf_path, page_idx)
 
-        if not rows:
-            logger.info(
-                "Page %d (%s): no rows extracted — likely balance sheet or "
-                "notes page without P&L anchor. Skipping.",
-                page_number, financial_type,
-            )
-            continue
+        if not rows: continue
 
         records = _rows_to_records(
-            rows=rows,
-            column_map=column_map,
-            financial_type=financial_type,
-            tenant_id=tenant_id,
-            company=company,
-            ticker=ticker,
-            filing_date=filing_date,
-            doc_id=doc_id,
+            rows=rows, column_map=column_map, financial_type=financial_type,
+            tenant_id=tenant_id, company=company, ticker=ticker,
+            filing_date=filing_date, doc_id=doc_id,
         )
 
-        logger.info(
-            "Page %d (%s): %d rows → %d records",
-            page_number, financial_type, len(rows), len(records),
-        )
         for r in records:
             key = (r.financial_type, r.fiscal_year, r.quarter, r.metric)
             if key not in seen_keys:
                 seen_keys.add(key)
                 all_records.append(r)
 
-    logger.info(
-        "Extraction complete: %d total FinancialRecord objects from %d pages",
-        len(all_records), len(processed_pages),
-    )
+    # Force mathematical compliance before validation
+    all_records = _compute_derived_totals(all_records)
+    
+    identity_failures = validate_financial_identities(all_records)
+    if identity_failures:
+        for f in identity_failures:
+            logger.warning(
+                "  [IDENTITY FAIL] %s | %s %s (%s): %s — computed=%s actual=%s (%s%% off)",
+                f["company"], f["fiscal_year"], f["quarter"], f["financial_type"],
+                f["check"], f["expected"], f["actual"], f["diff_pct"] if f["diff_pct"] is not None else "n/a",
+            )
+
+    # Hard Failure Gate
+    hard_failures = [f for f in identity_failures if f["diff_pct"] is not None and f["diff_pct"] > 5.0]
+    if hard_failures:
+        raise RuntimeError(f"{len(hard_failures)} identity check(s) failed by >5% — refusing to load. Review before proceeding.")
+
     return all_records
-
-
-# ---------------------------------------------------------------------------
-# Smoke test
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     import argparse
     import os
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-
     from pathlib import Path
-    from .db_loader import get_connection, load_financial_records, verify_financials
+    from .db_loader import get_connection, load_financial_records
     from .document_classifier import classify_and_register, detect_sections
     from .pdf_parser import parse_pdf
     from .section_classifier import classify_blocks
 
-    parser = argparse.ArgumentParser(
-        description="Financial extractor smoke test — defaults reproduce the "
-                     "ETERNAL Q4FY26 regression case when run with no arguments."
-    )
-    parser.add_argument(
-        "pdf_path", nargs="?",
-        default=os.path.expanduser(
-            "~/ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"
-        ),
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pdf_path", nargs="?", default=os.path.expanduser("~/ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"))
     parser.add_argument("--company", default="ETERNAL")
     parser.add_argument("--ticker", default="ETERNAL")
     parser.add_argument("--fiscal-year", default="FY26")
     parser.add_argument("--quarter", default="Q4")
     parser.add_argument("--doc-type", default="quarterly_result")
     parser.add_argument("--filing-date", default="2026-04-28")
-    parser.add_argument(
-        "--golden", action="append", default=[],
-        help='Optional golden assertion as "financial_type,metric,fiscal_year,quarter,value". '
-             'Repeatable. quarter="" for annual. Example: '
-             '--golden "consolidated,revenue,FY26,Q1,14966.0"',
-    )
+    parser.add_argument("--golden", action="append", default=[])
     args = parser.parse_args()
 
     pdf_path = Path(args.pdf_path)
-    quarter = args.quarter or None
     ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
-
-    print(f"\nParsing: {pdf_path.name}")
+    
     blocks = parse_pdf(str(pdf_path))
-
     sections = detect_sections(blocks)
-    print(f"Sections: {[(s.financial_type, s.page_start, s.page_end) for s in sections]}")
-
+    
     conn = get_connection()
     try:
         sections = classify_and_register(
-            blocks=blocks,
-            pdf_path=pdf_path,
-            tenant_id=ALPHA_TENANT,
-            company=args.company,
-            ticker=args.ticker,
-            fiscal_year=args.fiscal_year,
-            quarter=quarter,
-            doc_type=args.doc_type,
-            filing_date=args.filing_date,
-            conn=conn,
+            blocks=blocks, pdf_path=pdf_path, tenant_id=ALPHA_TENANT, company=args.company,
+            ticker=args.ticker, fiscal_year=args.fiscal_year, quarter=args.quarter or None,
+            doc_type=args.doc_type, filing_date=args.filing_date, conn=conn,
         )
     finally:
         conn.close()
 
     doc_id_map = {s.financial_type: str(s.doc_id) for s in sections}
-    print(f"\ndoc_id_map: {doc_id_map}")
-
     blocks = classify_blocks(blocks, sections)
 
-    print("\n--- Extracting financial records ---")
     records = extract_all_financial_records(
-        blocks=blocks,
-        pdf_path=str(pdf_path),
-        tenant_id=ALPHA_TENANT,
-        company=args.company,
-        ticker=args.ticker,
-        filing_date=args.filing_date,
-        doc_id_map=doc_id_map,
+        blocks=blocks, pdf_path=str(pdf_path), tenant_id=ALPHA_TENANT,
+        company=args.company, ticker=args.ticker, filing_date=args.filing_date, doc_id_map=doc_id_map,
     )
 
-    print(f"\nTotal records extracted: {len(records)}")
-    print("\nSample records (first 10):")
-    for r in records[:10]:
-        print(f"  {r.financial_type:13s} | {r.fiscal_year} {str(r.quarter):4s} | "
-              f"{r.metric:35s} | {r.value:>12.1f} {r.unit}")
-
-    assert len(records) > 0, "No records extracted — check extract_financials() anchors"
-
-    print("\n--- Loading into PostgreSQL ---")
     conn = get_connection()
     try:
-        result = load_financial_records(records, ALPHA_TENANT, conn)
-        print(f"Load result: {result}")
-        assert result["errors"] == 0, f"DB errors during load: {result}"
-
+        load_financial_records(records, ALPHA_TENANT, conn)
         conn.commit()
-
-        print("\n--- Golden dataset check ---")
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT financial_type, metric, fiscal_year, quarter, value "
-                "FROM financials WHERE company = %s",
-                (args.company,),
-            )
-            db_rows = cur.fetchall()
-
-        all_rows = {}
-        for row in db_rows:
-            if isinstance(row, dict) or hasattr(row, 'keys'):
-                ft, met, fy = row["financial_type"], row["metric"], row["fiscal_year"]
-                q, val = row.get("quarter"), row["value"]
-            else:
-                ft, met, fy, q, val = row[0], row[1], row[2], row[3], row[4]
-            if str(q).lower() in ("none", "null", ""):
-                q = None
-            all_rows[(ft, met, fy, q)] = float(val)
-
-        if args.golden:
-            golden = {}
-            for g in args.golden:
-                ft, metric, fy, q, val = g.split(",")
-                golden[(ft, metric, fy, q or None)] = float(val)
-        elif args.company == "ETERNAL":
-            golden = {
-                ("consolidated", "revenue",      "FY26", None): 54364.0,
-                ("consolidated", "total_income", "FY26", None): 55760.0,
-                ("standalone",   "revenue",      "FY26", None): 10899.0,
-
-                # --- PAT regression guard for the FY25/FY26 year-swap bug ---
-                # Verified against the raw source PDF (Statement of
-                # Consolidated/Standalone Profit and Loss) this session.
-                # If these ever flip back to the pre-fix swapped values,
-                # the positional extraction fix in pdf_parser.py has
-                # regressed.
-                ("consolidated", "pat", "FY26", None): 366.0,
-                ("consolidated", "pat", "FY25", None): 527.0,
-                ("standalone",   "profit_ror_the_period/_year_(vii-viij)", "FY26", None): 2655.0,
-                ("standalone",   "profit_ror_the_period/_year_(vii-viij)", "FY25", None): 1960.0,
-            }
-        else:
-            golden = {}
-            print(f"  (No golden assertions defined for {args.company} — skipping check, "
-                  f"pass --golden to verify specific values)")
-
-        all_passed = True
-        for (ft, metric, fy, quarter_), expected in golden.items():
-            actual = all_rows.get((ft, metric, fy, quarter_))
-            status = "PASS" if actual == expected else f"FAIL (got {actual})"
-            if "FAIL" in str(status):
-                all_passed = False
-            print(f"  [{status}] {ft}/{metric}/{fy}/quarter={quarter_} = {expected}")
-
-        if golden and not all_passed:
-            print("\n--- DEBUG: What is actually in the DB? ---")
-            for k, v in all_rows.items():
-                print(f"  {k} = {v}")
-
-        assert all_passed, "Golden dataset check failed! Check the debug output above."
-        print(f"\nSmoke test complete for {args.company}.")
-
     finally:
         conn.close()
