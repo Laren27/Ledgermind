@@ -1,330 +1,163 @@
-"""
-Entity Resolver — deterministic company identity normalization.
-
-Responsibilities:
-  1. Map alias / rebrand names → canonical company name + ticker
-  2. Resolve ticker to exchange-qualified form (ZOMATO.NS)
-  3. Provide metric name normalization (for financials table)
-
-Design: static registry only. No LLM, no external API call.
-Adding a new company = add one entry to COMPANY_REGISTRY.
-
-Called once per ingestion job, before document_classifier.
-"""
-
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# Company registry
-# Each entry covers all known aliases for the same legal entity.
-# "primary" is what gets stored in the DB and Qdrant payload.
-# ---------------------------------------------------------------------------
-
 @dataclass
 class CompanyProfile:
-    primary: str          # canonical company name stored everywhere
-    ticker: str           # NSE ticker (used in Qdrant + financials table)
-    aliases: list[str]    # all names that resolve to this profile
+    primary: str
+    ticker: str
+    aliases: list[str]
     sector: str = ""
 
-
 COMPANY_REGISTRY: list[CompanyProfile] = [
-    CompanyProfile(
-        primary="ETERNAL",
-        ticker="ETERNAL",
-        aliases=[
-            "eternal", "eternal limited", "zomato", "zomato limited",
-            "zomato ltd", "eternal ltd",
-        ],
-        sector="quick_commerce",
-    ),
-    CompanyProfile(
-    primary="PAYTM",
-    ticker="PAYTM",
-    aliases=[
-        "paytm", "one97 communications", "one97", "paytm payments bank",
-        "one 97 communications", "one 97 communications limited",
-        "one 97", "one97 communications limited",
-    ],
-    sector="fintech",
-    ),
-    CompanyProfile(
-        primary="NYKAA",
-        ticker="NYKAA",
-        aliases=[
-            "nykaa", "fsg nykaa", "fsn e-commerce", "fsn ecommerce",
-        ],
-        sector="ecommerce",
-    ),
-    CompanyProfile(
-        primary="POLICYBAZAAR",
-        ticker="POLICYBZR",
-        aliases=[
-            "policybazaar", "pb fintech", "pbfintech",
-        ],
-        sector="insurtech",
-    ),
-    CompanyProfile(
-        primary="DELHIVERY",
-        ticker="DELHIVERY",
-        aliases=[
-            "delhivery", "delhivery limited",
-        ],
-        sector="logistics",
-    ),
-    CompanyProfile(
-        primary="SWIGGY",
-        ticker="SWIGGY",
-        aliases=[
-            "swiggy", "bundl technologies", "bundl",
-        ],
-        sector="quick_commerce",
-    ),
-    # Added Titan for generalization test
-    CompanyProfile(
-        primary="TITAN",
-        ticker="TITAN",
-        aliases=[
-            "titan", "titan company", "titan company limited", "titan ltd", "titan company ltd"
-        ],
-        sector="consumer_goods",
-    ),
+    CompanyProfile(primary="ETERNAL", ticker="ETERNAL", aliases=["eternal", "eternal limited", "zomato", "zomato limited", "zomato ltd", "eternal ltd"], sector="quick_commerce"),
+    CompanyProfile(primary="PAYTM", ticker="PAYTM", aliases=["paytm", "one97 communications", "one97", "paytm payments bank", "one 97 communications", "one 97 communications limited", "one 97", "one97 communications limited"], sector="fintech"),
+    CompanyProfile(primary="NYKAA", ticker="NYKAA", aliases=["nykaa", "fsg nykaa", "fsn e-commerce", "fsn ecommerce"], sector="ecommerce"),
+    CompanyProfile(primary="POLICYBAZAAR", ticker="POLICYBZR", aliases=["policybazaar", "pb fintech", "pbfintech"], sector="insurtech"),
+    CompanyProfile(primary="DELHIVERY", ticker="DELHIVERY", aliases=["delhivery", "delhivery limited"], sector="logistics"),
+    CompanyProfile(primary="SWIGGY", ticker="SWIGGY", aliases=["swiggy", "bundl technologies", "bundl"], sector="quick_commerce"),
+    CompanyProfile(primary="TITAN", ticker="TITAN", aliases=["titan", "titan company", "titan company limited", "titan ltd", "titan company ltd"], sector="consumer_goods"),
 ]
 
-# Build a fast lookup dict: lowercase alias → CompanyProfile
 _ALIAS_INDEX: dict[str, CompanyProfile] = {}
 for _profile in COMPANY_REGISTRY:
     for _alias in _profile.aliases:
         _ALIAS_INDEX[_alias.lower().strip()] = _profile
 
+PREFIX_RE = re.compile(r"^(?:\(?\d+\)?|\(?[ivxlcdm]+\)?|\([a-z]\)|[a-z][.)])[.:-]?\s+", re.IGNORECASE | re.VERBOSE)
+META_RE = re.compile(r"\(\s*(?:unaudited|audited|standalone|consolidated|restated|continuing\s+operations|refer\s+note.*?|note.*?|(?:₹|rs\.?|inr).*?|in\s+(?:crores?|millions?|lakhs?|thousands?))\s*\)", re.IGNORECASE | re.VERBOSE)
+UNITS_OUTSIDE_PARENS_RE = re.compile(r"\b(?:₹|rs\.?|inr)\s*(?:in\s+)?(?:crores?|millions?|lakhs?|thousands?)\b", re.IGNORECASE)
+TRAILING_PUNCT_RE = re.compile(r"[\.\:\-,;]+$")
+LEADING_PUNCT_RE = re.compile(r"^[\s:;,\-•]+")
+MULTISPACE_RE = re.compile(r"\s+")
+SLASH_RE = re.compile(r"\s*/\s*")
+HYPHEN_SPACE_RE = re.compile(r"\s*-\s*")
+MULTIHYPHEN_RE = re.compile(r"-{2,}")
+FOOTNOTE_RE = re.compile(r"\(\d+\)$")
 
-# ---------------------------------------------------------------------------
-# Metric name normalization
-# Maps any surface form found in PDF tables → canonical metric name
-# used in the financials table `metric` column.
-# ---------------------------------------------------------------------------
-
-METRIC_ALIASES: dict[str, str] = {
-    # Revenue
-    "revenue from operations": "revenue",
-    "sale of products/ services": "revenue",      # TITAN variant
-    "sale of products/services": "revenue",       # TITAN variant (no space)
-    "sale of products": "revenue",
-    "net revenue": "revenue",
-    "adjusted revenue": "adjusted_revenue",
-    "gross order value": "gov",
-    "gov": "gov",
-
-    # Expenses (including OCR artifact healing)
-    "cost of materials consumed": "cost_of_materials_consumed",
-    "purchases of stock-in-trade": "purchases_of_stock-in-trade",
-    "purchase of stock-in-trade": "purchases_of_stock-in-trade",
-    "purchase of stock-in": "purchases_of_stock-in-trade",
-    "employee benefits expense": "employee_benefits_expense",
-    "finance costs": "finance_costs",
-    "fina nee costs": "finance_costs",            # OCR variant
-    "advertising": "advertising",
-    "other expenses": "other_expenses",
-    "total expenses": "total_expenses",
-
-    # Profitability
-    "ebitda": "ebitda",
-    "adjusted ebitda": "adjusted_ebitda",
-    "ebit": "ebit",
-    "pat": "pat",
-    "profit after tax": "pat",
-    "profit / (loss) after tax": "pat",
-    "profit/(loss) after tax": "pat",
-
-    # Margins
-    "gross margin": "gross_margin",
-    "ebitda margin": "ebitda_margin",
-    "pat margin": "pat_margin",
-
-    # Cash / Balance sheet
-    "cash and cash equivalents": "cash",
-    "closing cash": "closing_cash",
-    "cash and equivalents": "cash",
-    "free cash flow": "fcf",
-
-    # Operational
-    "number of orders": "orders",
-    "monthly transacting users": "mtu",
-    "active restaurants": "active_restaurants",
-    "number of stores": "stores",
-    "total stores": "stores",
-    "blinkit nov": "blinkit_nov",            
-    "food delivery adjusted ebitda": "food_delivery_adjusted_ebitda",
-
-    # General / Table specific
-    "standalone revenue": "revenue",
-    "standalone pat": "pat",
-    "total income": "total_income",
-    "total income (i+ii)": "total_income",
-    "total income (l+ll)": "total_income",       
-    "profit for the period": "pat",
-    "profit for the year": "pat",
-    "profit/(loss) for the period": "pat",
-    "profit/(loss) for the year": "pat",
-    "other income": "other_income",
-    "exceptional items": "exceptional_items",
-    
-    # Tax metrics (including OCR artifact healing)
-    "tax expense": "tax_expense",
-    "profit before tax": "profit_before_tax",
-    "profit before ta": "profit_before_tax",      # OCR variant
-    "current tax": "current_tax",
-    "current ta": "current_tax",                  # OCR variant
-    "deferred tax": "deferred_tax",
-    "deferred ta": "deferred_tax",                # OCR variant
+# --- EXPANDED OCR FIXES ---
+OCR_FIXES = {
+    "fina nee": "finance", "benefi ts": "benefits", "empl oyee": "employee", 
+    "operati ons": "operations", "equival ents": "equivalents", "invent ories": "inventories", 
+    "recei vables": "receivables", "paya bles": "payables", "taxa tion": "taxation", 
+    "depre ciation": "depreciation", "amorti sation": "amortization", "amorti zation": "amortization", 
+    "l+ll": "i+ii", "lntcrcst": "interest", "e<1uity": "equity", "capit:1i": "capital"
 }
 
+def normalize_metric_label(raw_label: str) -> str:
+    if not raw_label: return ""
+    label = unicodedata.normalize("NFKC", raw_label).casefold()
+    label = label.replace("\ufeff", "").replace("\u200b", "").replace("\xa0", " ")
+    label = PREFIX_RE.sub("", label)
+    label = META_RE.sub("", label)
+    label = UNITS_OUTSIDE_PARENS_RE.sub("", label)
+    label = FOOTNOTE_RE.sub("", label)
+    label = re.sub(r"[*#†%]+", "", label)
+    for bad, good in OCR_FIXES.items(): label = label.replace(bad, good)
+    label = re.sub(r"\bta\b", "tax", label)
+    label = label.replace("&", "and").replace(",", " ")
+    label = SLASH_RE.sub("/", label)
+    label = HYPHEN_SPACE_RE.sub("-", label)
+    label = MULTIHYPHEN_RE.sub("-", label)
+    label = LEADING_PUNCT_RE.sub("", label)
+    label = TRAILING_PUNCT_RE.sub("", label)
+    return MULTISPACE_RE.sub(" ", label).strip()
 
-# ---------------------------------------------------------------------------
-# OCR spurious-space repair
-# pdfplumber's text extraction occasionally inserts a stray space after the
-# first letter of a word (e.g. "Investment" → "I nvestment", "Proceeds" →
-# "P roceeds", "Owners" → "O wners"). This pattern — a single capital letter,
-# a space, then a lowercase letter — never occurs in legitimate financial
-# terminology, so it's safe to collapse unconditionally rather than
-# maintaining a hand-written list of every OCR variant seen so far.
-# Confirmed present across multiple metric names in the FY24 Zomato/Eternal
-# annual report extraction (Phase 3 finalization, July 2026).
-# ---------------------------------------------------------------------------
+METRIC_ALIASES: dict[str, str] = {
+    "revenue": "revenue", "revenue from operations": "revenue", "total income from operations": "revenue",
+    "income from operations": "revenue", "operating revenue": "revenue", "net revenue": "revenue",
+    "gross revenue": "revenue", "sales": "revenue", "net sales": "revenue", "turnover": "revenue",
+    "sale of products": "revenue", "sale of services": "revenue", "standalone revenue": "revenue",
+    "gmv": "gmv", "gross merchandise value": "gmv", "gov": "gov", "gross order value": "gov",
+    "total income": "total_income", "total income i+ii": "total_income", "ill total incomc 1+11": "total_income",
+    "other income": "other_income", "non operating income": "other_income", "interest income": "other_income",
+    "cost of materials consumed": "cost_of_materials_consumed", "raw material consumed": "cost_of_materials_consumed",
+    "cost of materials and components consumed": "cost_of_materials_consumed",
+    "purchases of stock-in-trade": "purchases_of_stock_in_trade", "changes in inventories": "changes_in_inventories",
+    "employee benefits expense": "employee_benefits_expense", "employee cost": "employee_benefits_expense",
+    "staff cost": "employee_benefits_expense", "salary expense": "employee_benefits_expense",
+    "finance costs": "finance_costs", "interest expense": "finance_costs", "borrowing costs": "finance_costs",
+    "depreciation": "depreciation", "depreciation and amortization expenses": "depreciation",
+    "advertising": "advertising", "marketing expense": "advertising",
+    "other expenses": "other_expenses", "total expenses": "total_expenses",
+    "ebitda": "ebitda", "operating ebitda": "ebitda", "adjusted ebitda": "adjusted_ebitda",
+    "ebit": "ebit", "operating profit": "operating_profit",
+    
+    # Safely isolating PBT from greedy exceptional matches
+    "profit before exceptional items and tax": "profit_before_exceptional_items",
+    "profit/(loss) before exceptional items and tax": "profit_before_exceptional_items",
+    "profit before exceptional items": "profit_before_exceptional_items",
+    "profit before tax": "profit_before_tax", "profit/(loss) before tax": "profit_before_tax",
+    "pbt": "profit_before_tax", 
+    "pat": "pat", "profit after tax": "pat", "net profit": "pat", "profit for the period": "pat", "profit for the year": "pat",
+    
+    # Margins and Tax
+    "gross margin": "gross_margin", "ebitda margin": "ebitda_margin", "pat margin": "pat_margin",
+    "tax expense": "tax_expense", "income tax expense": "tax_expense", "total tax expense": "tax_expense",
+    "tax expenses": "tax_expense", "total tax expenses": "tax_expense", "taxation": "tax_expense",
+    "current tax": "current_tax", "current lax": "current_tax", "deferred tax": "deferred_tax", 
+    "deferred rnx": "deferred_tax", "tax expense for the period": "tax_expense",
+    
+    # Cash Flow, Balance Sheet, & Newly Added High-Value Items
+    "cash": "cash", "cash and cash equivalents": "cash", "operating cash flow": "operating_cash_flow",
+    "free cash flow": "fcf", "inventory": "inventory", "trade receivables": "receivables",
+    "trade payables": "payables", "total assets": "total_assets", "total liabilities": "total_liabilities",
+    "equity": "equity", "total equity": "equity", "other equity": "other_equity",
+    "delivery and related charges": "delivery_and_related_charges",
+    "delivery and related charges n4": "delivery_and_related_charges",
+    "share-based payment expense": "share_based_payment_expense",
+    "share based payment expense": "share_based_payment_expense",
+    "net gain on mutual fund units": "net_gain_on_investments",
+    "net gain on mutual funds": "net_gain_on_investments",
+    "liabilities written back": "liabilities_written_back",
+    
+    # Associate Profits (Fixes the PBT/PAT gap for Zomato and Titan)
+    "share of profit/(loss) of an associate and a joint": "share_of_profit_of_associate",
+    "share in (profit)/loss of associate/joint venture": "share_of_profit_of_associate",
+    "~ associate•": "share_of_profit_of_associate",
+    
+    # EPS and Ops Metrics
+    "earnings per share": "eps_basic", "basic earnings per share": "eps_basic", "basic eps": "eps_basic",
+    "diluted earnings per share": "eps_diluted", "diluted eps": "eps_diluted",
+    "orders": "orders", "mtu": "mtu", "mau": "mau", "active users": "active_users",
+    
+    # Exceptional Items Mappings
+    "exceptional items": "exceptional_items",
+    "remeasurements of the defined benefit plans": "exceptional_items",
+    "remeasurements of the defined benetit plans": "exceptional_items",
+    "remeasuremcnls of the defined benefit plans 0 0": "exceptional_items",
+    "exchange differences on translation of foreign operations": "exceptional_items",
+    "exchange differences on trnnslation of foreign operations 8 2": "exceptional_items",
+    "exchange differences on lranslation of foreign operations 0 5 i": "exceptional_items",
+    "-remeasurement of employee defined benefit plan": "exceptional_items",
+    "remeasurement of employee defined benefit plan": "exceptional_items",
+    "-exchange differences in translating the financial statements of foreign": "exceptional_items",
+    "(profit)/ loss on sale of property, plant and equipment (net)": "exceptional_items",
+}
 
-_SPURIOUS_SPACE_RE = re.compile(r'\b([A-Z])\s+([a-z])')
-
-
-def _fix_spurious_spacing(text: str) -> str:
-    """
-    Collapse 'X word' → 'Xword' where X is a lone capital letter
-    immediately followed by a space and a lowercase letter.
-    """
-    return _SPURIOUS_SPACE_RE.sub(r'\1\2', text)
-
-
-
-def normalize_metric(raw: str) -> str:
-    """
-    Normalize a raw metric string from a PDF table to the canonical
-    metric name used in the financials table.
-
-    Returns the raw string lowercased if no mapping found —
-    caller should log a warning for unknown metrics.
-    """
-    raw = _fix_spurious_spacing(raw)
-
-    normalized = METRIC_ALIASES.get(raw.lower().strip())
-    if normalized:
-        return normalized
-
-    # Partial match fallback — catches minor wording variations
-    raw_lower = raw.lower().strip()
-    for alias, canonical in METRIC_ALIASES.items():
-        if alias in raw_lower or raw_lower in alias:
-            logger.debug(
-                "Metric partial match: '%s' → '%s' via alias '%s'",
-                raw, canonical, alias,
-            )
-            return canonical
-
-    logger.warning("Unknown metric: '%s' — storing as-is", raw)
-    return raw_lower.replace(" ", "_")
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+def resolve_metric(raw: str) -> str:
+    normalized_text = normalize_metric_label(raw)
+    if not normalized_text: return "unmapped_metric"
+    canonical = METRIC_ALIASES.get(normalized_text)
+    if canonical: return canonical
+    for alias, canonical_name in METRIC_ALIASES.items():
+        if alias in normalized_text or normalized_text in alias:
+            return canonical_name
+    logger.warning("Unknown metric: '%s' (normalized: '%s') — storing as-is", raw, normalized_text)
+    return normalized_text.replace(" ", "_")
 
 def resolve_company(raw_name: str) -> Optional[CompanyProfile]:
-    """
-    Resolve a raw company name string to its canonical CompanyProfile.
-
-    Returns None if the company is not in the registry.
-    Caller is responsible for raising an error or flagging for review.
-
-    Examples:
-      resolve_company("Eternal Limited") → CompanyProfile(primary="ETERNAL", ...)
-      resolve_company("Zomato")          → CompanyProfile(primary="ETERNAL", ...)
-      resolve_company("Unknown Corp")    → None
-    """
     key = raw_name.lower().strip()
     profile = _ALIAS_INDEX.get(key)
-
-    if profile:
-        logger.info(
-            "Entity resolved: '%s' → %s (%s)", raw_name, profile.primary, profile.ticker
-        )
-        return profile
-
-    # Partial match: handle names like "Eternal Limited (formerly Zomato)"
+    if profile: return profile
     for alias, prof in _ALIAS_INDEX.items():
-        if alias in key:
-            logger.info(
-                "Entity partial match: '%s' → %s via alias '%s'",
-                raw_name, prof.primary, alias,
-            )
-            return prof
-
-    logger.warning("Could not resolve company: '%s'", raw_name)
+        if alias in key: return prof
     return None
 
-
 def resolve_ticker(raw_name: str) -> str:
-    """
-    Convenience wrapper — returns just the ticker string.
-    Returns raw_name uppercased if resolution fails (fail-open for now).
-    """
     profile = resolve_company(raw_name)
     return profile.ticker if profile else raw_name.upper().strip()
-
-
-# ---------------------------------------------------------------------------
-# Quick smoke test (run this file directly to verify)
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-
-    test_cases = [
-        ("Eternal Limited", "ETERNAL"),
-        ("Zomato", "ETERNAL"),
-        ("ZOMATO LIMITED", "ETERNAL"),
-        ("Paytm", "PAYTM"),
-        ("One97 Communications", "PAYTM"),
-        ("One 97 Communications Limited", "PAYTM"),  # exact PDF header string — space-separated
-        ("Titan Company Ltd", "TITAN"),
-        ("Unknown Corp XYZ", None),
-    ]
-
-    print("\n--- Entity Resolver Smoke Test ---")
-    all_pass = True
-    for raw, expected_primary in test_cases:
-        profile = resolve_company(raw)
-        actual = profile.primary if profile else None
-        status = "PASS" if actual == expected_primary else "FAIL"
-        if status == "FAIL":
-            all_pass = False
-        print(f"  [{status}] '{raw}' → {actual} (expected {expected_primary})")
-
-    print("\n--- Metric Normalizer Smoke Test ---")
-    metric_cases = [
-        ("Revenue from operations", "revenue"),
-        ("Adjusted Revenue", "adjusted_revenue"),
-        ("-Sale of products/ services", "revenue"),
-        ("Blinkit NOV", "blinkit_nov"),
-        ("profit after tax", "pat"),
-        ("Current ta", "current_tax"),
-        ("I nvestment in mutual fund units", "investment_in_mutual_fund_units"),  # OCR repair check
-    ]
-    for raw, expected in metric_cases:
-        actual = normalize_metric(raw)
-        status = "PASS" if actual == expected else "FAIL"
-        print(f"  [{status}] '{raw}' → '{actual}' (expected '{expected}')")
-
-    print(f"\n{'All tests passed.' if all_pass else 'FAILURES detected — check registry.'}")
