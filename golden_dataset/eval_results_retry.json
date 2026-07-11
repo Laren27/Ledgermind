@@ -1,14 +1,57 @@
 [
   {
-    "id": "Q003",
+    "id": "Q006",
     "category": "quantitative_point",
-    "question": "What was ETERNAL's consolidated PAT for FY26?",
+    "question": "What was ETERNAL's consolidated depreciation and amortisation expense for FY26?",
     "score": {
-      "pass": true,
-      "reason": "Value match",
+      "pass": false,
+      "reason": "sql_verified=False. error=no_data_found",
       "actual": {
-        "value": 527.0,
-        "sql_verified": true
+        "sql_verified": false,
+        "value": null
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "no_data_found",
+      "response_preview": "No data found for ETERNAL depreciation_and_amortisation_expenses FY26 consolidated. This period may not yet be indexed."
+    }
+  },
+  {
+    "id": "Q010",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated advertisement and sales promotion expense for FY26?",
+    "score": {
+      "pass": false,
+      "reason": "sql_verified=False. error=no_data_found",
+      "actual": {
+        "sql_verified": false,
+        "value": null
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "no_data_found",
+      "response_preview": "No data found for ETERNAL advertisement_and_sales_promotion FY26 consolidated. This period may not yet be indexed."
+    }
+  },
+  {
+    "id": "Q023",
+    "category": "out_of_corpus",
+    "question": "What were ETERNAL's standalone delivery charges for FY26?",
+    "score": {
+      "pass": false,
+      "reason": "Unexpected: sql_verified=True error=None tier=high",
+      "actual": {
+        "sql_verified": true,
+        "error": null,
+        "confidence_tier": "high"
       }
     },
     "api_response": {
@@ -17,150 +60,19 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Pat for FY26 was \u20b9527.0 Cr."
+      "response_preview": "ETERNAL's standalone Delivery And Related Charges for FY26 was \u20b94,658.0 Cr."
     }
   },
   {
-    "id": "Q012",
-    "category": "out_of_corpus",
-    "question": "What was ETERNAL's consolidated PAT for FY25?",
-    "score": {
-      "pass": true,
-      "reason": "Correctly refused / no data",
-      "actual": {
-        "sql_verified": false,
-        "error": "no_data_found",
-        "confidence_tier": "low"
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL pat FY25 consolidated. This period may not yet be indexed."
-    }
-  },
-  {
-    "id": "Q017",
-    "category": "out_of_corpus",
-    "question": "How did ETERNAL's consolidated PAT change from FY25 to FY26?",
-    "score": {
-      "pass": true,
-      "reason": "Correctly refused / no data",
-      "actual": {
-        "sql_verified": false,
-        "error": null,
-        "confidence_tier": "low"
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": null,
-      "response_preview": "Could not compute year-over-year growth: Missing data for one or both periods"
-    }
-  },
-  {
-    "id": "Q023",
-    "category": "out_of_corpus",
-    "question": "What were ETERNAL's standalone delivery charges for FY26?",
-    "score": {
-      "pass": true,
-      "reason": "Correctly refused / no data",
-      "actual": {
-        "sql_verified": false,
-        "error": "no_data_found",
-        "confidence_tier": "low"
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL delivery_and_related_charges FY26 standalone. This period may not yet be indexed."
-    }
-  },
-  {
-    "id": "Q032",
-    "category": "semantic_management",
-    "question": "What accounting standard does ETERNAL follow for its financial reporting?",
-    "score": {
-      "pass": true,
-      "reason": "All 2 keywords present, confidence=high",
-      "actual": {
-        "confidence_tier": "high"
-      }
-    },
-    "api_response": {
-      "path": "semantic",
-      "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": false,
-      "error": null,
-      "response_preview": "ETERNAL Limited prepares its financial results in conformity with the recognition and measurement principles laid down in the Indian Accounting Standards and other accounting principles generally acce"
-    }
-  },
-  {
-    "id": "Q034",
-    "category": "semantic_audit",
-    "question": "Who audited ETERNAL's financial results?",
-    "score": {
-      "pass": true,
-      "reason": "All 2 keywords present, confidence=high",
-      "actual": {
-        "confidence_tier": "high"
-      }
-    },
-    "api_response": {
-      "path": "semantic",
-      "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": false,
-      "error": null,
-      "response_preview": "Deloitte Chartered Accountants audited the consolidated financial results of Eternal Limited for the year ended March 31, 2026. Their audit report also notes that they considered the audit and review "
-    }
-  },
-  {
-    "id": "Q038",
-    "category": "semantic_audit",
-    "question": "What does ETERNAL's audit report say about internal controls?",
+    "id": "Q024",
+    "category": "quantitative_standalone",
+    "question": "What was ETERNAL's standalone depreciation expense for FY26?",
     "score": {
       "pass": false,
-      "reason": "Missing keywords in response: ['auditors']",
-      "actual": {
-        "confidence_tier": "high",
-        "missing_keywords": [
-          "auditors"
-        ],
-        "response_preview": "the audit report states that the auditor is responsible for expressing an opinion on whether the parent company and its nine indian subsidiaries maintained adequate internal financial controls with re"
-      }
-    },
-    "api_response": {
-      "path": "semantic",
-      "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": false,
-      "error": null,
-      "response_preview": "The audit report states that the auditor is responsible for expressing an opinion on whether the Parent company and its nine Indian subsidiaries maintained adequate internal financial controls with re"
-    }
-  },
-  {
-    "id": "Q048",
-    "category": "out_of_corpus",
-    "question": "What was ETERNAL's consolidated revenue for FY20?",
-    "score": {
-      "pass": true,
-      "reason": "Correctly refused / no data",
+      "reason": "sql_verified=False. error=no_data_found",
       "actual": {
         "sql_verified": false,
-        "error": "no_data_found",
-        "confidence_tier": "low"
+        "value": null
       }
     },
     "api_response": {
@@ -169,29 +81,7 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL revenue FY20 consolidated. This period may not yet be indexed."
-    }
-  },
-  {
-    "id": "Q050",
-    "category": "out_of_corpus",
-    "question": "What was Paytm's consolidated revenue for FY21?",
-    "score": {
-      "pass": true,
-      "reason": "Correctly refused / no data",
-      "actual": {
-        "sql_verified": false,
-        "error": "no_data_found",
-        "confidence_tier": "low"
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for PAYTM revenue FY21 consolidated. This period may not yet be indexed."
+      "response_preview": "No data found for ETERNAL depreciation_and_amortisation_expenses FY26 standalone. This period may not yet be indexed."
     }
   }
 ]
