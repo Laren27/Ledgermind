@@ -137,6 +137,24 @@ METRIC_ALIASES: dict[str, str] = {
     "remeasurement of employee defined benefit plan": "exceptional_items",
     "-exchange differences in translating the financial statements of foreign": "exceptional_items",
     "(profit)/ loss on sale of property, plant and equipment (net)": "exceptional_items",
+
+    # Depreciation & Amortization mappings
+    "depreciation_and_amortisation_expense": "depreciation",
+    "depreciation_and_amortization_expense": "depreciation",
+    "depreciation_and_amortisation": "depreciation",
+    "depreciation_and_amortization": "depreciation",
+    "depreciation_expense": "depreciation",
+    "amortisation_expense": "depreciation",
+    "amortization_expense": "depreciation",
+    "depreciation_and_amortisation_expense": "depreciation",
+    "depreciation_and_amortization_expense": "depreciation",
+    "depreciation_and_amortisation": "depreciation",
+    "depreciation_and_amortization": "depreciation",
+    "depreciation_expense": "depreciation",
+
+    # Common abbreviation fallbacks
+    "d&a": "depreciation",
+    "da": "depreciation",
 }
 
 def resolve_metric(raw: str) -> str:
