@@ -268,7 +268,13 @@ def _compute_derived_totals(records: list[FinancialRecord]) -> list[FinancialRec
             exc_val = metrics["exceptional_items"][1] if "exceptional_items" in metrics else 0.0
             computed_te = round(ti_val - pbt_val + exc_val, 2)
             if "total_expenses" in metrics:
-                records[metrics["total_expenses"][0]].value = computed_te
+                te_idx, te_val = metrics["total_expenses"]
+                if abs(computed_te - te_val) > 1.0:
+                    logger.warning(
+                    "total_expenses OCR value %.2f disagrees with computed %.2f "
+                    "(derived from PBT) for %s — overwriting.", te_val, computed_te, key,
+                )
+                records[te_idx].value = computed_te
             else:
                 records.append(FinancialRecord(
                     tenant_id=records[pbt_idx].tenant_id, doc_id=records[pbt_idx].doc_id, company=key[0],
