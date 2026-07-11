@@ -109,20 +109,20 @@
     "category": "quantitative_point",
     "question": "What was ETERNAL's consolidated depreciation and amortisation expense for FY26?",
     "score": {
-      "pass": true,
-      "reason": "Value match",
+      "pass": false,
+      "reason": "sql_verified=False. error=no_data_found",
       "actual": {
-        "value": 1597.0,
-        "sql_verified": true
+        "sql_verified": false,
+        "value": null
       }
     },
     "api_response": {
       "path": "quantitative",
       "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": true,
-      "error": null,
-      "response_preview": "ETERNAL's consolidated Depreciation And Amortisation Expenses for FY26 was \u20b91,597.0 Cr."
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "no_data_found",
+      "response_preview": "No data found for ETERNAL depreciation_and_amortisation_expenses FY26 consolidated. This period may not yet be indexed."
     }
   },
   {
@@ -193,20 +193,20 @@
     "category": "quantitative_point",
     "question": "What was ETERNAL's consolidated advertisement and sales promotion expense for FY26?",
     "score": {
-      "pass": true,
-      "reason": "Value match",
+      "pass": false,
+      "reason": "sql_verified=False. error=no_data_found",
       "actual": {
-        "value": 3350.0,
-        "sql_verified": true
+        "sql_verified": false,
+        "value": null
       }
     },
     "api_response": {
       "path": "quantitative",
       "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": true,
-      "error": null,
-      "response_preview": "ETERNAL's consolidated Advertisement And Sales Promotion for FY26 was \u20b93,350.0 Cr."
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "no_data_found",
+      "response_preview": "No data found for ETERNAL advertisement_and_sales_promotion FY26 consolidated. This period may not yet be indexed."
     }
   },
   {
@@ -466,33 +466,12 @@
     "category": "out_of_corpus",
     "question": "What were ETERNAL's standalone delivery charges for FY26?",
     "score": {
-      "pass": true,
-      "reason": "Correctly refused / no data",
+      "pass": false,
+      "reason": "Unexpected: sql_verified=True error=None tier=high",
       "actual": {
-        "sql_verified": false,
-        "error": "no_data_found",
-        "confidence_tier": "low"
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL delivery_and_related_charges FY26 standalone. This period may not yet be indexed."
-    }
-  },
-  {
-    "id": "Q024",
-    "category": "quantitative_standalone",
-    "question": "What was ETERNAL's standalone depreciation expense for FY26?",
-    "score": {
-      "pass": true,
-      "reason": "Value match",
-      "actual": {
-        "value": 202.0,
-        "sql_verified": true
+        "sql_verified": true,
+        "error": null,
+        "confidence_tier": "high"
       }
     },
     "api_response": {
@@ -501,7 +480,28 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's standalone Depreciation And Amortisation Expenses for FY26 was \u20b9202.0 Cr."
+      "response_preview": "ETERNAL's standalone Delivery And Related Charges for FY26 was \u20b94,658.0 Cr."
+    }
+  },
+  {
+    "id": "Q024",
+    "category": "quantitative_standalone",
+    "question": "What was ETERNAL's standalone depreciation expense for FY26?",
+    "score": {
+      "pass": false,
+      "reason": "sql_verified=False. error=no_data_found",
+      "actual": {
+        "sql_verified": false,
+        "value": null
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "no_data_found",
+      "response_preview": "No data found for ETERNAL depreciation_and_amortisation_expenses FY26 standalone. This period may not yet be indexed."
     }
   },
   {
@@ -542,7 +542,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL defines Adjusted EBITDA as the sum of Consolidated EBITDA and share-based payment expenses, minus the rental payments made during the period that pertain to Ind AS 116 leases.\n\nSources:\n  [1] "
+      "response_preview": "ETERNAL defines Adjusted EBITDA as the sum of consolidated EBITDA and share-based payment expenses, minus the rental payments made during the period pertaining to Ind AS 116 leases.\n\nSources:\n  [1] ET"
     }
   },
   {
@@ -562,7 +562,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited uses three primary non-GAAP financial measures in its reporting: Adjusted Revenue, Adjusted EBITDA, and EBITDA.\n\nAdjusted Revenue is defined as consolidated revenue from operations plu"
+      "response_preview": "Eternal Limited uses three primary non-GAAP financial measures in its reporting: Adjusted Revenue, Adjusted EBITDA, and EBITDA. \n\nAdjusted Revenue is defined as consolidated revenue from operations pl"
     }
   },
   {
@@ -602,7 +602,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL presents non-GAAP financial measures to supplement its IND AS results as part of an overall assessment of its business performance. These measures are used to evaluate the effectiveness of bus"
+      "response_preview": "ETERNAL presents non-GAAP financial measures to supplement its IND AS results as part of an overall assessment of business performance and strategy effectiveness. These measures allow the company to c"
     }
   },
   {
@@ -622,7 +622,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The provided documents state that Eternal Limited includes information related to its material subsidiaries in its results. Additionally, the consolidated financial results for the year ended March 31"
+      "response_preview": "The provided documents state that Eternal Limited includes information related to its material subsidiaries in its reported results. The consolidated financial results for the year ended March 31, 202"
     }
   },
   {
@@ -642,7 +642,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL indicates that it provides information to assist in comparing the results of its business operations across multiple periods. This information includes details related to the company's materia"
+      "response_preview": "ETERNAL states that it uses non-GAAP measures to assist in comparing the results of its business operations across multiple periods. The provided documents do not offer further details or specific gui"
     }
   },
   {
@@ -662,7 +662,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL Limited prepares its financial results in conformity with the recognition and measurement principles laid down in the Indian Accounting Standards and other accounting principles generally acce"
+      "response_preview": "ETERNAL follows the Indian Accounting Standards for its financial reporting. Its financial results are prepared in conformity with the recognition and measurement principles laid down in these standar"
     }
   },
   {
@@ -682,7 +682,7 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "Yes, ETERNAL includes revenue not already in reported revenue from operations in its adjusted metrics. Specifically, the company defines Adjusted Revenue as consolidated revenue from operations plus a"
+      "response_preview": "Yes, ETERNAL includes revenue not already in reported revenue from operations in its adjusted metrics. Specifically, the company calculates Adjusted Revenue by taking consolidated revenue from operati"
     }
   },
   {
@@ -702,7 +702,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Deloitte Chartered Accountants audited the consolidated financial results of Eternal Limited for the year ended March 31, 2026. The audit was conducted in accordance with the Standards on Auditing spe"
+      "response_preview": "Deloitte Chartered Accountants audited the consolidated financial results of Eternal Limited for the year ended March 31, 2026. Their audit report also notes that they considered the audit and review "
     }
   },
   {
@@ -722,7 +722,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The audit provides reasonable assurance, which is defined as a high level of assurance. However, this does not serve as a guarantee that an audit conducted in accordance with Standards on Auditing wil"
+      "response_preview": "The audit provides reasonable assurance, which is defined as a high level of assurance. However, this is not a guarantee that an audit conducted in accordance with Standards on Auditing will always de"
     }
   },
   {
@@ -742,7 +742,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The provided documents do not state the auditor's specific conclusion regarding ETERNAL's status as a going concern. Instead, the excerpts outline the auditor's responsibilities, which include evaluat"
+      "response_preview": "The provided documents do not state a specific conclusion regarding ETERNAL's status as a going concern. Instead, they outline the auditor's responsibilities, which include evaluating the Group's abil"
     }
   },
   {
@@ -802,7 +802,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL complies with SEBI LODR regulations by submitting its consolidated financial results in accordance with the requirements of Regulation 33 of the SEBI (Listing Obligations and Disclosure Requir"
+      "response_preview": "Eternal Limited complies with SEBI LODR regulations by submitting its consolidated financial results in accordance with the requirements of Regulation 33 of the SEBI (Listing Obligations and Disclosur"
     }
   },
   {
@@ -810,14 +810,10 @@
     "category": "semantic_audit",
     "question": "What does the auditor communicate to those charged with governance at ETERNAL?",
     "score": {
-      "pass": false,
-      "reason": "Missing keywords in response: ['governance']",
+      "pass": true,
+      "reason": "All 4 keywords present, confidence=high",
       "actual": {
-        "confidence_tier": "high",
-        "missing_keywords": [
-          "governance"
-        ],
-        "response_preview": "the auditor communicates the planned scope and timing of the audit, as well as significant audit findings, including any significant deficiencies in internal control identified during the audit. addit"
+        "confidence_tier": "high"
       }
     },
     "api_response": {
@@ -826,7 +822,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The auditor communicates the planned scope and timing of the audit, as well as significant audit findings, including any significant deficiencies in internal control identified during the audit. Addit"
+      "response_preview": "The auditor communicates several key items to those charged with governance at ETERNAL. This includes the planned scope and timing of the audit, as well as significant audit findings, such as any sign"
     }
   },
   {
