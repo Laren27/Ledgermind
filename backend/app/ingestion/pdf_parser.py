@@ -286,19 +286,27 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
     tolerance: max x-distance (in PDF points) a word's center may be from a
         column center to be claimed by that column. If None (default),
         computed ADAPTIVELY from the actual gaps between adjacent column
-        centers: 0.95 * (half the smallest gap). This matters because
-        header text is typically centered in its column while numeric
-        values are often right-aligned within the same column width,
-        producing a systematic rightward offset (~25pt observed on a real
-        ETERNAL standalone table) that a fixed tolerance tuned for one
-        document can silently miss on another — three of five values in
-        one row missed a fixed tolerance=25.0 by margins as small as 0.03pt,
-        each one falling through into the row's description text instead
-        of being recognized as a value (root cause of e.g.
-        "depreciation_and_amortisation_expenses_55_29_97" metric-name
-        pollution). The 0.95 safety factor guarantees adjacent columns'
-        tolerance zones never overlap (2*tolerance < gap), so widening
-        tolerance can never cause cross-column bleed.
+        centers: 0.95 * (half the smallest gap).
+
+    ASSIGNMENT STRATEGY: fragment-cluster-aware greedy assignment.
+    Numeric words are first grouped into "fragment clusters" — sequences of
+    numeric words that are immediately adjacent in x-position (small gap
+    between one word's x1 and the next word's x0). This distinguishes two
+    genuinely different failure modes:
+      1. One number OCR-broken into adjacent word fragments that lost their
+         comma (e.g. "2" and "716" sitting ~4pt apart, meaning "2,716") —
+         these must be concatenated into ONE bucket.
+      2. Two genuinely distinct column values that happen to both be
+         nearest to the same (possibly miscalibrated) column center after a
+         row has a missing/blank value — these must NOT be merged; the
+         loser must be free to fall back to description text rather than
+         corrupt a bucket (confirmed root cause: PAYTM Q4FY26 "Exceptional
+         items" row, where "(186)" and "823" — far apart in x-position —
+         both computed as nearest to the same column after Q4FY26 was blank).
+    Greedy exclusivity (each column claimed once) is applied at the
+    CLUSTER level, not the individual-word level, so multi-fragment
+    clusters are treated as one candidate for one column while still
+    competing fairly against other clusters/columns.
     """
     if tolerance is None:
         if len(column_centers) >= 2:
@@ -332,6 +340,10 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
         if not found:
             rows[top] = [w]
 
+    # Max x-gap between adjacent numeric words to treat them as fragments
+    # of the same broken number rather than two independent values.
+    FRAGMENT_ADJACENCY_GAP = 8.0
+
     for row_top in sorted(rows.keys()):
         row_words = sorted(rows[row_top], key=lambda w: w["x0"])
         row_text_lower = " ".join(w["text"] for w in row_words).lower()
@@ -345,17 +357,67 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
         desc_words = []
         buckets = [[] for _ in column_centers]
 
+        # Separate numeric words from description words for this row.
+        numeric_words = []
         for w in row_words:
             text = w["text"].strip()
             cleaned = text.strip("()")
             if _is_numeric_word(cleaned) or cleaned == "-":
-                center = (w["x0"] + w["x1"]) / 2
-                distances = [abs(center - c) for c in column_centers]
-                best_idx = distances.index(min(distances))
-                if distances[best_idx] <= tolerance:
-                    buckets[best_idx].append(w)
-                    continue
-            desc_words.append(w["text"])
+                numeric_words.append(w)
+            else:
+                desc_words.append(w["text"])
+
+        # Build fragment clusters: consecutive (by x0) numeric words whose
+        # gap is small enough to be the same OCR-broken number.
+        clusters = []
+        current_cluster = []
+        for w in numeric_words:
+            if not current_cluster:
+                current_cluster = [w]
+                continue
+            prev = current_cluster[-1]
+            gap = w["x0"] - prev["x1"]
+            if gap <= FRAGMENT_ADJACENCY_GAP:
+                current_cluster.append(w)
+            else:
+                clusters.append(current_cluster)
+                current_cluster = [w]
+        if current_cluster:
+            clusters.append(current_cluster)
+
+        # For each cluster, compute its overall center (min x0 to max x1)
+        # and find candidate columns within tolerance.
+        cluster_candidates = []  # (distance, cluster, col_idx)
+        for cluster in clusters:
+            cluster_x0 = min(w["x0"] for w in cluster)
+            cluster_x1 = max(w["x1"] for w in cluster)
+            center = (cluster_x0 + cluster_x1) / 2
+            for col_idx, c in enumerate(column_centers):
+                dist = abs(center - c)
+                if dist <= tolerance:
+                    cluster_candidates.append((dist, cluster, col_idx))
+
+        # Greedy global assignment at the CLUSTER level: smallest distance
+        # first, each column claimed at most once, each cluster assigned
+        # at most once.
+        cluster_candidates.sort(key=lambda c: c[0])
+        claimed_cols = set()
+        assigned_cluster_ids = set()
+        for dist, cluster, col_idx in cluster_candidates:
+            cid = id(cluster)
+            if col_idx in claimed_cols or cid in assigned_cluster_ids:
+                continue
+            buckets[col_idx].extend(cluster)
+            claimed_cols.add(col_idx)
+            assigned_cluster_ids.add(cid)
+
+        # Any cluster that never got assigned a column (all its nearby
+        # columns were claimed by closer competitors) falls back to the
+        # description text rather than silently corrupting a bucket.
+        for cluster in clusters:
+            if id(cluster) not in assigned_cluster_ids:
+                for w in cluster:
+                    desc_words.append(w["text"])
 
         non_empty = [b for b in buckets if b]
         if len(non_empty) < MIN_VALUE_COLUMNS:
@@ -375,16 +437,10 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
             texts = [w["text"].strip() for w in bucket_sorted]
 
             # If any fragment in this bucket already contains a comma, it is
-            # a COMPLETE, correctly-extracted number (pdfplumber did not lose
-            # anything for it) — trust it alone and discard any other stray
-            # token sharing the bucket (e.g. a nearby border/rule artifact
-            # that happens to sit close enough to this column to be claimed,
-            # such as a spurious standalone "I"). Concatenating a stray token
-            # onto an already-complete number is what corrupted "7,292" into
-            # "17292" — see regression note in financial_extractor.py.
-            #
-            # Only when NO fragment has a comma do we treat this as a
-            # genuine OCR-broken number (comma lost, split across words) and
+            # a COMPLETE, correctly-extracted number — trust it alone and
+            # discard any other stray token sharing the bucket. Only when
+            # NO fragment has a comma do we treat this as a genuine
+            # OCR-broken number (comma lost, split across words) and
             # concatenate all fragments in x0 order.
             comma_fragments = [t for t in texts if ',' in t]
             if comma_fragments:
