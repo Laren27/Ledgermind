@@ -78,6 +78,16 @@ def detect_column_layout(pdf_path: str, page_idx: int):
             for i, (x0, x1, month, year) in enumerate(unique_dates[:5]):
                 fy, q = _date_to_period(month, year)
                 column_map.append((fy, None if is_annual else (q if i < 3 else None)))
+                # Use the date group's right edge (x1), not its midpoint, as the
+                # column anchor. Dates and numeric values are both right-aligned
+                # within their column in this table convention — the midpoint of
+                # a short date label is biased leftward by roughly half the
+                # label's own width relative to where the (wider, right-aligned)
+                # numbers actually sit. Confirmed via PAYTM Q4FY26: midpoint gave
+                # a uniform ~18pt leftward bias across all 5 columns, causing
+                # every value to be assigned one column too far right and the
+                # last column's value to collide/be lost entirely. Right edge
+                # matches actual value centers within ~5pt.
                 centers.append((x0 + x1) / 2)
             return column_map, centers
 
