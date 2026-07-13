@@ -90,7 +90,7 @@
     "expected_company": "ETERNAL",
     "expected_fiscal_year": "FY26",
     "expected_financial_type": "consolidated",
-    "expected_metric": "depreciation_and_amortisation_expenses",
+    "expected_metric": "depreciation",
     "expected_value": 1597.0,
     "expected_unit": "crore_inr",
     "notes": null
@@ -154,7 +154,7 @@
     "expected_company": "ETERNAL",
     "expected_fiscal_year": "FY26",
     "expected_financial_type": "consolidated",
-    "expected_metric": "advertisement_and_sales_promotion",
+    "expected_metric": "advertising",
     "expected_value": 3350.0,
     "expected_unit": "crore_inr",
     "notes": null
@@ -345,14 +345,16 @@
   },
   {
     "id": "Q023",
-    "category": "out_of_corpus",
+    "category": "quantitative_standalone",
     "question": "What were ETERNAL's standalone delivery charges for FY26?",
     "expected_path": "quantitative",
     "expected_is_blocked": false,
     "expected_confidence_tier": "low",
-    "expected_sql_verified": false,
-    "expected_error": "no_data_found",
-    "notes": "DB only contains consolidated values for this metric; standalone correctly returns empty context."
+    "expected_sql_verified": true,
+    "expected_error": null,
+    "notes": "DB only contains consolidated values for this metric; standalone correctly returns empty context.",
+    "expected_value": 4658.0,
+    "expected_unit": "crore_inr"
   },
   {
     "id": "Q024",
@@ -365,7 +367,7 @@
     "expected_company": "ETERNAL",
     "expected_fiscal_year": "FY26",
     "expected_financial_type": "standalone",
-    "expected_metric": "depreciation_and_amortisation_expenses",
+    "expected_metric": "depreciation",
     "expected_value": 202.0,
     "expected_unit": "crore_inr",
     "notes": "Standalone=202 vs consolidated=1597. 8x difference \u2014 tests Blinkit exclusion from standalone."
@@ -596,7 +598,7 @@
     "expected_confidence_tier": "high",
     "expected_keywords": [
       "internal financial controls",
-      "auditors"
+      "auditor"
     ],
     "expected_source_pages": [
       160,
