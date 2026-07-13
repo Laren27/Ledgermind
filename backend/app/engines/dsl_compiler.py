@@ -43,12 +43,11 @@ METRIC_REGISTRY = {
     "pat":                                  {"available": True,  "column": "value", "label": "PAT"},
     "employee_benefits_expense":            {"available": True,  "column": "value", "label": "Employee Benefits Expense"},
     "delivery_and_related_charges":         {"available": True,  "column": "value", "label": "Delivery and Related Charges"},
-    "depreciation_and_amortisation_expenses": {"available": True, "column": "value", "label": "Depreciation & Amortisation"},
+    "depreciation":                         {"available": True,  "column": "value", "label": "Depreciation & Amortisation"},  # <-- renamed key
     "finance_costs":                        {"available": True,  "column": "value", "label": "Finance Costs"},
     "other_income":                         {"available": True,  "column": "value", "label": "Other Income"},
     "total_expenses":                       {"available": True,  "column": "value", "label": "Total Expenses"},
     "advertisement_and_sales_promotion":    {"available": True,  "column": "value", "label": "Advertisement & Sales Promotion"},
-    # Still unavailable — registered for future corpus expansion
     "ebitda":                               {"available": False, "column": "value", "label": "EBITDA"},
     "gross_profit":                         {"available": False, "column": "value", "label": "Gross Profit"},
     "operating_expenses":                   {"available": False, "column": "value", "label": "Operating Expenses"},
@@ -66,7 +65,14 @@ METRIC_ALIASES: Dict[str, str] = {
     "net profit": "pat",
     "net income": "pat",
     "earnings": "pat",
-    "ebit": "ebitda",        # approximate — flag in response
+    "ebit": "ebitda",
+    # added — Gemini emits the fuller phrase; DB canonical name is "depreciation"
+    "depreciation_and_amortisation_expenses": "depreciation",
+    "depreciation and amortisation expenses": "depreciation",
+    "depreciation and amortisation expense": "depreciation",
+    "depreciation and amortization expense": "depreciation",
+    "depreciation and amortization": "depreciation",
+    "d&a": "depreciation",
 }
 
 # ---------------------------------------------------------------------------
