@@ -99,11 +99,11 @@ def _build_dsl_system_prompt() -> str:
         "pat":                                  "profit after tax, net profit, bottom line, PAT",
         "employee_benefits_expense":            "employee benefits, staff costs, people costs, salaries",
         "delivery_and_related_charges":         "delivery charges, logistics costs, fulfillment costs",
-        "depreciation_and_amortisation_expenses": "depreciation, amortisation, D&A",
+        "depreciation": "depreciation, amortisation, D&A",
         "finance_costs":                        "finance costs, interest expense, borrowing costs",
         "other_income":                         "other income, non-operating income",
         "total_expenses":                       "total expenses, total costs, operating costs",
-        "advertisement_and_sales_promotion":    "advertising, ad spend, marketing, sales promotion",
+        "advertising":    "advertising, ad spend, marketing, sales promotion",
     }
 
     for metric_key, meta in available.items():
@@ -138,6 +138,11 @@ def _build_dsl_system_prompt() -> str:
 
     ## RULES
     - entity: canonical ticker (ETERNAL, PAYTM, NYKAA, etc.)
+    - For comparison operations: "entity" MUST be the company named FIRST in the
+      query, and "comparison_entity" MUST be the company named SECOND.
+      Example: "Compare Eternal's and Paytm's revenue" → entity="ETERNAL",
+      comparison_entity="PAYTM" — NOT the reverse, regardless of which company
+      the question focuses on afterward.
     - fiscal_year: Indian format FY26, FY25, FY24
     - quarter: Q1/Q2/Q3/Q4 only if query is about a specific quarter; null for annual
     - financial_type: "consolidated" (default) or "standalone" only if explicitly requested
@@ -229,7 +234,13 @@ def _generate_dsl(
                 raw_dict = json.loads(cleaned)
 
             # Override entity fields with router-extracted values (more reliable)
-            if company:
+            # EXCEPT for comparison operations — router only extracts a single
+            # "company" field, which is structurally insufficient when two
+            # entities are named. Gemini's own entity/comparison_entity
+            # pairing must be preserved here.
+            is_comparison = raw_dict.get("operation") == "comparison"
+
+            if company and not is_comparison:
                 raw_dict["entity"] = company
             if fiscal_year and not raw_dict.get("fiscal_year"):
                 raw_dict["fiscal_year"] = fiscal_year
