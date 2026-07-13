@@ -38,14 +38,35 @@ SLASH_RE = re.compile(r"\s*/\s*")
 HYPHEN_SPACE_RE = re.compile(r"\s*-\s*")
 MULTIHYPHEN_RE = re.compile(r"-{2,}")
 FOOTNOTE_RE = re.compile(r"\(\d+\)$")
+TRAILING_NUMERIC_NOISE_RE = re.compile(r"(?:[/_\s]+\d{2,4}\\?)+\s*$")
 
 # --- EXPANDED OCR FIXES ---
 OCR_FIXES = {
-    "fina nee": "finance", "benefi ts": "benefits", "empl oyee": "employee", 
-    "operati ons": "operations", "equival ents": "equivalents", "invent ories": "inventories", 
-    "recei vables": "receivables", "paya bles": "payables", "taxa tion": "taxation", 
-    "depre ciation": "depreciation", "amorti sation": "amortization", "amorti zation": "amortization", 
-    "l+ll": "i+ii", "lntcrcst": "interest", "e<1uity": "equity", "capit:1i": "capital"
+    # --- Existing entries (untouched) ---
+    "fina nee": "finance", "benefi ts": "benefits", "empl oyee": "employee",
+    "operati ons": "operations", "equival ents": "equivalents", "invent ories": "inventories",
+    "recei vables": "receivables", "paya bles": "payables", "taxa tion": "taxation",
+    "depre ciation": "depreciation", "amorti sation": "amortization", "amorti zation": "amortization",
+    "l+ll": "i+ii", "lntcrcst": "interest", "e<1uity": "equity", "capit:1i": "capital",
+
+    # --- ETERNAL Q4FY26 FIXES ---
+    "profil": "profit",
+    "ror the": "for the",
+    "exce1uional": "exceptional",
+    "tcm1ination": "termination",
+    "tennination": "termination",
+    "oflcasc": "of lease",
+    "contrncts": "contracts",
+    "lmpainnent": "impairment",
+    "lmpairmcnt": "impairment",
+    "co11ected": "collected",
+
+    # --- PAYTM Q4FY26 FIXES ---
+    "pe1iod": "period",
+    "cmtent": "current",
+    "vvritten": "written",
+    "mitten": "written",
+    "vrith": "with",
 }
 
 def normalize_metric_label(raw_label: str) -> str:
@@ -56,6 +77,7 @@ def normalize_metric_label(raw_label: str) -> str:
     label = META_RE.sub("", label)
     label = UNITS_OUTSIDE_PARENS_RE.sub("", label)
     label = FOOTNOTE_RE.sub("", label)
+    label = TRAILING_NUMERIC_NOISE_RE.sub("", label)
     label = re.sub(r"[*#†%]+", "", label)
     for bad, good in OCR_FIXES.items(): label = label.replace(bad, good)
     label = re.sub(r"\bta\b", "tax", label)
@@ -86,22 +108,27 @@ METRIC_ALIASES: dict[str, str] = {
     "other expenses": "other_expenses", "total expenses": "total_expenses",
     "ebitda": "ebitda", "operating ebitda": "ebitda", "adjusted ebitda": "adjusted_ebitda",
     "ebit": "ebit", "operating profit": "operating_profit",
-    
+    "advertisement and sales promotion": "advertisement_and_sales_promotion",
+    "advertising and sales promotion": "advertisement_and_sales_promotion",
+
     # Safely isolating PBT from greedy exceptional matches
     "profit before exceptional items and tax": "profit_before_exceptional_items",
     "profit/(loss) before exceptional items and tax": "profit_before_exceptional_items",
     "profit before exceptional items": "profit_before_exceptional_items",
     "profit before tax": "profit_before_tax", "profit/(loss) before tax": "profit_before_tax",
-    "pbt": "profit_before_tax", 
+    "pbt": "profit_before_tax",
     "pat": "pat", "profit after tax": "pat", "net profit": "pat", "profit for the period": "pat", "profit for the year": "pat",
-    
+    "profit/(loss) for the period/year": "pat", "profit/(loss) for the period": "pat", "profit/(loss) for the year": "pat",
+    "profit/(loss) for the period/year": "pat",
+    "profit/(loss) for the period": "pat",
+
     # Margins and Tax
     "gross margin": "gross_margin", "ebitda margin": "ebitda_margin", "pat margin": "pat_margin",
     "tax expense": "tax_expense", "income tax expense": "tax_expense", "total tax expense": "tax_expense",
     "tax expenses": "tax_expense", "total tax expenses": "tax_expense", "taxation": "tax_expense",
-    "current tax": "current_tax", "current lax": "current_tax", "deferred tax": "deferred_tax", 
+    "current tax": "current_tax", "current lax": "current_tax", "deferred tax": "deferred_tax",
     "deferred rnx": "deferred_tax", "tax expense for the period": "tax_expense",
-    
+
     # Cash Flow, Balance Sheet, & Newly Added High-Value Items
     "cash": "cash", "cash and cash equivalents": "cash", "operating cash flow": "operating_cash_flow",
     "free cash flow": "fcf", "inventory": "inventory", "trade receivables": "receivables",
@@ -114,17 +141,17 @@ METRIC_ALIASES: dict[str, str] = {
     "net gain on mutual fund units": "net_gain_on_investments",
     "net gain on mutual funds": "net_gain_on_investments",
     "liabilities written back": "liabilities_written_back",
-    
+
     # Associate Profits (Fixes the PBT/PAT gap for Zomato and Titan)
     "share of profit/(loss) of an associate and a joint": "share_of_profit_of_associate",
     "share in (profit)/loss of associate/joint venture": "share_of_profit_of_associate",
     "~ associate•": "share_of_profit_of_associate",
-    
+
     # EPS and Ops Metrics
     "earnings per share": "eps_basic", "basic earnings per share": "eps_basic", "basic eps": "eps_basic",
     "diluted earnings per share": "eps_diluted", "diluted eps": "eps_diluted",
     "orders": "orders", "mtu": "mtu", "mau": "mau", "active users": "active_users",
-    
+
     # Exceptional Items Mappings
     "exceptional items": "exceptional_items",
     "remeasurements of the defined benefit plans": "exceptional_items",
@@ -146,13 +173,11 @@ METRIC_ALIASES: dict[str, str] = {
     "depreciation_expense": "depreciation",
     "amortisation_expense": "depreciation",
     "amortization_expense": "depreciation",
-    "depreciation_and_amortisation_expense": "depreciation",
-    "depreciation_and_amortization_expense": "depreciation",
-    "depreciation_and_amortisation": "depreciation",
-    "depreciation_and_amortization": "depreciation",
-    "depreciation_expense": "depreciation",
-
-    # Common abbreviation fallbacks
+    "depreciation_and_amortisation_expenses": "depreciation",
+    "depreciation_and_amortization_expenses": "depreciation",
+    "depreciation_expenses": "depreciation",
+    "depreciation and amortisation": "depreciation",
+    "depreciation and amortization": "depreciation",
     "d&a": "depreciation",
     "da": "depreciation",
 }
