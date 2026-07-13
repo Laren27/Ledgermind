@@ -1,0 +1,29 @@
+[
+  {
+    "id": "Q038",
+    "category": "semantic_audit",
+    "question": "What does ETERNAL's audit report say about internal controls?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "internal financial controls",
+      "auditor"
+    ],
+    "expected_source_pages": [
+      160,
+      165
+    ],
+    "notes": "Updated to match plural phrasing found in the actual RAG response."
+  },
+  {
+    "id": "cross_co_same_period_01",
+    "category": "quantitative_comparison",
+    "question": "Compare Eternal's and Paytm's consolidated revenue for Q4 FY26.",
+    "expected_path": "quantitative",
+    "expected_higher_entity": "ETERNAL",
+    "expected_value_entity_a": 7292.0,
+    "expected_value_entity_b": 2264.0,
+    "value_tolerance": 0.01
+  }
+]
