@@ -193,20 +193,20 @@
     "category": "quantitative_point",
     "question": "What was ETERNAL's consolidated advertisement and sales promotion expense for FY26?",
     "score": {
-      "pass": false,
-      "reason": "sql_verified=False. error=no_data_found",
+      "pass": true,
+      "reason": "Value match",
       "actual": {
-        "sql_verified": false,
-        "value": null
+        "value": 3350.0,
+        "sql_verified": true
       }
     },
     "api_response": {
       "path": "quantitative",
       "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL advertisement_and_sales_promotion FY26 consolidated. This period may not yet be indexed."
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Advertisement And Sales Promotion for FY26 was \u20b93,350.0 Cr."
     }
   },
   {
@@ -542,7 +542,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL defines Adjusted EBITDA as the sum of consolidated EBITDA and share-based payment expenses, minus the rental payments made during the period pertaining to Ind AS 116 leases.\n\nSources:\n  [1] ET"
+      "response_preview": "ETERNAL defines Adjusted EBITDA as the sum of Consolidated EBITDA and share-based payment expenses, minus the rental payments made during the period that pertain to Ind AS 116 leases.\n\nSources:\n  [1] "
     }
   },
   {
@@ -582,7 +582,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited defines forward-looking statements as descriptions of the intent, belief, or current expectations of senior management regarding the company's operations and financial condition. These"
+      "response_preview": "Eternal Limited defines forward-looking statements as descriptions of the intent, belief, or current expectations of senior management regarding the company's operations and financial condition, subje"
     }
   },
   {
@@ -602,7 +602,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL presents non-GAAP financial measures to supplement its IND AS results as part of an overall assessment of business performance and strategy effectiveness. These measures allow the company to c"
+      "response_preview": "ETERNAL presents non-GAAP financial measures to supplement its IND AS results as part of an overall assessment of its business performance and strategy effectiveness. These measures are used to commun"
     }
   },
   {
@@ -622,7 +622,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The provided documents state that Eternal Limited includes information related to its material subsidiaries in its reported results. The consolidated financial results for the year ended March 31, 202"
+      "response_preview": "The provided documents state that Eternal Limited includes information related to its material subsidiaries within its results. Additionally, the consolidated financial results for the year ended Marc"
     }
   },
   {
@@ -642,7 +642,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL states that it uses non-GAAP measures to assist in comparing the results of its business operations across multiple periods. The provided documents do not offer further details or specific gui"
+      "response_preview": "Eternal Limited notes that it provides information to assist in comparing the results of operations of its business over multiple periods. This information includes details related to material subsidi"
     }
   },
   {
@@ -662,7 +662,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL follows the Indian Accounting Standards for its financial reporting. Its financial results are prepared in conformity with the recognition and measurement principles laid down in these standar"
+      "response_preview": "Eternal Limited prepares its financial results in conformity with the recognition and measurement principles laid down in the Indian Accounting Standards. Additionally, the company follows other accou"
     }
   },
   {
@@ -682,7 +682,7 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "Yes, ETERNAL includes revenue not already in reported revenue from operations in its adjusted metrics. Specifically, the company calculates Adjusted Revenue by taking consolidated revenue from operati"
+      "response_preview": "Yes, ETERNAL includes revenue not already in reported revenue from operations in its adjusted metrics. Specifically, the company calculates Adjusted Revenue by adding platform fees and other charges p"
     }
   },
   {
@@ -702,7 +702,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Deloitte Chartered Accountants audited the consolidated financial results of Eternal Limited for the year ended March 31, 2026. Their audit report also notes that they considered the audit and review "
+      "response_preview": "Deloitte Chartered Accountants audited the consolidated financial results of Eternal Limited for the year ended March 31, 2026. Their audit report also notes that they considered the audit reports of "
     }
   },
   {
@@ -722,7 +722,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The audit provides reasonable assurance, which is defined as a high level of assurance. However, this is not a guarantee that an audit conducted in accordance with Standards on Auditing will always de"
+      "response_preview": "The audit provides reasonable assurance, which is described as a high level of assurance. However, this is not a guarantee that an audit conducted in accordance with SAs will always detect a material "
     }
   },
   {
@@ -802,7 +802,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited complies with SEBI LODR regulations by submitting its consolidated financial results in accordance with the requirements of Regulation 33 of the SEBI (Listing Obligations and Disclosur"
+      "response_preview": "ETERNAL Limited complies with SEBI LODR regulations by submitting its consolidated financial results for the quarter and year ended March 31, 2026, in accordance with the requirements of Regulation 33"
     }
   },
   {
@@ -822,7 +822,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The auditor communicates several key items to those charged with governance at ETERNAL. This includes the planned scope and timing of the audit, as well as significant audit findings, such as any sign"
+      "response_preview": "The auditor communicates the planned scope and timing of the audit, as well as significant audit findings, including any significant deficiencies in internal financial controls identified during the a"
     }
   },
   {
@@ -1161,7 +1161,7 @@
       "reason": "Correctly reported absence of relevant content",
       "actual": {
         "confidence_tier": "high",
-        "response_preview": "the provided documents do not contain a management discussion regarding growth drivers for q1 fy26. while the financial results provide data on segment revenues\u2014showing growth across the watches, jewe"
+        "response_preview": "the provided documents do not contain a management discussion regarding growth drivers for q1 fy26. while the financial results show revenue growth across the company's business segments\u2014watches, jewe"
       }
     },
     "api_response": {
@@ -1170,7 +1170,7 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The provided documents do not contain a management discussion regarding growth drivers for Q1 FY26. While the financial results provide data on segment revenues\u2014showing growth across the Watches, Jewe"
+      "response_preview": "The provided documents do not contain a management discussion regarding growth drivers for Q1 FY26. While the financial results show revenue growth across the company's business segments\u2014Watches, Jewe"
     }
   },
   {
