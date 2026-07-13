@@ -4,54 +4,11 @@
     "category": "quantitative_point",
     "question": "What was ETERNAL's consolidated depreciation and amortisation expense for FY26?",
     "score": {
-      "pass": false,
-      "reason": "sql_verified=False. error=no_data_found",
+      "pass": true,
+      "reason": "Value match",
       "actual": {
-        "sql_verified": false,
-        "value": null
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL depreciation_and_amortisation_expenses FY26 consolidated. This period may not yet be indexed."
-    }
-  },
-  {
-    "id": "Q010",
-    "category": "quantitative_point",
-    "question": "What was ETERNAL's consolidated advertisement and sales promotion expense for FY26?",
-    "score": {
-      "pass": false,
-      "reason": "sql_verified=False. error=no_data_found",
-      "actual": {
-        "sql_verified": false,
-        "value": null
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL advertisement_and_sales_promotion FY26 consolidated. This period may not yet be indexed."
-    }
-  },
-  {
-    "id": "Q023",
-    "category": "out_of_corpus",
-    "question": "What were ETERNAL's standalone delivery charges for FY26?",
-    "score": {
-      "pass": false,
-      "reason": "Unexpected: sql_verified=True error=None tier=high",
-      "actual": {
-        "sql_verified": true,
-        "error": null,
-        "confidence_tier": "high"
+        "value": 1597.0,
+        "sql_verified": true
       }
     },
     "api_response": {
@@ -60,7 +17,7 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's standalone Delivery And Related Charges for FY26 was \u20b94,658.0 Cr."
+      "response_preview": "ETERNAL's consolidated Depreciation for FY26 was \u20b91,597.0 Cr."
     }
   },
   {
@@ -68,20 +25,20 @@
     "category": "quantitative_standalone",
     "question": "What was ETERNAL's standalone depreciation expense for FY26?",
     "score": {
-      "pass": false,
-      "reason": "sql_verified=False. error=no_data_found",
+      "pass": true,
+      "reason": "Value match",
       "actual": {
-        "sql_verified": false,
-        "value": null
+        "value": 202.0,
+        "sql_verified": true
       }
     },
     "api_response": {
       "path": "quantitative",
       "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL depreciation_and_amortisation_expenses FY26 standalone. This period may not yet be indexed."
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's standalone Depreciation for FY26 was \u20b9202.0 Cr."
     }
   }
 ]
