@@ -389,11 +389,9 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
         # and find candidate columns within tolerance.
         cluster_candidates = []  # (distance, cluster, col_idx)
         for cluster in clusters:
-            cluster_x0 = min(w["x0"] for w in cluster)
             cluster_x1 = max(w["x1"] for w in cluster)
-            center = (cluster_x0 + cluster_x1) / 2
             for col_idx, c in enumerate(column_centers):
-                dist = abs(center - c)
+                dist = abs(cluster_x1 - c)
                 if dist <= tolerance:
                     cluster_candidates.append((dist, cluster, col_idx))
 
@@ -453,3 +451,104 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
         financial_data.append([description] + values)
 
     return financial_data
+
+
+def find_fully_populated_row_centers(pdf_path, page_index, num_cols, below_top=0.0,
+                                      adjacency_gap=8.0, max_below=400.0):
+    """
+    Scan rows on a page, below `below_top` (typically the header row's
+    `top` coordinate), and return the right edges / x1 anchors of the first row whose
+    numeric values -- after the same fragment-clustering used by
+    extract_financials_positional() -- produce exactly `num_cols` clusters,
+    each containing at least one genuine digit.
+
+    WHY THIS EXISTS: detect_column_layout() previously derived
+    column_centers from the HEADER row's date-word bounding boxes. Header
+    date labels are narrow and systematically left-biased relative to
+    where the (wider, right-aligned) numeric values in the data rows
+    actually center -- confirmed on PAYTM Q4FY26 as a uniform ~18pt
+    leftward bias. Any single header-relative anchor formula (midpoint or
+    right-edge) that works for one document's alignment convention breaks
+    another's -- confirmed via regression: switching to right-edge fixed
+    PAYTM's Exceptional-items row but corrupted ETERNAL's Total_expenses
+    row into implausible tiny values. Anchoring on a real, fully-populated
+    DATA row instead sidesteps the header-vs-value alignment mismatch
+    entirely: it measures actual value-column x-positions directly, per
+    document, with no universal header-to-value offset assumption.
+
+    The digit-content check guards against a real false positive found in
+    PAYTM Q4FY26: the header's "(Audited)/(Unaudited)" label row, and the
+    bare "I I I I I" row above it, are each made of standalone "I" tokens
+    (OCR misreads of "1") -- one per column, no adjacent digits to merge
+    into. Both rows satisfy "exactly num_cols clusters" just as validly as
+    the real Revenue row beneath them, and since this function returns the
+    FIRST matching row scanning top-to-bottom, it was locking onto those
+    label rows instead of a real data row. A cluster only counts as a
+    genuine value if it contains at least one actual digit, or is a bare
+    "-" (nil placeholder).
+
+    max_below bounds the scan to the table immediately following the
+    header (default 400pt) so a coincidentally-matching row from an
+    unrelated table further down the page can't be picked up.
+
+    Returns None if no fully-populated row is found within range --
+    caller should fall back to header-derived centers in that case.
+    """
+    with pdfplumber.open(pdf_path) as pdf:
+        page = pdf.pages[page_index]
+        words = page.extract_words()
+
+    if not words:
+        return None
+
+    rows: dict = {}
+    for w in words:
+        top = w["top"]
+        if top <= below_top + 5.0 or top > below_top + max_below:
+            continue
+        found = False
+        for row_top in rows.keys():
+            if abs(top - row_top) <= 3.0:
+                rows[row_top].append(w)
+                found = True
+                break
+        if not found:
+            rows[top] = [w]
+
+    def _cluster_has_real_value(cluster):
+        texts = [w["text"].strip() for w in cluster]
+        if all(t == "-" for t in texts):
+            return True
+        return any(any(ch.isdigit() for ch in t) for t in texts)
+
+    for row_top in sorted(rows.keys()):
+        row_words = sorted(rows[row_top], key=lambda w: w["x0"])
+        numeric_words = []
+        for w in row_words:
+            cleaned = w["text"].strip().strip("()")
+            if _is_numeric_word(cleaned):
+                numeric_words.append(w)
+
+        clusters = []
+        current_cluster = []
+        for w in numeric_words:
+            if not current_cluster:
+                current_cluster = [w]
+                continue
+            prev = current_cluster[-1]
+            gap = w["x0"] - prev["x1"]
+            if gap <= adjacency_gap:
+                current_cluster.append(w)
+            else:
+                clusters.append(current_cluster)
+                current_cluster = [w]
+        if current_cluster:
+            clusters.append(current_cluster)
+
+        if len(clusters) == num_cols and all(_cluster_has_real_value(c) for c in clusters):
+            anchors = []
+            for cluster in clusters:
+                anchors.append(max(w["x1"] for w in cluster))
+            return anchors
+
+    return None
