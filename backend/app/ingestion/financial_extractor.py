@@ -5,7 +5,7 @@ import pdfplumber
 
 from .entity_resolver import resolve_metric, METRIC_ALIASES
 from .models import BlockType, FinancialRecord, FinancialType, PageBlock
-from .pdf_parser import extract_financials, extract_financials_positional
+from .pdf_parser import extract_financials, extract_financials_positional, find_fully_populated_row_centers
 from .section_classifier import get_blocks_by_type
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,108 @@ def _date_to_period(month: int, year: int) -> tuple[str, str]:
         fy_num = str(year)[2:]
     return f"FY{fy_num}", MONTH_TO_QUARTER[month]
 
+def _refine_centers_with_data_row(pdf_path, page_idx, header_row_top, column_map, centers):
+    """
+    Override header-derived centers with measurements from a real,
+    fully-populated data row, when one exists on this page. See
+    find_fully_populated_row_centers() in pdf_parser.py for why.
+    """
+    refined = find_fully_populated_row_centers(
+        pdf_path, page_idx, num_cols=len(column_map), below_top=header_row_top,
+    )
+    return refined if refined is not None else centers
+
+
+_MONTH_ABBR = {
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+}
+_MONTH_NAME_TOKEN_RE = re.compile(r"^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", re.IGNORECASE)
+_YEAR_TOKEN_RE = re.compile(r"^(19|20)\d{2}$")
+
+def _extract_month_name_dates(words):
+    """
+    Detect "Month DD, YYYY" style header dates (e.g. "March 31, 2026"),
+    as an alternative to numeric_dates' DD.MM.YYYY format.
+
+    WHY THIS EXISTS: PAYTM's header uses month names, not dot-separated
+    numeric dates -- numeric_dates found ZERO matches on that page (word
+    tokens are "March", "31,", "2026" separately, never "31.03.2026"),
+    so detect_column_layout() fell through to Strategy 2's num_cols>=4
+    geometric branch. That branch guesses each column's month by
+    scanning a wide 60pt window for the nearest month-name word to
+    col_0_center -- confirmed to misfire on PAYTM, grabbing "December"
+    (belonging to the NEXT column's label) instead of "March" for
+    column 0, mislabeling every period by one fiscal year and one
+    quarter (FY27 Q3 instead of FY26 Q4).
+
+    This function parses month-name dates directly, per column, from
+    tightly-adjacent word triples (month, day, year) in the SAME header
+    row -- no wide guessing window -- and returns entries in the same
+    (x0, x1, top, month, year) shape as numeric_dates, so all downstream
+    row-clustering / column-count / period-assignment logic is reused
+    unchanged and doesn't need its own separate path.
+    """
+    rows: dict = {}
+    for w in words:
+        top = w["top"]
+        found = False
+        for row_top in rows.keys():
+            if abs(top - row_top) <= 3.0:
+                rows[row_top].append(w)
+                found = True
+                break
+        if not found:
+            rows[top] = [w]
+
+    candidate_rows: dict = {}
+    for row_top, row_words in rows.items():
+        row_words_sorted = sorted(row_words, key=lambda w: w["x0"])
+        row_results = []
+        for i, w in enumerate(row_words_sorted):
+            text = w["text"].strip(".,()[]").lower()
+            mm = _MONTH_NAME_TOKEN_RE.match(text)
+            if not mm:
+                continue
+            month = _MONTH_ABBR[mm.group(1)]
+            year = None
+            year_word = None
+            prev_x1 = w["x1"]
+            for j in range(i + 1, min(i + 4, len(row_words_sorted))):
+                nxt = row_words_sorted[j]
+                if nxt["x0"] - prev_x1 > 40.0:
+                    break
+                ytext = nxt["text"].strip(".,()[]")
+                if _YEAR_TOKEN_RE.match(ytext):
+                    year = int(ytext)
+                    year_word = nxt
+                    break
+                prev_x1 = nxt["x1"]
+            if year is not None:
+                row_results.append((w["x0"], year_word["x1"], row_top, month, year))
+        
+        # GUARD: Only accept rows in the upper portion of the page (top <= 350.0) 
+        # that contain at least 2 date columns. This prevents bottom-of-page narrative 
+        # footnotes (like Eternal Page 40) from being misidentified as table headers, 
+        # and prevents single-date title lines from overriding multi-column fallbacks.
+        if len(row_results) >= 2 and row_top <= 350.0:
+            candidate_rows[row_top] = row_results
+
+    if not candidate_rows:
+        return []
+
+    # Pick the single row with the most date matches -- this is the real
+    # table header. Prevents a stray date elsewhere on the page (e.g. a
+    # title line like "...ended March 31, 2026") from being merged into
+    # the header row by the CALLER's looser 30pt clustering tolerance,
+    # which was inflating a 5-column header into 6 candidates and
+    # silently dropping a genuine column via the [:5] slice downstream.
+    # Confirmed root cause on PAYTM Q4FY26: a title-line date 21.9pt
+    # above the real header line was getting merged in.
+    best_row_top = max(candidate_rows.keys(), key=lambda t: len(candidate_rows[t]))
+    return candidate_rows[best_row_top]
+
+
 def detect_column_layout(pdf_path: str, page_idx: int):
     with pdfplumber.open(pdf_path) as pdf:
         page = pdf.pages[page_idx]
@@ -49,6 +151,9 @@ def detect_column_layout(pdf_path: str, page_idx: int):
             month, year = int(match.group(2)), int(match.group(3))
             if 1 <= month <= 12 and year > 2000:
                 numeric_dates.append((w["x0"], w["x1"], w["top"], month, year))
+
+    if not numeric_dates:
+        numeric_dates = _extract_month_name_dates(words)
 
     if numeric_dates:
         rows = {}
@@ -88,7 +193,8 @@ def detect_column_layout(pdf_path: str, page_idx: int):
                 # every value to be assigned one column too far right and the
                 # last column's value to collide/be lost entirely. Right edge
                 # matches actual value centers within ~5pt.
-                centers.append((x0 + x1) / 2)
+                centers.append(x1)
+            centers = _refine_centers_with_data_row(pdf_path, page_idx, header_row_top, column_map, centers)
             return column_map, centers
 
     # Strategy 2: Geometric Partitioning
@@ -119,7 +225,7 @@ def detect_column_layout(pdf_path: str, page_idx: int):
 
     num_cols = len(unique_years)
     column_map = []
-    centers = [(w["x0"] + w["x1"]) / 2 for w in unique_years]
+    centers = [w["x1"] for w in unique_years]
 
     def _extract_year(text: str) -> int:
         text = text.strip(".,()[]*#").upper()
@@ -134,6 +240,7 @@ def detect_column_layout(pdf_path: str, page_idx: int):
         if len(set(column_map)) != len(column_map):
             base_year = _extract_year(unique_years[0]["text"])
             column_map = [(_date_to_period(3, base_year - i)[0], None) for i in range(num_cols)]
+        centers = _refine_centers_with_data_row(pdf_path, page_idx, header_row_top, column_map, centers)
         return column_map, centers
 
     if num_cols >= 4:
@@ -164,6 +271,7 @@ def detect_column_layout(pdf_path: str, page_idx: int):
         ])
         if num_cols >= 4: column_map.append((base_fy, None))
         if num_cols >= 5: column_map.append((last_year_fy, None))
+        centers = _refine_centers_with_data_row(pdf_path, page_idx, header_row_top, column_map, centers)
         return column_map[:num_cols], centers[:num_cols]
 
     return None, None
