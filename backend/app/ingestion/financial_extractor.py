@@ -184,15 +184,16 @@ def detect_column_layout(pdf_path: str, page_idx: int):
                 fy, q = _date_to_period(month, year)
                 column_map.append((fy, None if is_annual else (q if i < 3 else None)))
                 # Use the date group's right edge (x1), not its midpoint, as the
-                # column anchor. Dates and numeric values are both right-aligned
+                # fallback column anchor. Dates and numeric values are both right-aligned
                 # within their column in this table convention — the midpoint of
                 # a short date label is biased leftward by roughly half the
                 # label's own width relative to where the (wider, right-aligned)
                 # numbers actually sit. Confirmed via PAYTM Q4FY26: midpoint gave
                 # a uniform ~18pt leftward bias across all 5 columns, causing
                 # every value to be assigned one column too far right and the
-                # last column's value to collide/be lost entirely. Right edge
-                # matches actual value centers within ~5pt.
+                # last column's value to collide/be lost entirely.
+                # NOTE: _refine_centers_with_data_row below does the real work by
+                # anchoring to actual data rows; x1 is just the correct fallback formula.
                 centers.append(x1)
             centers = _refine_centers_with_data_row(pdf_path, page_idx, header_row_top, column_map, centers)
             return column_map, centers
@@ -399,6 +400,36 @@ def _compute_derived_totals(records: list[FinancialRecord]) -> list[FinancialRec
                     ticker=records[pbt_idx].ticker, fiscal_year=key[1], quarter=key[2], financial_type=key[3],
                     metric="total_expenses", value=computed_te, unit="crore_inr", filing_date=records[pbt_idx].filing_date,
                 ))
+
+        # DERIVE profit_before_tax when the source document never states it
+        # directly (e.g. PAYTM standalone: only "profit before exceptional
+        # items and tax" + "exceptional items" are printed; "profit before
+        # tax" is never its own line in the main table). Must run BEFORE the
+        # tax_expense derivation below, since that depends on PBT existing.
+        if "profit_before_tax" not in metrics and "profit_before_exceptional_items" in metrics:
+            pbei_idx, pbei_val = metrics["profit_before_exceptional_items"]
+            exc_val = metrics["exceptional_items"][1] if "exceptional_items" in metrics else 0.0
+            derived_pbt = round(pbei_val + exc_val, 2)
+            records.append(FinancialRecord(
+                tenant_id=records[pbei_idx].tenant_id, doc_id=records[pbei_idx].doc_id, company=key[0],
+                ticker=records[pbei_idx].ticker, fiscal_year=key[1], quarter=key[2], financial_type=key[3],
+                metric="profit_before_tax", value=derived_pbt, unit="crore_inr", filing_date=records[pbei_idx].filing_date,
+            ))
+            metrics["profit_before_tax"] = (len(records) - 1, derived_pbt)
+
+        # DERIVE tax_expense when the source document never states it
+        # directly (same PAYTM-standalone gap: PAT is printed but the tax
+        # line is not, in the main quarterly table). Requires PBT (possibly
+        # just derived above) and PAT both present.
+        if "tax_expense" not in metrics and "profit_before_tax" in metrics and "pat" in metrics:
+            pbt_idx2, pbt_val2 = metrics["profit_before_tax"]
+            pat_val = metrics["pat"][1]
+            derived_tax = round(pbt_val2 - pat_val, 2)
+            records.append(FinancialRecord(
+                tenant_id=records[pbt_idx2].tenant_id, doc_id=records[pbt_idx2].doc_id, company=key[0],
+                ticker=records[pbt_idx2].ticker, fiscal_year=key[1], quarter=key[2], financial_type=key[3],
+                metric="tax_expense", value=derived_tax, unit="crore_inr", filing_date=records[pbt_idx2].filing_date,
+            ))
     return records
 
 IDENTITY_TOLERANCE_PCT = 0.5 
