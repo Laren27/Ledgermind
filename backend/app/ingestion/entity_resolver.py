@@ -67,6 +67,7 @@ OCR_FIXES = {
     "vvritten": "written",
     "mitten": "written",
     "vrith": "with",
+    "proft": "profit",
 }
 
 def normalize_metric_label(raw_label: str) -> str:
@@ -113,6 +114,8 @@ METRIC_ALIASES: dict[str, str] = {
 
     # Safely isolating PBT from greedy exceptional matches
     "profit before exceptional items and tax": "profit_before_exceptional_items",
+    "profit before share of profit of an associate and a joint venture exceptional items and tax": "profit_before_exceptional_items",
+    "profit/(loss) before share of profit/(loss) of associates/joint ventures exceptional items and tax": "profit_before_exceptional_items",
     "profit/(loss) before exceptional items and tax": "profit_before_exceptional_items",
     "profit before exceptional items": "profit_before_exceptional_items",
     "profit before tax": "profit_before_tax", "profit/(loss) before tax": "profit_before_tax",
@@ -187,7 +190,14 @@ def resolve_metric(raw: str) -> str:
     if not normalized_text: return "unmapped_metric"
     canonical = METRIC_ALIASES.get(normalized_text)
     if canonical: return canonical
-    for alias, canonical_name in METRIC_ALIASES.items():
+    # Longest-alias-first: a more specific/longer phrase match should win
+    # over a shorter generic one that happens to be a substring of it.
+    # Confirmed root cause of a real bug: "profit before exceptional items
+    # and tax" (OCR-typo'd as "proft...") and "...share of profit...
+    # exceptional items and tax" were both falling through to the
+    # generic "exceptional items" alias, silently overwriting the real
+    # Exceptional Items line's values.
+    for alias, canonical_name in sorted(METRIC_ALIASES.items(), key=lambda kv: -len(kv[0])):
         if alias in normalized_text or normalized_text in alias:
             return canonical_name
     logger.warning("Unknown metric: '%s' (normalized: '%s') — storing as-is", raw, normalized_text)
