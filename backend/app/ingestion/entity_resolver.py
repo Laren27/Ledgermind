@@ -157,16 +157,16 @@ METRIC_ALIASES: dict[str, str] = {
 
     # Exceptional Items Mappings
     "exceptional items": "exceptional_items",
-    "remeasurements of the defined benefit plans": "exceptional_items",
-    "remeasurements of the defined benetit plans": "exceptional_items",
-    "remeasuremcnls of the defined benefit plans 0 0": "exceptional_items",
-    "exchange differences on translation of foreign operations": "exceptional_items",
-    "exchange differences on trnnslation of foreign operations 8 2": "exceptional_items",
-    "exchange differences on lranslation of foreign operations 0 5 i": "exceptional_items",
-    "-remeasurement of employee defined benefit plan": "exceptional_items",
-    "remeasurement of employee defined benefit plan": "exceptional_items",
-    "-exchange differences in translating the financial statements of foreign": "exceptional_items",
-    "(profit)/ loss on sale of property, plant and equipment (net)": "exceptional_items",
+    "remeasurements of the defined benefit plans": "oci_remeasurement_defined_benefit",
+    "remeasurements of the defined benetit plans": "oci_remeasurement_defined_benefit",
+    "remeasuremcnls of the defined benefit plans 0 0": "oci_remeasurement_defined_benefit",
+    "exchange differences on translation of foreign operations": "oci_fx_translation",
+    "exchange differences on trnnslation of foreign operations 8 2": "oci_fx_translation",
+    "exchange differences on lranslation of foreign operations 0 5 i": "oci_fx_translation",
+    "-remeasurement of employee defined benefit plan": "oci_remeasurement_defined_benefit",
+    "remeasurement of employee defined benefit plan": "oci_remeasurement_defined_benefit",
+    "-exchange differences in translating the financial statements of foreign": "oci_fx_translation",
+    "(profit)/ loss on sale of property, plant and equipment (net)": "ppe_disposal_gain_loss",
 
     # Depreciation & Amortization mappings
     "depreciation_and_amortisation_expense": "depreciation",
