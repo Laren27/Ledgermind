@@ -40,7 +40,7 @@ TYPO_MAP = {
     "Advcniscmcnt": "Advertisement"
 }
 
-_VALUE_TOKEN_RE = re.compile(r"^\(?-?[\d,]*\.?\d+\)?$|^-$")
+_VALUE_TOKEN_RE = re.compile(r"^[(/]?-?[\d,]*\.?\d+[)\\]?$|^-$")
 MIN_VALUE_COLUMNS = 2  # a real financial data row always has at least 2 periods
 
 
@@ -96,8 +96,8 @@ def clean_financial_number(val):
         return 0.0
 
     # Check for negatives before stripping formatting
-    is_negative = '(' in val and ')' in val
-    val = val.replace('(', '').replace(')', '')
+    is_negative = ('(' in val and ')' in val) or ('/' in val and '\\' in val)
+    val = val.replace('(', '').replace(')', '').replace('/', '').replace('\\', '')
 
     # Fix OCR comma/period confusion (e.g., '17.634' -> '17634')
     # If a period is followed by exactly 3 digits at the end, it is a misread comma
@@ -261,7 +261,7 @@ def extract_financials(pdf_path, page_index):
 # SAME column x-range and get concatenated in x0 order.
 # ---------------------------------------------------------------------------
 
-_NUMERIC_WORD_RE = re.compile(r"^\(?-?[\d,]*\.?\d+\)?$|^-$|^I$")
+_NUMERIC_WORD_RE = re.compile(r"^[(/]?-?[\d,]*\.?\d+[)\\]?$|^-$|^I$")
 
 
 def _is_numeric_word(text: str) -> bool:
@@ -283,10 +283,10 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
     column_centers: list[float], the x-center of each detected column header,
         in left-to-right order, aligned with the column_map returned
         alongside it by detect_column_layout() in financial_extractor.py.
-    tolerance: max x-distance (in PDF points) a word's center may be from a
-        column center to be claimed by that column. If None (default),
-        computed ADAPTIVELY from the actual gaps between adjacent column
-        centers: 0.95 * (half the smallest gap).
+    tolerance: max x-distance (in PDF points) a word's right-edge (x1) may be
+        from a column anchor (x1) to be claimed by that column. If None
+        (default), computed ADAPTIVELY from the actual gaps between adjacent
+        column anchors: 0.95 * (half the smallest gap).
 
     ASSIGNMENT STRATEGY: fragment-cluster-aware greedy assignment.
     Numeric words are first grouped into "fragment clusters" — sequences of
@@ -297,7 +297,7 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
          comma (e.g. "2" and "716" sitting ~4pt apart, meaning "2,716") —
          these must be concatenated into ONE bucket.
       2. Two genuinely distinct column values that happen to both be
-         nearest to the same (possibly miscalibrated) column center after a
+         nearest to the same (possibly miscalibrated) column anchor after a
          row has a missing/blank value — these must NOT be merged; the
          loser must be free to fall back to description text rather than
          corrupt a bucket (confirmed root cause: PAYTM Q4FY26 "Exceptional
@@ -385,7 +385,7 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
         if current_cluster:
             clusters.append(current_cluster)
 
-        # For each cluster, compute its overall center (min x0 to max x1)
+        # For each cluster, compute its overall right edge (max x1)
         # and find candidate columns within tolerance.
         cluster_candidates = []  # (distance, cluster, col_idx)
         for cluster in clusters:
@@ -457,7 +457,7 @@ def find_fully_populated_row_centers(pdf_path, page_index, num_cols, below_top=0
                                       adjacency_gap=8.0, max_below=400.0):
     """
     Scan rows on a page, below `below_top` (typically the header row's
-    `top` coordinate), and return the right edges / x1 anchors of the first row whose
+    `top` coordinate), and return the right edges (x1 anchors) of the first row whose
     numeric values -- after the same fragment-clustering used by
     extract_financials_positional() -- produce exactly `num_cols` clusters,
     each containing at least one genuine digit.
@@ -492,7 +492,7 @@ def find_fully_populated_row_centers(pdf_path, page_index, num_cols, below_top=0
     unrelated table further down the page can't be picked up.
 
     Returns None if no fully-populated row is found within range --
-    caller should fall back to header-derived centers in that case.
+    caller should fall back to header-derived anchors in that case.
     """
     with pdfplumber.open(pdf_path) as pdf:
         page = pdf.pages[page_index]
@@ -525,7 +525,7 @@ def find_fully_populated_row_centers(pdf_path, page_index, num_cols, below_top=0
         row_words = sorted(rows[row_top], key=lambda w: w["x0"])
         numeric_words = []
         for w in row_words:
-            cleaned = w["text"].strip().strip("()")
+            cleaned = w["text"].strip().strip("()/\\")
             if _is_numeric_word(cleaned):
                 numeric_words.append(w)
 
