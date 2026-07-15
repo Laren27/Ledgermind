@@ -96,7 +96,11 @@ def _build_dsl_system_prompt() -> str:
     ALIASES = {
         "revenue":                              "revenue from operations, top line, turnover",
         "total_income":                         "total income, revenue plus other income",
-        "pat":                                  "profit after tax, net profit, bottom line, PAT",
+        "other_operating_revenue":              "other operating revenue, secondary revenue line",
+        "pat":                                  "profit after tax, net profit, bottom line, PAT (AFTER tax is deducted)",
+        "profit_before_tax":                    "profit before tax, PBT (BEFORE tax is deducted — do NOT confuse with PAT)",
+        "tax_expense":                          "tax expense, income tax expense, total tax",
+        "exceptional_items":                    "exceptional items, one-off items",
         "employee_benefits_expense":            "employee benefits, staff costs, people costs, salaries",
         "delivery_and_related_charges":         "delivery charges, logistics costs, fulfillment costs",
         "depreciation": "depreciation, amortisation, D&A",
@@ -125,7 +129,11 @@ def _build_dsl_system_prompt() -> str:
     ## CRITICAL MAPPING RULES
     - "other income" → "other_income"  (NOT "total_income")
     - "net profit" / "profit after tax" → "pat"
+    - "profit before tax" / "PBT" → "profit_before_tax"  (NEVER "pat" — PBT and PAT
+      are DIFFERENT numbers; PBT is measured BEFORE tax is subtracted, PAT is AFTER)
     - "total income" → "total_income"  (revenue PLUS other income)
+    - "other operating revenue" → "other_operating_revenue"  (NOT "revenue" —
+      this is a SEPARATE sub-line some companies report alongside main revenue)
     - "revenue" / "revenue from operations" → "revenue"
     - You MUST use the exact metric key string from the AVAILABLE list above.
     - If the user asks for a metric not in either list, pick the closest available match.
