@@ -155,7 +155,18 @@ METRIC_ALIASES: dict[str, str] = {
     "diluted earnings per share": "eps_diluted", "diluted eps": "eps_diluted",
     "orders": "orders", "mtu": "mtu", "mau": "mau", "active users": "active_users",
 
-    # Exceptional Items Mappings
+    # Exceptional Items Mappings — kept narrowly scoped to the actual
+    # "Exceptional items" P&L line only. Previously several distinct OCI/
+    # notes line items (FX translation, remeasurement of defined benefit
+    # plans, PPE disposal gain/loss) were all collapsed into this same
+    # canonical name. When the real Exceptional Items row had a genuinely
+    # blank cell for a period, one of these unrelated rows' value for that
+    # same period silently backfilled the gap via first-write-wins dedup
+    # in extract_all_financial_records (confirmed: PAYTM FY26 Q3
+    # consolidated showed exceptional_items=43.0, which is actually that
+    # period's "Exchange differences on translation" value — the real
+    # Exceptional Items row is blank for Q3FY26). Splitting these into
+    # their own canonical names eliminates the whole collision class.
     "exceptional items": "exceptional_items",
     "remeasurements of the defined benefit plans": "oci_remeasurement_defined_benefit",
     "remeasurements of the defined benetit plans": "oci_remeasurement_defined_benefit",
