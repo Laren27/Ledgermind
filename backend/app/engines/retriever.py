@@ -163,8 +163,20 @@ def _build_filter(
         )
 
     if financial_type:
+        # Match the requested financial_type OR chunks that were never
+        # scoped to either type (narrative/general content — see
+        # section_classifier.py's classify_blocks for why FINANCIAL_STATEMENT
+        # is the only block_type that gets a real financial_type tag).
+        # A plain MatchValue-only filter would silently exclude all
+        # untagged narrative chunks regardless of which financial_type
+        # the query defaults to.
         must_conditions.append(
-            FieldCondition(key="financial_type", match=MatchValue(value=financial_type))
+            Filter(
+                should=[
+                    FieldCondition(key="financial_type", match=MatchValue(value=financial_type)),
+                    FieldCondition(key="financial_type", match=MatchValue(value="unknown")),
+                ]
+            )
         )
 
     return Filter(must=must_conditions)
