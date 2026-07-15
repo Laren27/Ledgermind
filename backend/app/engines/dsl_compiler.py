@@ -40,10 +40,14 @@ logger = logging.getLogger(__name__)
 METRIC_REGISTRY = {
     "revenue":                              {"available": True,  "column": "value", "label": "Revenue"},
     "total_income":                         {"available": True,  "column": "value", "label": "Total Income"},
+    "other_operating_revenue":              {"available": True,  "column": "value", "label": "Other Operating Revenue"},
     "pat":                                  {"available": True,  "column": "value", "label": "PAT"},
+    "profit_before_tax":                    {"available": True,  "column": "value", "label": "Profit Before Tax"},
+    "tax_expense":                          {"available": True,  "column": "value", "label": "Tax Expense"},
+    "exceptional_items":                    {"available": True,  "column": "value", "label": "Exceptional Items"},
     "employee_benefits_expense":            {"available": True,  "column": "value", "label": "Employee Benefits Expense"},
     "delivery_and_related_charges":         {"available": True,  "column": "value", "label": "Delivery and Related Charges"},
-    "depreciation":                         {"available": True,  "column": "value", "label": "Depreciation & Amortisation"},  # <-- renamed key
+    "depreciation":                         {"available": True,  "column": "value", "label": "Depreciation & Amortisation"},
     "finance_costs":                        {"available": True,  "column": "value", "label": "Finance Costs"},
     "other_income":                         {"available": True,  "column": "value", "label": "Other Income"},
     "total_expenses":                       {"available": True,  "column": "value", "label": "Total Expenses"},
@@ -53,7 +57,6 @@ METRIC_REGISTRY = {
     "operating_expenses":                   {"available": False, "column": "value", "label": "Operating Expenses"},
 }
 
-# Canonical aliases: what the LLM might say → what we call it internally
 METRIC_ALIASES: Dict[str, str] = {
     "revenue from operations": "revenue",
     "net revenue": "revenue",
@@ -61,12 +64,23 @@ METRIC_ALIASES: Dict[str, str] = {
     "total revenue": "revenue",
     "top line": "revenue",
     "total income": "total_income",
+    "other operating revenue": "other_operating_revenue",
     "profit after tax": "pat",
     "net profit": "pat",
     "net income": "pat",
     "earnings": "pat",
+    # Explicit, unambiguous aliases so the LLM cannot conflate PBT with PAT —
+    # confirmed root cause of a real bug: Gemini emitted metric="pat" when
+    # asked for "profit before tax" for both PAYTM and TITAN, since
+    # "profit_before_tax" was entirely absent from METRIC_REGISTRY, giving
+    # the model no correct option to choose from at all.
+    "profit before tax": "profit_before_tax",
+    "pbt": "profit_before_tax",
+    "profit before taxes": "profit_before_tax",
+    "tax expense": "tax_expense",
+    "income tax expense": "tax_expense",
+    "exceptional items": "exceptional_items",
     "ebit": "ebitda",
-    # added — Gemini emits the fuller phrase; DB canonical name is "depreciation"
     "depreciation_and_amortisation_expenses": "depreciation",
     "depreciation and amortisation expenses": "depreciation",
     "depreciation and amortisation expense": "depreciation",
