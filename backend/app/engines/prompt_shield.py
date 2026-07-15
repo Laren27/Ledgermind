@@ -77,7 +77,13 @@ TRADING_ADVICE_PATTERNS: List[BlockPattern] = [
     ),
     # "is [company] a good investment / buy / stock to buy"
     BlockPattern(
-        _p(r"\bis\s+\w+(\s+\w+)?\s+(a\s+good|a\s+great|a\s+bad|a\s+strong)\s+(investment|buy|stock|pick|bet)\b"),
+        # Allow up to 2 intervening words (e.g. "long-term", "short-term")
+        # between the qualifier and the target noun — confirmed gap: "is
+        # Titan a good LONG-TERM investment" was not matching because the
+        # original pattern required "a good"/"a great"/etc. to sit
+        # immediately adjacent to "investment"/"buy"/etc. with zero
+        # tolerance for a natural modifier in between.
+        _p(r"\bis\s+\w+(\s+\w+)?\s+(a\s+good|a\s+great|a\s+bad|a\s+strong)(\s+[\w-]+){0,2}\s+(investment|buy|stock|pick|bet)\b"),
         "investment_advice",
         "LedgerMind cannot provide investment opinions. Please rephrase as a factual research question.",
     ),
