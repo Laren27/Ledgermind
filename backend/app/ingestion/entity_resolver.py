@@ -96,6 +96,7 @@ METRIC_ALIASES: dict[str, str] = {
     "gross revenue": "revenue", "sales": "revenue", "net sales": "revenue", "turnover": "revenue",
     "sale of products": "revenue", "sale of services": "revenue", "standalone revenue": "revenue",
     "gmv": "gmv", "gross merchandise value": "gmv", "gov": "gov", "gross order value": "gov",
+    "other operating revenue": "other_operating_revenue",
     "total income": "total_income", "total income i+ii": "total_income", "ill total incomc 1+11": "total_income",
     "other income": "other_income", "non operating income": "other_income", "interest income": "other_income",
     "cost of materials consumed": "cost_of_materials_consumed", "raw material consumed": "cost_of_materials_consumed",
@@ -201,16 +202,49 @@ def resolve_metric(raw: str) -> str:
     if not normalized_text: return "unmapped_metric"
     canonical = METRIC_ALIASES.get(normalized_text)
     if canonical: return canonical
-    # Longest-alias-first: a more specific/longer phrase match should win
-    # over a shorter generic one that happens to be a substring of it.
-    # Confirmed root cause of a real bug: "profit before exceptional items
-    # and tax" (OCR-typo'd as "proft...") and "...share of profit...
-    # exceptional items and tax" were both falling through to the
-    # generic "exceptional items" alias, silently overwriting the real
-    # Exceptional Items line's values.
-    for alias, canonical_name in sorted(METRIC_ALIASES.items(), key=lambda kv: -len(kv[0])):
-        if alias in normalized_text or normalized_text in alias:
-            return canonical_name
+
+    # Tier 2 — whole-word (token-set) matching, longest-alias-first.
+    #
+    # WHY THIS REPLACED RAW SUBSTRING MATCHING: `alias in normalized_text`
+    # matches on ANY shared character sequence, including partial words
+    # inside unrelated longer words (e.g. alias "tax" would substring-match
+    # inside "taxation", "syntax", etc. even though those are different
+    # concepts). Longest-alias-first sorting (kept from the prior fix)
+    # already solved one concrete collision class — a longer, more specific
+    # phrase correctly wins over a shorter generic one — but substring
+    # matching itself remained a structural risk for any FUTURE
+    # OCR-mangled phrase that happens to share a character sequence with
+    # an existing alias, without sharing its actual words.
+    #
+    # Token-set containment requires every WORD of the shorter phrase to
+    # appear as a whole word in the other, not just a matching character
+    # run. This still catches genuine paraphrases/OCR word-order noise
+    # (e.g. "profit before tax" alias matching within an OCR-noisy row
+    # containing all three words) while rejecting pure substring
+    # coincidences that share no actual words in common.
+    # Split on slashes as well as whitespace: normalize_metric_label's
+    # SLASH_RE collapses "products / services" to "products/services" with
+    # no surrounding space, which would otherwise glue two real words into
+    # one token and cause word-set matching to miss OCR-normal patterns
+    # like "sale of products/services" against the alias "sale of products"
+    # (confirmed regression: this exact case broke TITAN's revenue
+    # extraction on first attempt).
+    _WORD_SPLIT_RE = re.compile(r"[\s/]+")
+    normalized_words = set(_WORD_SPLIT_RE.split(normalized_text)) - {""}
+    best_match: Optional[tuple[int, str]] = None  # (alias_word_count, canonical_name)
+    for alias, canonical_name in METRIC_ALIASES.items():
+        alias_words = set(_WORD_SPLIT_RE.split(alias)) - {""}
+        if not alias_words:
+            continue
+        if alias_words <= normalized_words or normalized_words <= alias_words:
+            # Prefer the alias with the most words (most specific match),
+            # same intent as the old longest-string-first rule but now
+            # measured in shared whole words rather than raw character length.
+            if best_match is None or len(alias_words) > best_match[0]:
+                best_match = (len(alias_words), canonical_name)
+    if best_match:
+        return best_match[1]
+
     logger.warning("Unknown metric: '%s' (normalized: '%s') — storing as-is", raw, normalized_text)
     return normalized_text.replace(" ", "_")
 
