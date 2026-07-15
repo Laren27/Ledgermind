@@ -451,7 +451,26 @@ def classify_blocks(
         else:
             block.block_type = BlockType.TEXT
 
-        block.financial_type = section.financial_type if section else FinancialType.UNKNOWN
+        # Only FINANCIAL_STATEMENT blocks genuinely represent one specific
+        # financial_type's numbers (standalone vs consolidated tables are
+        # numerically different). Narrative content — TEXT, general TABLE,
+        # RISK_DISCLOSURE, MANAGEMENT_DISCUSSION — commonly sits physically
+        # within a section's page range purely due to document layout (e.g.
+        # a press release covering BOTH standalone and consolidated figures,
+        # sitting before the "Consolidated section marker" is detected) but
+        # is not actually scoped to either financial_type. Previously this
+        # narrative content inherited whichever financial_type its page
+        # happened to fall under, causing every default-consolidated query
+        # to silently exclude standalone-tagged narrative chunks from
+        # retrieval entirely (confirmed: TITAN's entire press release —
+        # Watches/Jewellery performance, CEO quote, ESG initiative — tagged
+        # standalone purely because it precedes the consolidated section
+        # marker on page 11, making it permanently unretrievable for any
+        # query using the consolidated default).
+        if block.block_type == BlockType.FINANCIAL_STATEMENT:
+            block.financial_type = section.financial_type if section else FinancialType.UNKNOWN
+        else:
+            block.financial_type = FinancialType.UNKNOWN
 
         if is_true_anchor:
             true_anchor_page = block.page_number
