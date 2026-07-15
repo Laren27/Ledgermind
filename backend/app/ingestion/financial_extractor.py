@@ -370,7 +370,16 @@ def _compute_derived_totals(records: list[FinancialRecord]) -> list[FinancialRec
         if "revenue" in metrics:
             rev_idx, rev_val = metrics["revenue"]
             oi_val = metrics["other_income"][1] if "other_income" in metrics else 0.0
-            ti_val = round(rev_val + oi_val, 2)
+            # Some documents (e.g. TITAN) present a distinct "Other operating
+            # revenue" sub-line under Revenue from Operations, separate from
+            # both "Sale of products/services" (our canonical `revenue`) and
+            # "Other income". Left out, Total Income was under-derived by
+            # exactly this amount (confirmed: TITAN FY26 Q1 standalone,
+            # 1,524 Cr gap). `revenue` itself is deliberately left
+            # untouched — it's a validated golden-eval value (13,040.0) —
+            # only the total_income SUM gains this component when present.
+            oor_val = metrics["other_operating_revenue"][1] if "other_operating_revenue" in metrics else 0.0
+            ti_val = round(rev_val + oi_val + oor_val, 2)
             if "total_income" in metrics:
                 records[metrics["total_income"][0]].value = ti_val
             else:
@@ -469,8 +478,9 @@ def validate_financial_identities(records: list[FinancialRecord]) -> list[dict]:
     for key, metrics in groups.items():
         # 1. Total Income Check
         if "revenue" in metrics and "other_income" in metrics and "total_income" in metrics:
-            computed = metrics["revenue"] + metrics["other_income"]
-            _check(key, "total_income = revenue + other_income", computed, "total_income", metrics)
+            oor_val = metrics.get("other_operating_revenue", 0)
+            computed = metrics["revenue"] + metrics["other_income"] + oor_val
+            _check(key, "total_income = revenue + other_income (+ other_operating_revenue)", computed, "total_income", metrics)
 
         # 2. Profit Before Tax Check (With Exceptional Items for Zomato)
         if "total_income" in metrics and "total_expenses" in metrics and "profit_before_tax" in metrics:
