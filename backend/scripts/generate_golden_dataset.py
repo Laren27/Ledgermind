@@ -727,13 +727,13 @@ GOLDEN = [
     {
         "id": "Q050",
         "category": "out_of_corpus",
-        "question": "What was Paytm's consolidated revenue for FY25?",
+        "question": "What was Swiggy's consolidated revenue for FY25?",
         "expected_path": "quantitative",
         "expected_is_blocked": False,
         "expected_confidence_tier": "low",
         "expected_sql_verified": False,
         "expected_error": "no_data_found",
-        "notes": "Paytm not ingested. Must return no_data_found, not hallucinate a number."
+        "notes": "Swiggy is registered in COMPANY_REGISTRY but never ingested (confirmed 0 rows in financials table). Must return no_data_found, not hallucinate a number. Replaces a prior version of this question that referenced Paytm, which was correct when written but became stale once Paytm was ingested in a later session — this is why golden questions must be re-verified against live data periodically, not just at authoring time."
     },
 ]
 
