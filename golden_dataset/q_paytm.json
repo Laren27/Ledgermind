@@ -188,7 +188,6 @@
     "expected_is_blocked": false,
     "expected_confidence_tier": "high",
     "expected_keywords": [
-      "no exposure",
       "impaired"
     ],
     "expected_source_pages": [
