@@ -54,7 +54,7 @@ TARGET_TOKENS = {
     BlockType.UNKNOWN:               200,
 }
 
-OVERLAP_TOKENS = 50
+OVERLAP_TOKENS = 150
 OVERLAP_CHARS  = OVERLAP_TOKENS * CHARS_PER_TOKEN
 
 SPLIT_SEPARATORS = ["\n\n", "\n", ". ", " ", ""]
