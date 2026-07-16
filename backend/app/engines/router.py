@@ -245,6 +245,9 @@ def _classify_query(query: str) -> dict:
             quarter = None
         if quarter:
             quarter = quarter.upper().strip()
+            # Extract only Q1-Q4 if LLM glued the year to it
+            match = __import__("re").search(r"(Q[1-4])", quarter)
+            quarter = match.group(1) if match else quarter
 
         financial_type = result.get("financial_type", "consolidated").lower().strip()
         if financial_type not in ("consolidated", "standalone"):
