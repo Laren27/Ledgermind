@@ -1,0 +1,18 @@
+[
+  {
+    "id": "PQ012",
+    "category": "semantic_risk",
+    "question": "Does Paytm have any financial exposure to Paytm Payments Bank following the license cancellation?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "no exposure",
+      "impair"
+    ],
+    "expected_source_pages": [
+      12
+    ],
+    "notes": "Verified: company states no exposure, no board/management involvement, investment fully impaired as of March 31, 2024."
+  }
+]
