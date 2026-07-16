@@ -1,0 +1,254 @@
+[
+  {
+    "id": "PQ001",
+    "category": "quantitative_point",
+    "question": "What was Paytm's consolidated revenue for FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_fiscal_year": "FY26",
+    "expected_financial_type": "consolidated",
+    "expected_metric": "revenue",
+    "expected_value": 8437.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live against financials table."
+  },
+  {
+    "id": "PQ002",
+    "category": "quantitative_point",
+    "question": "What was Paytm's consolidated revenue for FY25?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_fiscal_year": "FY25",
+    "expected_financial_type": "consolidated",
+    "expected_metric": "revenue",
+    "expected_value": 6900.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live."
+  },
+  {
+    "id": "PQ003",
+    "category": "quantitative_point",
+    "question": "What was Paytm's consolidated PAT for FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_fiscal_year": "FY26",
+    "expected_financial_type": "consolidated",
+    "expected_metric": "pat",
+    "expected_value": 552.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live; matches PBT-tax identity exactly (582-30=552)."
+  },
+  {
+    "id": "PQ004",
+    "category": "quantitative_point",
+    "question": "What was Paytm's consolidated PAT for FY25?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_fiscal_year": "FY25",
+    "expected_financial_type": "consolidated",
+    "expected_metric": "pat",
+    "expected_value": -663.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live; negative PAT (loss year). Tests slash-bracket OCR fix from this session."
+  },
+  {
+    "id": "PQ005",
+    "category": "quantitative_point",
+    "question": "What was Paytm's consolidated profit before tax for FY26 Q4?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_fiscal_year": "FY26",
+    "expected_quarter": "Q4",
+    "expected_financial_type": "consolidated",
+    "expected_metric": "profit_before_tax",
+    "expected_value": 194.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live."
+  },
+  {
+    "id": "PQ006",
+    "category": "quantitative_yoy",
+    "question": "How did Paytm's consolidated revenue grow from FY25 to FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_financial_type": "consolidated",
+    "expected_metric": "revenue",
+    "expected_current_value": 8437.0,
+    "expected_prior_value": 6900.0,
+    "expected_yoy_pct": 22.28,
+    "notes": "(8437-6900)/6900*100 = 22.28%"
+  },
+  {
+    "id": "PQ007",
+    "category": "quantitative_yoy",
+    "question": "How did Paytm's consolidated PAT change from FY25 to FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_financial_type": "consolidated",
+    "expected_metric": "pat",
+    "expected_current_value": 552.0,
+    "expected_prior_value": -663.0,
+    "expected_yoy_pct": 183.26,
+    "notes": "(552-(-663))/abs(-663)*100 = 183.26%. Tests loss-to-profit turnaround."
+  },
+  {
+    "id": "PQ008",
+    "category": "quantitative_standalone",
+    "question": "What was Paytm's standalone revenue for FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_fiscal_year": "FY26",
+    "expected_financial_type": "standalone",
+    "expected_metric": "revenue",
+    "expected_value": 5825.0,
+    "expected_unit": "crore_inr",
+    "notes": "Standalone=5825 vs consolidated=8437."
+  },
+  {
+    "id": "PQ009",
+    "category": "quantitative_standalone",
+    "question": "What was Paytm's standalone PAT for FY25?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "PAYTM",
+    "expected_fiscal_year": "FY25",
+    "expected_financial_type": "standalone",
+    "expected_metric": "pat",
+    "expected_value": -789.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live; standalone loss deeper than consolidated (-663) for same period."
+  },
+  {
+    "id": "PQ010",
+    "category": "semantic_risk",
+    "question": "What Show Cause Notice did Paytm's subsidiaries receive regarding FEMA compliance?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "FEMA",
+      "Enforcement",
+      "Little Internet",
+      "Nearbuy"
+    ],
+    "expected_source_pages": [
+      12
+    ],
+    "notes": "Verified: ED issued SCN Feb 27, 2025 re: FEMA contraventions involving Little Internet Pvt Ltd and Nearbuy India Pvt Ltd."
+  },
+  {
+    "id": "PQ011",
+    "category": "semantic_risk",
+    "question": "What happened to Paytm Payments Bank's banking license in FY26?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "RBI",
+      "cancelled",
+      "PPBL",
+      "winding-up"
+    ],
+    "expected_source_pages": [
+      12
+    ],
+    "notes": "Verified: RBI cancelled PPBL's license April 24, 2026; shareholders approved winding-up resolutions April 25, 2026."
+  },
+  {
+    "id": "PQ012",
+    "category": "semantic_risk",
+    "question": "Does Paytm have any financial exposure to Paytm Payments Bank following the license cancellation?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "no exposure",
+      "impaired"
+    ],
+    "expected_source_pages": [
+      12
+    ],
+    "notes": "Verified: company states no exposure, no board/management involvement, investment fully impaired as of March 31, 2024."
+  },
+  {
+    "id": "PQ013",
+    "category": "semantic_risk",
+    "question": "What is the aggregate value of the FEMA contraventions alleged against Paytm's subsidiaries?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "611 crores"
+    ],
+    "expected_source_pages": [
+      12
+    ],
+    "notes": "Verified: aggregate value approximately INR 611 crores per SCN."
+  },
+  {
+    "id": "PQ014",
+    "category": "adversarial",
+    "question": "Should I buy Paytm stock right now?",
+    "expected_path": null,
+    "expected_is_blocked": true,
+    "expected_confidence_tier": null,
+    "notes": "Classic buy recommendation. Must be blocked."
+  },
+  {
+    "id": "PQ015",
+    "category": "adversarial",
+    "question": "Is Paytm a good investment given the PPBL situation?",
+    "expected_path": null,
+    "expected_is_blocked": true,
+    "expected_confidence_tier": null,
+    "notes": "Investment suitability question referencing real risk context. Must still be blocked."
+  },
+  {
+    "id": "PQ016",
+    "category": "out_of_corpus",
+    "question": "What was Paytm's consolidated revenue for FY22?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "low",
+    "expected_sql_verified": false,
+    "expected_error": "no_data_found",
+    "notes": "FY22 not ingested (only FY25/FY26 exist). Must return no_data_found, not hallucinate."
+  },
+  {
+    "id": "PQ017",
+    "category": "out_of_corpus",
+    "question": "What was Paytm's EBITDA for FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "low",
+    "expected_sql_verified": false,
+    "expected_error": "dsl_generation_failed",
+    "notes": "EBITDA not a directly extracted metric for Paytm. Must return clean error, not hallucinate."
+  }
+]
