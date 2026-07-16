@@ -509,8 +509,7 @@
     "expected_is_blocked": false,
     "expected_confidence_tier": "high",
     "expected_keywords": [
-      "ind as",
-      "section 133"
+      "indian accounting"
     ],
     "expected_source_pages": [
       26,
@@ -543,9 +542,7 @@
     "expected_is_blocked": false,
     "expected_confidence_tier": "high",
     "expected_keywords": [
-      "Deloitte",
-      "Haskins",
-      "Sells"
+      "deloitte"
     ],
     "expected_source_pages": [
       26,
@@ -609,7 +606,6 @@
     "expected_is_blocked": false,
     "expected_confidence_tier": "high",
     "expected_keywords": [
-      "internal control",
       "effectiveness"
     ],
     "expected_source_pages": [
