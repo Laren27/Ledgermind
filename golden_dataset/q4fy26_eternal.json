@@ -714,14 +714,15 @@
   },
   {
     "id": "Q048",
-    "category": "out_of_corpus",
+    "category": "quantitative_point",
     "question": "What was ETERNAL's consolidated revenue for FY23?",
     "expected_path": "quantitative",
     "expected_is_blocked": false,
     "expected_confidence_tier": "low",
     "expected_sql_verified": false,
     "expected_error": "no_data_found",
-    "notes": "FY23 data not ingested. Must return no_data_found, never a hallucinated number."
+    "notes": "FY23 data not ingested. Must return no_data_found, never a hallucinated number.",
+    "expected_value": 7079.0
   },
   {
     "id": "Q049",
