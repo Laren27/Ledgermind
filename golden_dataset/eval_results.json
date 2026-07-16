@@ -84,14 +84,10 @@
     "category": "semantic_business",
     "question": "Who audited Titan's Q1FY26 financial results?",
     "score": {
-      "pass": false,
-      "reason": "Missing keywords in response: ['bsr']",
+      "pass": true,
+      "reason": "All 1 keywords present, confidence=high",
       "actual": {
-        "confidence_tier": "high",
-        "missing_keywords": [
-          "bsr"
-        ],
-        "response_preview": "b s r & co., llp, the company's statutory auditors, audited titan's q1fy26 financial results. they issued a limited review report with an unmodified opinion on the unaudited standalone and consolidate"
+        "confidence_tier": "high"
       }
     },
     "api_response": {
