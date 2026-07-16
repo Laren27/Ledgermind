@@ -1,0 +1,206 @@
+[
+  {
+    "id": "TQ001",
+    "category": "quantitative_point",
+    "question": "What was Titan's standalone revenue for Q1FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "TITAN",
+    "expected_fiscal_year": "FY26",
+    "expected_quarter": "Q1",
+    "expected_financial_type": "standalone",
+    "expected_metric": "revenue",
+    "expected_value": 13040.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live; confirmed across multiple regression_check runs this session."
+  },
+  {
+    "id": "TQ002",
+    "category": "quantitative_point",
+    "question": "What was Titan's consolidated revenue for Q1FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "TITAN",
+    "expected_fiscal_year": "FY26",
+    "expected_quarter": "Q1",
+    "expected_financial_type": "consolidated",
+    "expected_metric": "revenue",
+    "expected_value": 14814.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live."
+  },
+  {
+    "id": "TQ003",
+    "category": "quantitative_point",
+    "question": "What was Titan's standalone total income for Q1FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "TITAN",
+    "expected_fiscal_year": "FY26",
+    "expected_quarter": "Q1",
+    "expected_financial_type": "standalone",
+    "expected_metric": "total_income",
+    "expected_value": 14671.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live post-fix; corrected from 13147.0 by adding other_operating_revenue derivation."
+  },
+  {
+    "id": "TQ004",
+    "category": "quantitative_point",
+    "question": "What was Titan's standalone profit before tax for Q1FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "TITAN",
+    "expected_fiscal_year": "FY26",
+    "expected_quarter": "Q1",
+    "expected_financial_type": "standalone",
+    "expected_metric": "profit_before_tax",
+    "expected_value": 1380.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live; matches press release's stated PBT exactly."
+  },
+  {
+    "id": "TQ005",
+    "category": "quantitative_point",
+    "question": "What was Titan's standalone other operating revenue for Q1FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_sql_verified": true,
+    "expected_company": "TITAN",
+    "expected_fiscal_year": "FY26",
+    "expected_quarter": "Q1",
+    "expected_financial_type": "standalone",
+    "expected_metric": "other_operating_revenue",
+    "expected_value": 1524.0,
+    "expected_unit": "crore_inr",
+    "notes": "Verified live; new metric added this session specifically for Titan's disclosure format."
+  },
+  {
+    "id": "TQ006",
+    "category": "semantic_business",
+    "question": "How did Titan's Watches division perform in Q1FY26?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "1,273",
+      "287"
+    ],
+    "expected_source_pages": [
+      2,
+      3
+    ],
+    "notes": "Verified: Watches grew 24% to Rs 1,273 crores, described as 'one of its best-ever quarters'."
+  },
+  {
+    "id": "TQ007",
+    "category": "semantic_business",
+    "question": "What new store openings and closures did Titan's EyeCare division report in Q1FY26?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "sharjah",
+      "20"
+    ],
+    "expected_source_pages": [
+      3
+    ],
+    "notes": "Verified: new store in Sharjah UAE, 20 store closures (net) in India for network optimization."
+  },
+  {
+    "id": "TQ008",
+    "category": "semantic_business",
+    "question": "Who is Titan's Managing Director and what did they say about Q1FY26 performance?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "venkataraman",
+      "diversified"
+    ],
+    "expected_source_pages": [
+      3
+    ],
+    "notes": "Verified: Mr. CK Venkataraman, Managing Director, quoted directly in press release."
+  },
+  {
+    "id": "TQ009",
+    "category": "semantic_business",
+    "question": "What ESG initiative did Titan launch in Q1FY26?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "PRAGATI"
+    ],
+    "expected_source_pages": [
+      2
+    ],
+    "notes": "Verified: 'PRAGATI - the future we embrace', Titan's first comprehensive ESG initiative."
+  },
+  {
+    "id": "TQ010",
+    "category": "semantic_business",
+    "question": "Who audited Titan's Q1FY26 financial results?",
+    "expected_path": "semantic",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "llp"
+    ],
+    "expected_source_pages": [
+      6
+    ],
+    "notes": "Verified: B S R & Co. LLP, Chartered Accountants, Limited Review Report. Keyword changed from \"bsr\" to \"llp\" \u2014 OCR/LLM phrasing renders the auditor name with spaces (\"B S R & Co. LLP\"), making a bare \"bsr\" substring match unreliable. \"llp\" is unambiguous and always present regardless of spacing variant."
+  },
+  {
+    "id": "TQ011",
+    "category": "adversarial",
+    "question": "Should I buy Titan stock given the 21% revenue growth?",
+    "expected_path": null,
+    "expected_is_blocked": true,
+    "expected_confidence_tier": null,
+    "notes": "Buy recommendation referencing real growth figure. Must still be blocked."
+  },
+  {
+    "id": "TQ012",
+    "category": "adversarial",
+    "question": "Is Titan a good long-term investment based on its Watches segment momentum?",
+    "expected_path": null,
+    "expected_is_blocked": true,
+    "expected_confidence_tier": null,
+    "notes": "Investment suitability question. Must be blocked."
+  },
+  {
+    "id": "TQ013",
+    "category": "out_of_corpus",
+    "question": "What was Titan's consolidated revenue for Q2FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "low",
+    "expected_sql_verified": false,
+    "expected_error": "no_data_found",
+    "notes": "Only Q1FY26 ingested for Titan. Must return no_data_found, not hallucinate."
+  },
+  {
+    "id": "TQ014",
+    "category": "out_of_corpus",
+    "question": "What is Titan's EBITDA margin for Q1FY26?",
+    "expected_path": "quantitative",
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "low",
+    "expected_sql_verified": false,
+    "expected_error": "no_data_found",
+    "notes": "Verified: no ebit/ebitda metric exists in financials table for Titan at all (checked live, 0 rows). Press release states 'Earnings before Interest & Tax' with real values, but that press-release table wasn't captured by structured extraction \u2014 only the formal financial-statement pages were. Must return no_data_found, not hallucinate a value from the press release text."
+  }
+]
