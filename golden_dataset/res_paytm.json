@@ -1,0 +1,26 @@
+[
+  {
+    "id": "PQ012",
+    "category": "semantic_risk",
+    "question": "Does Paytm have any financial exposure to Paytm Payments Bank following the license cancellation?",
+    "score": {
+      "pass": false,
+      "reason": "Missing keywords in response: ['impaired']",
+      "actual": {
+        "confidence_tier": "high",
+        "missing_keywords": [
+          "impaired"
+        ],
+        "response_preview": "according to the provided documents, the company states that it has no exposure to paytm payments bank limited (ppbl) following the cancellation of its banking license by the rbi on april 24, 2026. th"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "According to the provided documents, the Company states that it has no exposure to Paytm Payments Bank Limited (PPBL) following the cancellation of its banking license by the RBI on April 24, 2026. Th"
+    }
+  }
+]
