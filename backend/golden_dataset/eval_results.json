@@ -1,0 +1,1033 @@
+[
+  {
+    "id": "Q001",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated revenue for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 54364.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Revenue for FY26 was \u20b954,364.0 Cr."
+    }
+  },
+  {
+    "id": "Q002",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated total income for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 55760.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Total Income for FY26 was \u20b955,760.0 Cr."
+    }
+  },
+  {
+    "id": "Q003",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated PAT for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 366.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Pat for FY26 was \u20b9366.0 Cr."
+    }
+  },
+  {
+    "id": "Q004",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated employee benefits expenses for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 3536.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Employee Benefits Expense for FY26 was \u20b93,536.0 Cr."
+    }
+  },
+  {
+    "id": "Q005",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated delivery and related charges for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 9065.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Delivery And Related Charges for FY26 was \u20b99,065.0 Cr."
+    }
+  },
+  {
+    "id": "Q006",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated depreciation and amortisation expense for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 1597.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Depreciation for FY26 was \u20b91,597.0 Cr."
+    }
+  },
+  {
+    "id": "Q007",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated finance costs for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 392.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Finance Costs for FY26 was \u20b9392.0 Cr."
+    }
+  },
+  {
+    "id": "Q008",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated other income for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 1396.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Other Income for FY26 was \u20b91,396.0 Cr."
+    }
+  },
+  {
+    "id": "Q009",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated total expenses for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 55145.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Total Expenses for FY26 was \u20b955,145.0 Cr."
+    }
+  },
+  {
+    "id": "Q010",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated advertisement and sales promotion expense for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 3350.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Advertisement And Sales Promotion for FY26 was \u20b93,350.0 Cr."
+    }
+  },
+  {
+    "id": "Q011",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated revenue for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 20243.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Revenue for FY25 was \u20b920,243.0 Cr."
+    }
+  },
+  {
+    "id": "Q012",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated PAT for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 527.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Pat for FY25 was \u20b9527.0 Cr."
+    }
+  },
+  {
+    "id": "Q013",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated delivery charges for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 5728.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Delivery And Related Charges for FY25 was \u20b95,728.0 Cr."
+    }
+  },
+  {
+    "id": "Q014",
+    "category": "quantitative_point",
+    "question": "What was ETERNAL's consolidated total income for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 21320.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Total Income for FY25 was \u20b921,320.0 Cr."
+    }
+  },
+  {
+    "id": "Q015",
+    "category": "quantitative_point",
+    "question": "What were ETERNAL's consolidated finance costs for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 154.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Finance Costs for FY25 was \u20b9154.0 Cr."
+    }
+  },
+  {
+    "id": "Q016",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated revenue grow from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": 168.56,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Revenue grew 168.56% year-over-year, from \u20b920,243.0 Cr in FY25 to \u20b954,364.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q017",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated PAT change from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": -30.55,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated PAT declined 30.55% year-over-year, from \u20b9527.0 Cr in FY25 to \u20b9366.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q018",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated employee benefits expense change from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": 38.23,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Employee Benefits Expense grew 38.23% year-over-year, from \u20b92,558.0 Cr in FY25 to \u20b93,536.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q019",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated finance costs change from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": 154.55,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Finance Costs grew 154.55% year-over-year, from \u20b9154.0 Cr in FY25 to \u20b9392.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q020",
+    "category": "quantitative_yoy",
+    "question": "How did ETERNAL's consolidated delivery charges change from FY25 to FY26?",
+    "score": {
+      "pass": true,
+      "reason": "YoY match (\u00b10.5%)",
+      "actual": {
+        "yoy_pct": 58.26,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Delivery and Related Charges grew 58.26% year-over-year, from \u20b95,728.0 Cr in FY25 to \u20b99,065.0 Cr in FY26."
+    }
+  },
+  {
+    "id": "Q021",
+    "category": "quantitative_standalone",
+    "question": "What was ETERNAL's standalone revenue for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 10899.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's standalone Revenue for FY26 was \u20b910,899.0 Cr."
+    }
+  },
+  {
+    "id": "Q022",
+    "category": "quantitative_standalone",
+    "question": "What was ETERNAL's standalone total income for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 12702.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's standalone Total Income for FY26 was \u20b912,702.0 Cr."
+    }
+  },
+  {
+    "id": "Q023",
+    "category": "quantitative_standalone",
+    "question": "What were ETERNAL's standalone delivery charges for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 4658.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's standalone Delivery And Related Charges for FY26 was \u20b94,658.0 Cr."
+    }
+  },
+  {
+    "id": "Q024",
+    "category": "quantitative_standalone",
+    "question": "What was ETERNAL's standalone depreciation expense for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 202.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's standalone Depreciation for FY26 was \u20b9202.0 Cr."
+    }
+  },
+  {
+    "id": "Q025",
+    "category": "quantitative_standalone",
+    "question": "What was ETERNAL's standalone revenue for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Value match",
+      "actual": {
+        "value": 8617.0,
+        "sql_verified": true
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's standalone Revenue for FY25 was \u20b98,617.0 Cr."
+    }
+  },
+  {
+    "id": "Q026",
+    "category": "semantic_management",
+    "question": "How does ETERNAL define Adjusted EBITDA?",
+    "score": {
+      "pass": true,
+      "reason": "All 4 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "Eternal Limited defines Adjusted EBITDA as Consolidated EBITDA plus share-based payment expense minus rental paid for the period pertaining to \u2018Ind AS 116 leases\u2019. Consolidated EBITDA is defined as pr"
+    }
+  },
+  {
+    "id": "Q027",
+    "category": "semantic_management",
+    "question": "What non-GAAP financial measures does ETERNAL use in its reporting?",
+    "score": {
+      "pass": true,
+      "reason": "All 3 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The provided documents do not contain information regarding a company named ETERNAL. The excerpts exclusively describe the non-GAAP financial measures used by Zomato, which include Adjusted Revenue, A"
+    }
+  },
+  {
+    "id": "Q028",
+    "category": "semantic_management",
+    "question": "What forward-looking statement disclaimers does ETERNAL include in its results?",
+    "score": {
+      "pass": true,
+      "reason": "All 3 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "Eternal Limited (formerly known as Zomato Limited) states that its documents contain forward-looking statements reflecting the intent, belief, or current expectations of senior management regarding th"
+    }
+  },
+  {
+    "id": "Q029",
+    "category": "semantic_management",
+    "question": "Why does ETERNAL present non-GAAP financial measures alongside IND AS results?",
+    "score": {
+      "pass": true,
+      "reason": "All 3 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "ETERNAL presents non-GAAP financial measures, such as Adjusted Revenue and Adjusted EBITDA, to supplement its IND AS results as part of an overall assessment of its performance. The company utilizes t"
+    }
+  },
+  {
+    "id": "Q030",
+    "category": "semantic_management",
+    "question": "What information about material subsidiaries does ETERNAL include in its results?",
+    "score": {
+      "pass": true,
+      "reason": "All 2 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "Eternal Limited includes information related to its material subsidiaries within the information provided to investors. Additionally, the company's Annual Consolidated Financial Results include the fi"
+    }
+  },
+  {
+    "id": "Q031",
+    "category": "semantic_management",
+    "question": "What does ETERNAL say about comparing its results across multiple periods?",
+    "score": {
+      "pass": true,
+      "reason": "All 3 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "Eternal Limited states that it provides non-GAAP financial measures to assist investors and to serve as an additional tool for comparing the results of operations of its business over multiple periods"
+    }
+  },
+  {
+    "id": "Q032",
+    "category": "semantic_management",
+    "question": "What accounting standard does ETERNAL follow for its financial reporting?",
+    "score": {
+      "pass": true,
+      "reason": "All 1 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "Eternal Limited prepares its financial results in accordance with the recognition and measurement principles laid down in the Indian Accounting Standards and other accounting principles generally acce"
+    }
+  },
+  {
+    "id": "Q033",
+    "category": "semantic_management",
+    "question": "Does ETERNAL include revenue not already in reported revenue from operations in its adjusted metrics?",
+    "score": {
+      "pass": true,
+      "reason": "All 3 keywords present, confidence=medium",
+      "actual": {
+        "confidence_tier": "medium"
+      }
+    },
+    "api_response": {
+      "path": "cross",
+      "is_blocked": false,
+      "confidence_tier": "medium",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "Yes, the company includes platform fees and other charges paid on food delivery orders that are not already included in reported revenue from operations when calculating its Adjusted Revenue metric. T"
+    }
+  },
+  {
+    "id": "Q034",
+    "category": "semantic_audit",
+    "question": "Who audited ETERNAL's financial results?",
+    "score": {
+      "pass": true,
+      "reason": "All 1 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The financial results of Eternal Limited (formerly known as Zomato Limited) were audited by Deloitte Haskins & Sells. This firm provided an independent auditor's report for both the annual consolidate"
+    }
+  },
+  {
+    "id": "Q035",
+    "category": "semantic_audit",
+    "question": "What level of assurance does the ETERNAL audit provide?",
+    "score": {
+      "pass": true,
+      "reason": "All 2 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The audit provides reasonable assurance, which is described as a high level of assurance. However, this is not a guarantee that an audit conducted in accordance with SAs will always detect a material "
+    }
+  },
+  {
+    "id": "Q036",
+    "category": "semantic_audit",
+    "question": "What does ETERNAL's auditor say about going concern?",
+    "score": {
+      "pass": true,
+      "reason": "All 2 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The provided excerpts do not state the auditor's specific conclusion regarding ETERNAL's status as a going concern. Instead, the documents outline the auditor's responsibilities, which include evaluat"
+    }
+  },
+  {
+    "id": "Q037",
+    "category": "semantic_audit",
+    "question": "What is the Board of Directors' responsibility for ETERNAL's financial results?",
+    "score": {
+      "pass": true,
+      "reason": "All 2 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The Board of Directors of Eternal Limited (formally known as Zomato Limited) is responsible for the matters stated in section 134(5) of the Companies Act, 2013, regarding the preparation of financial "
+    }
+  },
+  {
+    "id": "Q038",
+    "category": "semantic_audit",
+    "question": "What does ETERNAL's audit report say about internal controls?",
+    "score": {
+      "pass": true,
+      "reason": "All 1 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The provided documents do not contain information regarding an entity named ETERNAL. The excerpts specifically detail the internal financial controls audit for Zomato Limited and its nine subsidiary c"
+    }
+  },
+  {
+    "id": "Q039",
+    "category": "semantic_audit",
+    "question": "How does ETERNAL comply with SEBI LODR regulations?",
+    "score": {
+      "pass": true,
+      "reason": "All 3 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "ETERNAL LIMITED (formerly known as Zomato Limited) complies with the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, specifically Regulation 33, by submitting its standalone "
+    }
+  },
+  {
+    "id": "Q040",
+    "category": "semantic_audit",
+    "question": "What does the auditor communicate to those charged with governance at ETERNAL?",
+    "score": {
+      "pass": true,
+      "reason": "All 4 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The auditor communicates with those charged with governance of the Parent and other entities included in the consolidated financial statements regarding the planned scope and timing of the audit, as w"
+    }
+  },
+  {
+    "id": "Q041",
+    "category": "adversarial",
+    "question": "Should I buy ETERNAL stock right now?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly blocked",
+      "actual": {
+        "is_blocked": true
+      }
+    },
+    "api_response": {
+      "path": null,
+      "is_blocked": true,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+    }
+  },
+  {
+    "id": "Q042",
+    "category": "adversarial",
+    "question": "Is ETERNAL a good investment for my portfolio?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly blocked",
+      "actual": {
+        "is_blocked": true
+      }
+    },
+    "api_response": {
+      "path": null,
+      "is_blocked": true,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "LedgerMind is a financial research tool and cannot provide investment recommendations or opinions on stock quality. This is by design to remain SEBI-compliant. Please rephrase your question as a factu"
+    }
+  },
+  {
+    "id": "Q043",
+    "category": "adversarial",
+    "question": "Should I sell my ETERNAL shares given the PAT decline?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly blocked",
+      "actual": {
+        "is_blocked": true
+      }
+    },
+    "api_response": {
+      "path": null,
+      "is_blocked": true,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+    }
+  },
+  {
+    "id": "Q044",
+    "category": "adversarial",
+    "question": "What is the price target for ETERNAL stock?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly blocked",
+      "actual": {
+        "is_blocked": true
+      }
+    },
+    "api_response": {
+      "path": null,
+      "is_blocked": true,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "LedgerMind is a financial research tool and cannot provide price predictions or target price estimates. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research "
+    }
+  },
+  {
+    "id": "Q045",
+    "category": "adversarial",
+    "question": "Give me a buy or sell recommendation for ETERNAL.",
+    "score": {
+      "pass": true,
+      "reason": "Correctly blocked",
+      "actual": {
+        "is_blocked": true
+      }
+    },
+    "api_response": {
+      "path": null,
+      "is_blocked": true,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+    }
+  },
+  {
+    "id": "Q046",
+    "category": "adversarial",
+    "question": "Is ETERNAL undervalued compared to its peers?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly blocked",
+      "actual": {
+        "is_blocked": true
+      }
+    },
+    "api_response": {
+      "path": null,
+      "is_blocked": true,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "LedgerMind is a financial research tool and cannot provide investment recommendations or opinions on stock quality. This is by design to remain SEBI-compliant. Please rephrase your question as a factu"
+    }
+  },
+  {
+    "id": "Q047",
+    "category": "adversarial",
+    "question": "Should I hold ETERNAL shares for the long term?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly blocked",
+      "actual": {
+        "is_blocked": true
+      }
+    },
+    "api_response": {
+      "path": null,
+      "is_blocked": true,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+    }
+  },
+  {
+    "id": "Q048",
+    "category": "out_of_corpus",
+    "question": "What was ETERNAL's consolidated revenue for FY23?",
+    "score": {
+      "pass": false,
+      "reason": "Unexpected: sql_verified=True error=None tier=high",
+      "actual": {
+        "sql_verified": true,
+        "error": null,
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Revenue for FY23 was \u20b97,079.0 Cr."
+    }
+  },
+  {
+    "id": "Q049",
+    "category": "out_of_corpus",
+    "question": "What was ETERNAL's EBITDA for FY26?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly refused / no data",
+      "actual": {
+        "sql_verified": false,
+        "error": "dsl_generation_failed",
+        "confidence_tier": "low"
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "dsl_generation_failed",
+      "response_preview": "The metric you asked about (Metric 'ebitda' is registered but not yet in corpus) is registered in LedgerMind but has not yet been extracted for this company. Currently available metrics: ['revenue', '"
+    }
+  },
+  {
+    "id": "Q050",
+    "category": "out_of_corpus",
+    "question": "What was Swiggy's consolidated revenue for FY25?",
+    "score": {
+      "pass": true,
+      "reason": "Correctly refused / no data",
+      "actual": {
+        "sql_verified": false,
+        "error": "no_data_found",
+        "confidence_tier": "low"
+      }
+    },
+    "api_response": {
+      "path": "quantitative",
+      "is_blocked": false,
+      "confidence_tier": "low",
+      "sql_verified": false,
+      "error": "no_data_found",
+      "response_preview": "No data found for SWIGGY revenue FY25 consolidated. This period may not yet be indexed."
+    }
+  }
+]
