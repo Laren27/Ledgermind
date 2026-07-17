@@ -1,8 +1,8 @@
 [
   {
-    "id": "TQ009",
-    "category": "semantic_business",
-    "question": "What ESG initiative did Titan launch in Q1FY26?",
+    "id": "Q034",
+    "category": "semantic_audit",
+    "question": "Who audited ETERNAL's financial results?",
     "score": {
       "pass": true,
       "reason": "All 1 keywords present, confidence=high",
@@ -16,7 +16,127 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "In Q1FY26, Titan Company Limited launched its first comprehensive ESG initiative titled 'PRAGATI -the future we embrace'. This initiative was introduced to reinforce the company's commitment to respon"
+      "response_preview": "The financial results for Eternal Limited (formerly known as Zomato Limited) were audited by Deloitte Haskins & Sells. This firm provided independent auditor's reports for both the annual consolidated"
+    }
+  },
+  {
+    "id": "Q035",
+    "category": "semantic_audit",
+    "question": "What level of assurance does the ETERNAL audit provide?",
+    "score": {
+      "pass": true,
+      "reason": "All 2 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The audit provides reasonable assurance, which is described as a high level of assurance. However, this is not a guarantee that an audit conducted in accordance with SAs will always detect a material "
+    }
+  },
+  {
+    "id": "Q036",
+    "category": "semantic_audit",
+    "question": "What does ETERNAL's auditor say about going concern?",
+    "score": {
+      "pass": true,
+      "reason": "All 2 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The provided excerpts do not state the auditor's specific conclusion regarding ETERNAL's status as a going concern. Instead, the documents outline the auditor's responsibilities, which include evaluat"
+    }
+  },
+  {
+    "id": "Q037",
+    "category": "semantic_audit",
+    "question": "What is the Board of Directors' responsibility for ETERNAL's financial results?",
+    "score": {
+      "pass": true,
+      "reason": "All 2 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The Board of Directors of Eternal Limited (formerly known as Zomato Limited) is responsible for the matters stated in section 134(5) of the Companies Act, 2013, regarding the preparation of the compan"
+    }
+  },
+  {
+    "id": "Q038",
+    "category": "semantic_audit",
+    "question": "What does ETERNAL's audit report say about internal controls?",
+    "score": {
+      "pass": true,
+      "reason": "All 1 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The audit report for Zomato Limited (referred to as the \"Parent\") and its nine subsidiary companies incorporated in India states that the respective Boards of Directors are responsible for establishin"
+    }
+  },
+  {
+    "id": "Q039",
+    "category": "semantic_audit",
+    "question": "How does ETERNAL comply with SEBI LODR regulations?",
+    "score": {
+      "pass": true,
+      "reason": "All 3 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "Eternal Limited (formerly known as Zomato Limited) complies with Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, by submitting its standalone and consoli"
+    }
+  },
+  {
+    "id": "Q040",
+    "category": "semantic_audit",
+    "question": "What does the auditor communicate to those charged with governance at ETERNAL?",
+    "score": {
+      "pass": true,
+      "reason": "All 4 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The auditor communicates with those charged with governance of the Parent and other entities included in the consolidated financial statements regarding the planned scope and timing of the audit, as w"
     }
   }
 ]
