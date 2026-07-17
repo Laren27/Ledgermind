@@ -50,7 +50,11 @@ async def health_check():
     # Qdrant
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{settings.qdrant_url}/", timeout=5.0)
+            resp = await client.get(
+                f"{settings.qdrant_url}/",
+                headers={"api-key": settings.qdrant_api_key},
+                timeout=5.0,
+            )
             services["qdrant"] = (
                 "ok" if resp.status_code == 200 else f"http_{resp.status_code}"
             )
