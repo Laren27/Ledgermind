@@ -25,7 +25,7 @@ from dataclasses import asdict
 from typing import Optional
 
 from qdrant_client import models
-
+from app.ingestion.models import normalize_quarter
 from .models import EmbeddedChunk
 
 logger = logging.getLogger(__name__)
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     pdf_path = Path(args.pdf_path)
-    quarter = args.quarter if args.quarter.lower() != "none" else None
+    quarter = normalize_quarter(args.quarter)
     ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
 
     # ----------------------------------------------------------------
