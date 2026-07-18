@@ -19,6 +19,10 @@ Verification rules:
 
 Trap 2 (blueprint §25B): financial_type MUST always be in the WHERE clause.
   Enforced by dsl_compiler — cannot be bypassed from here.
+
+DSL prompt metric list and aliases below are now DERIVED from the single
+shared registry at app/metrics/registry.py instead of a hand-maintained
+ALIASES dict. See that file's module docstring for the rationale.
 """
 
 import json
@@ -41,6 +45,7 @@ from app.engines.dsl_compiler import (
 )
 from app.engines.router import GEMINI_MODEL
 from app.engines.state import DSLObject, QueryState
+from app.metrics.registry import prompt_metric_lines, prompt_warnings
 
 logger = logging.getLogger(__name__)
 
@@ -88,33 +93,18 @@ _ALL_METRICS = list(METRIC_REGISTRY.keys())
 _OPERATIONS = list(OPERATION_REGISTRY.keys())
 
 def _build_dsl_system_prompt() -> str:
-    # Build explicit metric table with aliases — this is what forces correct mapping
-    available = {k: v for k, v in METRIC_REGISTRY.items() if v["available"]}
+    # Metric lines and disambiguation warnings now come from the shared
+    # registry (app/metrics/registry.py) instead of a hand-maintained
+    # ALIASES dict here — this was the exact spot where profit_before_tax's
+    # PBT-vs-PAT warning previously had to be hand-kept in sync with
+    # dsl_compiler.py's registry entry. Now both read from one place.
+    metric_lines = prompt_metric_lines()
+    mapping_warnings = prompt_warnings()
+
     unavailable = {k: v for k, v in METRIC_REGISTRY.items() if not v["available"]}
-
-    metric_lines = []
-    ALIASES = {
-        "revenue":                              "revenue from operations, top line, turnover",
-        "total_income":                         "total income, revenue plus other income",
-        "other_operating_revenue":              "other operating revenue, secondary revenue line",
-        "pat":                                  "profit after tax, net profit, bottom line, PAT (AFTER tax is deducted)",
-        "profit_before_tax":                    "profit before tax, PBT (BEFORE tax is deducted — do NOT confuse with PAT)",
-        "tax_expense":                          "tax expense, income tax expense, total tax",
-        "exceptional_items":                    "exceptional items, one-off items",
-        "employee_benefits_expense":            "employee benefits, staff costs, people costs, salaries",
-        "delivery_and_related_charges":         "delivery charges, logistics costs, fulfillment costs",
-        "depreciation": "depreciation, amortisation, D&A",
-        "finance_costs":                        "finance costs, interest expense, borrowing costs",
-        "other_income":                         "other income, non-operating income",
-        "total_expenses":                       "total expenses, total costs, operating costs",
-        "advertising":    "advertising, ad spend, marketing, sales promotion",
-    }
-
-    for metric_key, meta in available.items():
-        aliases = ALIASES.get(metric_key, "")
-        metric_lines.append(f'  "{metric_key}" — also called: {aliases}')
-
     unavail_keys = list(unavailable.keys())
+
+    warnings_block = "\n".join(f"    {w}" for w in mapping_warnings)
 
     return f"""You are the DSL generator for LedgerMind, a financial data platform for Indian capital markets.
 
@@ -129,14 +119,15 @@ def _build_dsl_system_prompt() -> str:
     ## CRITICAL MAPPING RULES
     - "other income" → "other_income"  (NOT "total_income")
     - "net profit" / "profit after tax" → "pat"
-    - "profit before tax" / "PBT" → "profit_before_tax"  (NEVER "pat" — PBT and PAT
-      are DIFFERENT numbers; PBT is measured BEFORE tax is subtracted, PAT is AFTER)
     - "total income" → "total_income"  (revenue PLUS other income)
     - "other operating revenue" → "other_operating_revenue"  (NOT "revenue" —
       this is a SEPARATE sub-line some companies report alongside main revenue)
     - "revenue" / "revenue from operations" → "revenue"
     - You MUST use the exact metric key string from the AVAILABLE list above.
     - If the user asks for a metric not in either list, pick the closest available match.
+
+    ## DISAMBIGUATION WARNINGS
+{warnings_block}
 
     ## OPERATIONS
     - point_in_time  : single value for one entity and one period
