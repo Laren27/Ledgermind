@@ -11,10 +11,18 @@ This file:
 The LLM never writes SQL. The LLM never sees the schema.
 This file is the only thing that touches SQL construction.
 
-Metric registry reflects what is ACTUALLY in the financials table as of Phase 3.
-Only revenue and total_income are confirmed extracted from Eternal Q4FY26.
-Other metrics are registered for future corpus expansion — they return a clean
-"not yet available" error rather than a SQL failure.
+METRIC_REGISTRY and METRIC_ALIASES below are now DERIVED from the single
+shared registry at app/metrics/registry.py instead of being hand-maintained
+here. See that file's module docstring for the full rationale and bug
+history this consolidation fixes.
+
+"available" here reflects metric_type only (raw=True, derived=False) — NOT
+per-company/per-period corpus extraction state. A raw metric being
+"available" means the DSL Compiler will issue SQL for it and let a
+zero-row result mean "not found for this company/period" (handled in
+quant_engine.py's no_data_found path). A derived metric being registered
+here documents intent to support it once formula-compilation exists (see
+registry.py's NOT YET SUPPORTED section) — it is not yet queryable.
 
 Operation types:
   point_in_time  — single value for one entity/period
@@ -28,66 +36,19 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.engines.state import DSLObject
+from app.metrics.registry import dsl_registry, dsl_alias_pairs
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Metric Registry
+# Metric Registry — derived from app/metrics/registry.py
 # Maps DSL metric name → financials table metric column value
 # Only metrics in this registry can be queried via Path 2.
 # ---------------------------------------------------------------------------
 
-METRIC_REGISTRY = {
-    "revenue":                              {"available": True,  "column": "value", "label": "Revenue"},
-    "total_income":                         {"available": True,  "column": "value", "label": "Total Income"},
-    "other_operating_revenue":              {"available": True,  "column": "value", "label": "Other Operating Revenue"},
-    "pat":                                  {"available": True,  "column": "value", "label": "PAT"},
-    "profit_before_tax":                    {"available": True,  "column": "value", "label": "Profit Before Tax"},
-    "tax_expense":                          {"available": True,  "column": "value", "label": "Tax Expense"},
-    "exceptional_items":                    {"available": True,  "column": "value", "label": "Exceptional Items"},
-    "employee_benefits_expense":            {"available": True,  "column": "value", "label": "Employee Benefits Expense"},
-    "delivery_and_related_charges":         {"available": True,  "column": "value", "label": "Delivery and Related Charges"},
-    "depreciation":                         {"available": True,  "column": "value", "label": "Depreciation & Amortisation"},
-    "finance_costs":                        {"available": True,  "column": "value", "label": "Finance Costs"},
-    "other_income":                         {"available": True,  "column": "value", "label": "Other Income"},
-    "total_expenses":                       {"available": True,  "column": "value", "label": "Total Expenses"},
-    "advertisement_and_sales_promotion":    {"available": True,  "column": "value", "label": "Advertisement & Sales Promotion"},
-    "ebitda":                               {"available": False, "column": "value", "label": "EBITDA"},
-    "gross_profit":                         {"available": False, "column": "value", "label": "Gross Profit"},
-    "operating_expenses":                   {"available": False, "column": "value", "label": "Operating Expenses"},
-}
+METRIC_REGISTRY: Dict[str, Dict[str, Any]] = dsl_registry()
 
-METRIC_ALIASES: Dict[str, str] = {
-    "revenue from operations": "revenue",
-    "net revenue": "revenue",
-    "turnover": "revenue",
-    "total revenue": "revenue",
-    "top line": "revenue",
-    "total income": "total_income",
-    "other operating revenue": "other_operating_revenue",
-    "profit after tax": "pat",
-    "net profit": "pat",
-    "net income": "pat",
-    "earnings": "pat",
-    # Explicit, unambiguous aliases so the LLM cannot conflate PBT with PAT —
-    # confirmed root cause of a real bug: Gemini emitted metric="pat" when
-    # asked for "profit before tax" for both PAYTM and TITAN, since
-    # "profit_before_tax" was entirely absent from METRIC_REGISTRY, giving
-    # the model no correct option to choose from at all.
-    "profit before tax": "profit_before_tax",
-    "pbt": "profit_before_tax",
-    "profit before taxes": "profit_before_tax",
-    "tax expense": "tax_expense",
-    "income tax expense": "tax_expense",
-    "exceptional items": "exceptional_items",
-    "ebit": "ebitda",
-    "depreciation_and_amortisation_expenses": "depreciation",
-    "depreciation and amortisation expenses": "depreciation",
-    "depreciation and amortisation expense": "depreciation",
-    "depreciation and amortization expense": "depreciation",
-    "depreciation and amortization": "depreciation",
-    "d&a": "depreciation",
-}
+METRIC_ALIASES: Dict[str, str] = dsl_alias_pairs()
 
 # ---------------------------------------------------------------------------
 # Operation Registry
