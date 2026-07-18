@@ -192,6 +192,7 @@ def normalize_quarter(raw: str | None) -> str | None:
     """
     if raw is None:
         return None
-    if raw.strip().lower() in ("", "none", "null"):
+    cleaned = raw.strip()
+    if cleaned.lower() in ("", "none", "null"):
         return None
-    return raw
+    return cleaned.upper()
