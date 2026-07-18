@@ -7,7 +7,7 @@ from .entity_resolver import resolve_metric, METRIC_ALIASES
 from .models import BlockType, FinancialRecord, FinancialType, PageBlock
 from .pdf_parser import extract_financials, extract_financials_positional, find_fully_populated_row_centers
 from .section_classifier import get_blocks_by_type
-
+from app.ingestion.models import normalize_quarter
 logger = logging.getLogger(__name__)
 
 MONTH_NAMES = {
@@ -607,7 +607,7 @@ if __name__ == "__main__":
     try:
         sections = classify_and_register(
             blocks=blocks, pdf_path=pdf_path, tenant_id=ALPHA_TENANT, company=args.company,
-            ticker=args.ticker, fiscal_year=args.fiscal_year, quarter=args.quarter or None,
+            ticker=args.ticker, fiscal_year=args.fiscal_year, quarter=normalize_quarter(args.quarter),
             doc_type=args.doc_type, filing_date=args.filing_date, conn=conn,
         )
     finally:
