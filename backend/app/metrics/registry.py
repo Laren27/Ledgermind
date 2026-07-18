@@ -408,6 +408,19 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
         canonical_name="active_users",
         aliases=("active users",), metric_type="raw", dsl_enabled=False, label="Active Users",
     ),
+    MetricDefinition(
+        canonical_name="impairment_of_loans_and_investments_in_associates",
+        aliases=(
+            "impairment of loans/investment in associates",
+            "impairment of loans / investment in associates",
+            "impairment of loans/investments in associates",
+            "impairment of loans / investments in associates",
+            "provision for impairment of loans/investments in subsidiary/associate",
+            "provision for impairment ofloans/investments in subsidiary/associate",  # Catches OCR merged space ('ofloans')
+            "provision for impainnent ofloans/investments in subsidiary/associate",  # Catches OCR typo ('impainnent')
+        ),
+        metric_type="raw", dsl_enabled=False, label="Impairment of Loans/Investments in Associates",
+    ),
 
     # ── Exceptional items / OCI sub-lines ───────────────────────────────
     # dsl_enabled=False for the three OCI/PPE sub-lines below: these exist
