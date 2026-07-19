@@ -291,15 +291,26 @@ _SKIP_DESCRIPTIONS = {
 
 def _should_skip_row(description: str, values: list) -> bool:
     desc_lower = description.lower().strip()
+
+    # Pure OCR noise: a description with no alphabetic characters at all
+    # (e.g. ".1,203" — a stray digit/decimal fragment, not a real label).
+    if not re.search(r"[a-z]", desc_lower):
+        return True
+
+    # Footnote/narrative prose leaking into a FINANCIAL_STATEMENT block's
+    # row-iteration (e.g. "During the quarter ended June 2025, the Company
+    # sold gold-ingots aggregating...", audit-review boilerplate sentences).
+    # Real P&L/BS line items are short labels; a row this long is prose
+    # that happened to parse as a table row, not a genuine metric.
+    if len(description) > 80 or len(desc_lower.split()) > 12:
+        return True
+
     if "deferred revenue" in desc_lower or "contract liabilities" in desc_lower or "segment revenue" in desc_lower:
         return True
     if desc_lower in _SKIP_DESCRIPTIONS:
         return True
     if re.match(r"^(i{1,3}|iv|v|vi{1,3}|ix|x)$", desc_lower):
         return True
-    
-    # DELETED: The (a) and (b) skip logic was deleted here so Titan's taxes safely survive!
-
     if re.match(r"^\d+\s+[£₹a-z]", desc_lower):
         return True
     max_val = max((abs(v) for v in values if v is not None), default=0)
