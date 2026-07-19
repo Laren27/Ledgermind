@@ -27,7 +27,7 @@ import logging
 import os
 import re
 from typing import Literal, Optional
-
+from app.ingestion.entity_resolver import COMPANY_REGISTRY as COMPANY_PROFILES, resolve_ticker
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
@@ -51,44 +51,6 @@ class RouterResponse(BaseModel):
     financial_type: str
     path: Literal["semantic", "quantitative", "cross"]
     route_reason: str
-
-
-# ---------------------------------------------------------------------------
-# Company registry — maps natural language names → canonical tickers
-# Kept in this module; engines package stays independent of ingestion.
-# Expand as corpus grows.
-# ---------------------------------------------------------------------------
-
-COMPANY_REGISTRY = {
-    # Eternal / Zomato (same entity, rebranded)
-    "eternal":          "ETERNAL",
-    "zomato":           "ETERNAL",
-    "zomato limited":   "ETERNAL",
-    "eternal limited":  "ETERNAL",
-
-    # Paytm
-    "paytm":            "PAYTM",
-    "one 97":           "PAYTM",
-    "one97":            "PAYTM",
-
-    # Nykaa
-    "nykaa":            "NYKAA",
-    "fss":              "NYKAA",
-
-    # PolicyBazaar
-    "policybazaar":     "POLICYBAZAAR",
-    "pb fintech":       "POLICYBAZAAR",
-
-    # Swiggy
-    "swiggy":           "SWIGGY",
-    "bundl":            "SWIGGY",
-
-    # Delhivery
-    "delhivery":        "DELHIVERY",
-
-    # Blinkit (subsidiary of Eternal — kept separate for cross-examination queries)
-    "blinkit":          "BLINKIT",
-}
 
 # ---------------------------------------------------------------------------
 # Gemini model — read from env so you can swap models without touching code.
@@ -118,7 +80,7 @@ def _get_gemini_client() -> genai.Client:
 # System prompt — controls Gemini's extraction and classification behaviour
 # ---------------------------------------------------------------------------
 
-_KNOWN_TICKERS = sorted(set(COMPANY_REGISTRY.values()))
+_KNOWN_TICKERS = sorted({p.ticker for p in COMPANY_PROFILES})
 _KNOWN_METRICS = sorted(METRIC_REGISTRY.keys())
 
 ROUTER_SYSTEM_PROMPT = f"""You are the query router for LedgerMind, a financial research platform for Indian capital markets.
@@ -223,11 +185,11 @@ def _classify_query(query: str) -> dict:
         if company_raw and company_raw.lower() != "null":
             # Accept ticker directly if already in registry values
             upper = company_raw.strip().upper()
-            if upper in _KNOWN_TICKERS:
-                company = upper
-            else:
-                # Try lookup via lower-case registry keys
-                company = COMPANY_REGISTRY.get(company_raw.strip().lower())
+            company = None
+            if company_raw and company_raw.lower() != "null":
+                resolved = resolve_ticker(company_raw)
+                if resolved in _KNOWN_TICKERS:
+                    company = resolved
 
         path = result.get("path", "semantic").lower()
         if path not in ("semantic", "quantitative", "cross"):
