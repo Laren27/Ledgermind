@@ -270,8 +270,9 @@ def render_main():
 
     example_queries = [
         "What was ETERNAL consolidated revenue for FY26?",
-        "What are the key risk factors disclosed by ETERNAL?",
-        "What is ETERNAL's standalone total income for FY26?",
+        "Who grew revenue faster in FY26, Eternal or Paytm?",
+        "What is ETERNAL's standalone total expenses for FY25?",
+        "What are the key risk factors disclosed by ETERNAL regarding food delivery?",
     ]
     selected = st.selectbox(
         "Try an example query or type your own below",
