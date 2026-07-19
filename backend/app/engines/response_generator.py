@@ -120,6 +120,25 @@ def _format_quant_response(state: QueryState) -> str:
             f"₹{current_val:,.1f} {unit_label} in {current_fy}."
         )
 
+    # growth_comparison
+    if "yoy_a_pct" in row:
+        if row.get("error"):
+            return f"Could not compare growth rates: {row['error']}"
+        metric = row["metric"]
+        ea, ea_pct = row["entity_a"], row["yoy_a_pct"]
+        eb, eb_pct = row["entity_b"], row["yoy_b_pct"]
+        faster = row["faster_growing_entity"]
+        fy = row.get("fiscal_year")
+        unit_label = "Cr" if row.get("unit") == "crore_inr" else row.get("unit", "")
+
+        return (
+            f"In {fy}, {ea}'s {metric.lower()} grew {ea_pct:+.2f}% year-over-year "
+            f"(₹{row['a_prior_value']:,.1f} {unit_label} → ₹{row['a_current_value']:,.1f} {unit_label}), "
+            f"while {eb}'s grew {eb_pct:+.2f}% "
+            f"(₹{row['b_prior_value']:,.1f} {unit_label} → ₹{row['b_current_value']:,.1f} {unit_label}). "
+            f"{faster} grew faster."
+        )
+
     # comparison
     if "entity1" in row:
         if row.get("error"):
@@ -304,6 +323,24 @@ def response_generator_node(state: QueryState) -> QueryState:
         state["response_text"] = (
             "Unable to determine how to process this query. Please rephrase."
         )
+
+    # -----------------------------------------------------------------------
+    # Single Source Caveat & Confidence Downgrade
+    # -----------------------------------------------------------------------
+    citations = state.get("citations", [])
+    
+    # We use c.get("chunk_id", i) as a fallback in case chunk_id is missing from the Citation typed dict
+    distinct_sources = {c.get("chunk_id", i) for i, c in enumerate(citations)}
+    
+    if len(distinct_sources) == 1 and path in ("semantic", "cross"):
+        if state.get("confidence_tier") == "high":
+            state["confidence_tier"] = "medium"
+            
+        single_source_caveat = (
+            "This answer is based on a single source passage — "
+            "related disclosures elsewhere in the filing may not have been retrieved."
+        )
+        state["response_text"] += f"\n\n_{single_source_caveat}_"
 
     logger.info(
         "Response generated | path=%s length=%d contradictions=%d",
