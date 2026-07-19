@@ -14,6 +14,7 @@ Scoring logic by category:
   quantitative_standalone           → same as point (tests financial_type isolation)
   quantitative_comparison           → PASS if sql_verified AND higher-entity + values match
                                        (also guards against bug #6 negative-pct/"higher" regression)
+  quantitative_growth_comparison    → PASS if sql_verified AND faster-entity + YoY growth %s match
   quantitative_cross_period_refusal → PASS if system refuses/flags unsupported; FAILS HARD if
                                        entities silently collapsed to same entity (bug #7 regression)
   quantitative_restatement          → PASS if is_latest value matches, or (expect_no_restatement)
@@ -130,6 +131,13 @@ def _extract_comparison_values(sql_result) -> Optional[dict]:
     Handles both flat shapes {"entity1": ..., "value1": ...} and 
     nested formats {"entity_a": {"name": ..., "value": ...}} safely.
     """
+    if not sql_result:
+        return None
+    row = sql_result[0] if isinstance(sql_result, list) else sql_result
+    return row if isinstance(row, dict) else None
+
+
+def _extract_growth_comparison_values(sql_result) -> Optional[dict]:
     if not sql_result:
         return None
     row = sql_result[0] if isinstance(sql_result, list) else sql_result
@@ -259,6 +267,36 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
 
         passed = len(errors) == 0
         return {"pass": passed, "reason": "Comparison correct" if passed else "; ".join(errors), "actual": comp}
+
+    # ── Growth comparison (YoY rate comparison between two entities) ──────
+    if category == "quantitative_growth_comparison":
+        sql_verified = result.get("sql_verified", False)
+        gc = _extract_growth_comparison_values(result.get("sql_result"))
+        expected_faster = golden.get("expected_faster_entity")
+        expected_a_pct = golden.get("expected_yoy_a_pct")
+        expected_b_pct = golden.get("expected_yoy_b_pct")
+        tolerance = golden.get("value_tolerance", 0.5)
+
+        if not sql_verified or gc is None:
+            return {"pass": False, "reason": f"sql_verified={sql_verified}, no growth_comparison payload. error={result.get('error')}",
+                     "actual": {"sql_verified": sql_verified}}
+
+        errors = []
+        actual_faster = gc.get("faster_growing_entity")
+        if expected_faster and actual_faster != expected_faster:
+            errors.append(f"wrong faster entity: expected={expected_faster} actual={actual_faster}")
+
+        actual_a_pct = gc.get("yoy_a_pct")
+        actual_b_pct = gc.get("yoy_b_pct")
+        if expected_a_pct is not None:
+            if actual_a_pct is None or abs(float(actual_a_pct) - float(expected_a_pct)) > tolerance:
+                errors.append(f"entity_a yoy_pct mismatch: expected={expected_a_pct} actual={actual_a_pct}")
+        if expected_b_pct is not None:
+            if actual_b_pct is None or abs(float(actual_b_pct) - float(expected_b_pct)) > tolerance:
+                errors.append(f"entity_b yoy_pct mismatch: expected={expected_b_pct} actual={actual_b_pct}")
+
+        passed = len(errors) == 0
+        return {"pass": passed, "reason": "Growth comparison correct" if passed else "; ".join(errors), "actual": gc}
 
     # ── Cross-period comparison: must refuse, never silently collapse ───
     if category == "quantitative_cross_period_refusal":
