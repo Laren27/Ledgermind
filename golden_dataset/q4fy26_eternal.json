@@ -745,5 +745,23 @@
     "expected_sql_verified": false,
     "expected_error": "no_data_found",
     "notes": "Swiggy is registered in COMPANY_REGISTRY but never ingested (confirmed 0 rows in financials table). Must return no_data_found, not hallucinate a number. Replaces a prior version of this question that referenced Paytm, which was correct when written but became stale once Paytm was ingested in a later session \u2014 this is why golden questions must be re-verified against live data periodically, not just at authoring time."
+  },
+  {
+  "id": "Q051",
+  "category": "quantitative_growth_comparison",
+  "question": "Who grew revenue faster in FY26, Eternal or Paytm?",
+  "expected_path": "quantitative",
+  "expected_faster_entity": "ETERNAL",
+  "expected_yoy_a_pct": 168.56,
+  "expected_yoy_b_pct": 22.28,
+  "notes": "Verified live: Eternal 20243→54364 (+168.56%), Paytm 6900→8437 (+22.28%)."
+  },
+  {
+  "id": "Q052",
+  "category": "quantitative_yoy",
+  "question": "Compare Eternal's revenue in FY25 and FY26",
+  "expected_path": "quantitative",
+  "expected_yoy_pct": 168.56,
+  "notes": "Ambiguous 'compare X in year A and year B' phrasing for a SINGLE entity — must resolve to yoy_growth, not point_in_time (which previously silently dropped one year). Regression test for the point_in_time/comparison_period validator guard added this session."
   }
 ]
