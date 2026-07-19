@@ -183,6 +183,35 @@ class DSLValidator:
                 ),
             )
 
+        # ── 5b. Detect ambiguous point_in_time with an unused comparison_period ──
+        # If Gemini captured a second year in comparison_period but chose
+        # point_in_time, it silently dropped that year from the answer (e.g.
+        # "Compare Eternal's revenue in FY25 and FY26" → point_in_time on FY26
+        # alone, FY25 stashed in comparison_period and never used). This is a
+        # real, confirmed bug: point_in_time returns a full-confidence answer
+        # to a narrower question than was actually asked. Force a retry toward
+        # yoy_growth instead of silently truncating.
+        if operation == "point_in_time":
+            comparison_period = raw.get("comparison_period")
+            fiscal_year = raw.get("fiscal_year")
+            if comparison_period and comparison_period.upper().strip() != fiscal_year.upper().strip():
+                return ValidationResult(
+                    valid=False,
+                    error=(
+                        f"operation='point_in_time' with a distinct comparison_period "
+                        f"('{comparison_period}') suggests the query spans two periods "
+                        f"for the same entity — this must use operation='yoy_growth' instead."
+                    ),
+                    repair_hint=(
+                        f"You set fiscal_year='{fiscal_year}' AND comparison_period='{comparison_period}' "
+                        f"but chose operation='point_in_time', which only returns ONE period. "
+                        f"If the query asks about the same company across two fiscal years "
+                        f"(e.g. 'in FY25 and FY26', 'from FY25 to FY26'), use operation='yoy_growth' "
+                        f"with fiscal_year set to the LATER year — the prior year is inferred automatically. "
+                        f"Do not use comparison_period for this case."
+                    ),
+                )
+
         # ── 6. Operation-specific field checks ────────────────────────────
         if operation == "comparison" and not raw.get("comparison_entity"):
             return ValidationResult(
