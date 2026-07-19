@@ -130,10 +130,13 @@ def _build_dsl_system_prompt() -> str:
 {warnings_block}
 
     ## OPERATIONS
-    - point_in_time  : single value for one entity and one period
-    - yoy_growth     : year-over-year % change
-    - comparison     : two entities, same period (needs comparison_entity)
-    - cagr           : compound annual growth rate across all available years
+    - point_in_time      : single value for one entity and one period
+    - yoy_growth         : year-over-year % change
+    - comparison         : two entities, same period (needs comparison_entity)
+    - cagr               : compound annual growth rate across all available years
+    - growth_comparison  : compares YoY growth rate between two entities for the same
+      fiscal year (needs comparison_entity + fiscal_year) — use this for questions like
+      "who grew revenue faster, X or Y"
 
     ## RULES
     - entity: canonical ticker (ETERNAL, PAYTM, NYKAA, etc.)
@@ -193,6 +196,7 @@ def _generate_dsl(
     client = _get_gemini_client()
     repair_hint: Optional[str] = None
     attempts = 0
+    last_error: Optional[str] = None
 
     while attempts < MAX_DSL_ATTEMPTS:
         attempts += 1
@@ -267,6 +271,7 @@ def _generate_dsl(
             "DSL invalid (attempt %d): %s | repair_hint: %s",
             attempts, validation.error, validation.repair_hint,
         )
+        last_error = validation.error          # NEW — capture it every iteration
 
         if validation.repair_hint is None:
             # Non-recoverable (e.g., metric registered but unavailable)
@@ -276,7 +281,13 @@ def _generate_dsl(
         repair_hint = validation.repair_hint
 
     # Exhausted retries
-    return None, attempts, f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts."
+    return (
+        None,
+        attempts,
+        f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts. "
+        f"Last error: {last_error}" if last_error else
+        f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -395,6 +406,41 @@ def _compute_comparison(
     }
 
 
+def _compute_growth_comparison(
+    entity_a_curr: List[Dict], entity_a_prior: List[Dict],
+    entity_b_curr: List[Dict], entity_b_prior: List[Dict],
+    entity_a: str, entity_b: str, metric_label: str,
+) -> Dict[str, Any]:
+    """Compare YoY growth rates between two entities for the same metric/year."""
+    if not entity_a_curr or not entity_a_prior:
+        return {"error": f"Missing data for {entity_a}'s current or prior year", "yoy_a_pct": None, "yoy_b_pct": None}
+    if not entity_b_curr or not entity_b_prior:
+        return {"error": f"Missing data for {entity_b}'s current or prior year", "yoy_a_pct": None, "yoy_b_pct": None}
+
+    a_curr_val = float(entity_a_curr[0]["value"])
+    a_prior_val = float(entity_a_prior[0]["value"])
+    b_curr_val = float(entity_b_curr[0]["value"])
+    b_prior_val = float(entity_b_prior[0]["value"])
+
+    if a_prior_val == 0 or b_prior_val == 0:
+        return {"error": "One or both entities' prior-year value is zero — growth % undefined", "yoy_a_pct": None, "yoy_b_pct": None}
+
+    yoy_a_pct = round((a_curr_val - a_prior_val) / abs(a_prior_val) * 100, 2)
+    yoy_b_pct = round((b_curr_val - b_prior_val) / abs(b_prior_val) * 100, 2)
+    faster = entity_a if yoy_a_pct > yoy_b_pct else entity_b
+
+    return {
+        "metric": metric_label,
+        "entity_a": entity_a, "yoy_a_pct": yoy_a_pct,
+        "a_current_value": a_curr_val, "a_prior_value": a_prior_val,
+        "entity_b": entity_b, "yoy_b_pct": yoy_b_pct,
+        "b_current_value": b_curr_val, "b_prior_value": b_prior_val,
+        "faster_growing_entity": faster,
+        "fiscal_year": entity_a_curr[0].get("fiscal_year"),
+        "unit": entity_a_curr[0].get("unit", "crore_inr"),
+    }
+
+
 def _compute_cagr(rows: List[Dict], metric_label: str, entity: str) -> Dict[str, Any]:
     """Compute CAGR from multiple annual data points."""
     if len(rows) < 2:
@@ -500,9 +546,43 @@ def quant_engine_node(state: QueryState) -> QueryState:
         return state
 
     state["sql_query"] = compile_result.sql
-    logger.debug("Compiled SQL: %s | params: %s", compile_result.sql[:150], compile_result.params)
+    logger.debug("Compiled SQL: %s | params: %s", (compile_result.sql or "")[:150], compile_result.params)
 
-    # ── Stage 3: SQL execution ─────────────────────────────────────────────
+    operation = compile_result.operation
+
+    # ── growth_comparison: 4-query operation, handled separately since it
+    # doesn't fit the single-query .sql/.params execution path below ──────
+    if operation == "growth_comparison":
+        try:
+            all_rows = [_execute_sql(q_sql, q_params, tenant_id) for q_sql, q_params in compile_result.queries]
+        except Exception as e:
+            logger.error("growth_comparison SQL execution failed: %s", e)
+            state["error"] = "sql_execution_failed"
+            state["error_node"] = "quant_engine"
+            state["response_text"] = (
+                "Database query failed. The requested data may not be available "
+                "for one or both companies/periods."
+            )
+            return state
+
+        a_curr, a_prior, b_curr, b_prior = all_rows
+        state["sql_row_count"] = sum(len(r) for r in all_rows)
+        computed = _compute_growth_comparison(
+            a_curr, a_prior, b_curr, b_prior,
+            dsl["entity"], dsl["comparison_entity"], compile_result.metric_label,
+        )
+        state["sql_result"] = [computed]
+        state["sql_verified"] = computed.get("error") is None
+        state["confidence_score"] = 1.0 if state["sql_verified"] else 0.4
+        state["confidence_tier"] = "high" if state["sql_verified"] else "low"
+
+        logger.info(
+            "QuantEngine complete | operation=growth_comparison rows=%d verified=%s",
+            state["sql_row_count"], state["sql_verified"],
+        )
+        return state
+
+    # ── Stage 3: SQL execution (single-query operations only) ─────────────
     try:
         rows = _execute_sql(compile_result.sql, compile_result.params, tenant_id)
     except Exception as e:
@@ -518,8 +598,6 @@ def quant_engine_node(state: QueryState) -> QueryState:
     logger.info("SQL returned %d rows for operation=%s", len(rows), compile_result.operation)
 
     # ── Stage 4+5: Verify + compute derived metrics ────────────────────────
-    operation = compile_result.operation
-
     if operation == "point_in_time":
         if len(rows) == 0:
             state["error"] = "no_data_found"
