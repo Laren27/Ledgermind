@@ -25,10 +25,11 @@ here documents intent to support it once formula-compilation exists (see
 registry.py's NOT YET SUPPORTED section) — it is not yet queryable.
 
 Operation types:
-  point_in_time  — single value for one entity/period
-  yoy_growth     — this year vs last year (two SQL reads, % computed in Python)
-  comparison     — two entities, same period (two SQL reads)
-  cagr           — multiple years (Python post-SQL, needs ≥2 data points)
+  point_in_time      — single value for one entity/period
+  yoy_growth         — this year vs last year (two SQL reads, % computed in Python)
+  comparison         — two entities, same period (two SQL reads)
+  cagr               — multiple years (Python post-SQL, needs ≥2 data points)
+  growth_comparison  — compares YoY growth rate between two entities (4 SQL reads)
 """
 
 import logging
@@ -55,10 +56,11 @@ METRIC_ALIASES: Dict[str, str] = dsl_alias_pairs()
 # ---------------------------------------------------------------------------
 
 OPERATION_REGISTRY: Dict[str, str] = {
-    "point_in_time": "Single period value for one entity",
-    "yoy_growth":    "Year-over-year % change (requires fiscal_year in DSL)",
-    "comparison":    "Two entities, same period (requires comparison_entity)",
-    "cagr":          "Compound annual growth rate (requires multiple periods)",
+    "point_in_time":     "Single period value for one entity",
+    "yoy_growth":        "Year-over-year % change (requires fiscal_year in DSL)",
+    "comparison":        "Two entities, same period (requires comparison_entity)",
+    "cagr":              "Compound annual growth rate (requires multiple periods)",
+    "growth_comparison": "Compares YoY growth rate between two entities (requires comparison_entity + fiscal_year)",
 }
 
 # Valid financial_type values
@@ -79,14 +81,26 @@ class ValidationResult:
 @dataclass
 class CompileResult:
     success: bool
-    sql: Optional[str] = None
-    params: Optional[tuple] = None      # psycopg2 parameterised values
+    error: Optional[str] = None
     operation: Optional[str] = None     # which operation was compiled
     metric_label: Optional[str] = None  # human-readable metric name
-    error: Optional[str] = None
-    # For yoy_growth and comparison: second SQL needed
+
+    # New canonical storage for N-queries
+    queries: List[Tuple[str, tuple]] = field(default_factory=list)
+
+    # Backward-compatibility slots (legacy operations still write here)
+    sql: Optional[str] = None
+    params: Optional[tuple] = None
     sql2: Optional[str] = None
     params2: Optional[tuple] = None
+
+    def __post_init__(self):
+        """Bridge legacy single/dual query assignments into the canonical list."""
+        if not self.queries:
+            if self.sql and self.params is not None:
+                self.queries.append((self.sql, self.params))
+            if self.sql2 and self.params2 is not None:
+                self.queries.append((self.sql2, self.params2))
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +194,7 @@ class DSLValidator:
                 ),
             )
 
-        # ADD — reject self-comparisons
+        # Reject self-comparisons
         if operation == "comparison" and raw.get("comparison_entity"):
             primary_resolved = raw["entity"].upper().strip()
             comp_resolved = raw["comparison_entity"].upper().strip()
@@ -206,6 +220,34 @@ class DSLValidator:
                     "(e.g. 'FY26'). The previous year is inferred automatically."
                 ),
             )
+
+        if operation == "growth_comparison":
+            if not raw.get("comparison_entity"):
+                return ValidationResult(
+                    valid=False,
+                    error="operation='growth_comparison' requires comparison_entity",
+                    repair_hint=(
+                        "For growth_comparison you must provide 'comparison_entity' "
+                        "with the second company's ticker."
+                    ),
+                )
+            if not raw.get("fiscal_year"):
+                return ValidationResult(
+                    valid=False,
+                    error="operation='growth_comparison' requires fiscal_year",
+                    repair_hint=(
+                        "For growth_comparison you must provide 'fiscal_year' "
+                        "(e.g. 'FY26'). The prior year is inferred automatically for both entities."
+                    ),
+                )
+            primary_resolved = raw["entity"].upper().strip()
+            comp_resolved = raw["comparison_entity"].upper().strip()
+            if primary_resolved == comp_resolved:
+                return ValidationResult(
+                    valid=False,
+                    error=f"comparison_entity resolved to the same company as entity ('{primary_resolved}')",
+                    repair_hint="growth_comparison requires two different entities.",
+                )
 
         # ── All checks passed — build DSLObject ───────────────────────────
         dsl = DSLObject(
@@ -264,6 +306,8 @@ class SQLCompiler:
             return self._compile_comparison(dsl, tenant_id)
         elif operation == "cagr":
             return self._compile_cagr(dsl, tenant_id)
+        elif operation == "growth_comparison":
+            return self._compile_growth_comparison(dsl, tenant_id)
         else:
             return CompileResult(
                 success=False,
@@ -450,6 +494,52 @@ class SQLCompiler:
             metric_label=METRIC_REGISTRY[dsl["metric"]]["label"],
         )
 
+    def _compile_growth_comparison(
+        self, dsl: DSLObject, tenant_id: str
+    ) -> CompileResult:
+        """
+        Four SQL reads: entity A current+prior year, entity B current+prior year.
+        YoY % computed for each entity in Python (quant_engine), then compared.
+        """
+        try:
+            year_num = int(dsl["fiscal_year"].replace("FY", ""))
+            prior_fiscal_year = f"FY{year_num - 1}"
+        except ValueError:
+            return CompileResult(
+                success=False,
+                error=f"Cannot infer prior year from fiscal_year: {dsl['fiscal_year']}",
+            )
+
+        # Entity A: current + prior
+        sql_a_curr, params_a_curr = self._base_select(dsl, tenant_id)
+        dsl_a_prior = dict(dsl)
+        dsl_a_prior["fiscal_year"] = prior_fiscal_year
+        sql_a_prior, params_a_prior = self._base_select(DSLObject(**dsl_a_prior), tenant_id)
+
+        # Entity B: current + prior
+        dsl_b_curr = dict(dsl)
+        dsl_b_curr["entity"] = dsl["comparison_entity"]
+        sql_b_curr, params_b_curr = self._base_select(DSLObject(**dsl_b_curr), tenant_id)
+        dsl_b_prior = dict(dsl_b_curr)
+        dsl_b_prior["fiscal_year"] = prior_fiscal_year
+        sql_b_prior, params_b_prior = self._base_select(DSLObject(**dsl_b_prior), tenant_id)
+
+        logger.debug(
+            "Compiled growth_comparison SQL | entity1=%s entity2=%s current=%s prior=%s",
+            dsl["entity"], dsl["comparison_entity"], dsl["fiscal_year"], prior_fiscal_year,
+        )
+
+        return CompileResult(
+            success=True,
+            operation="growth_comparison",
+            metric_label=METRIC_REGISTRY[dsl["metric"]]["label"],
+            queries=[
+                (sql_a_curr, tuple(params_a_curr)),
+                (sql_a_prior, tuple(params_a_prior)),
+                (sql_b_curr, tuple(params_b_curr)),
+                (sql_b_prior, tuple(params_b_prior)),
+            ],
+        )
 
 # ---------------------------------------------------------------------------
 # Module-level singletons
