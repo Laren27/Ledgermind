@@ -91,7 +91,7 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
     ),
     MetricDefinition(
         canonical_name="other_operating_revenue",
-        aliases=("other operating revenue",),
+        aliases=("other operating revenue", "other operating revenues"),
         metric_type="raw", dsl_enabled=True, label="Other Operating Revenue",
         prompt_aliases="other operating revenue, secondary revenue line",
         prompt_warning="Distinct from 'revenue' — this is a SEPARATE sub-line some companies report alongside main revenue.",
@@ -132,7 +132,7 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
     MetricDefinition(
         canonical_name="purchases_of_stock_in_trade",
         aliases=("purchases of stock-in-trade",),
-        metric_type="raw", dsl_enabled=False, label="Purchases of Stock-in-Trade",
+        metric_type="raw", dsl_enabled=True, label="Purchases of Stock-in-Trade",
     ),
     MetricDefinition(
         canonical_name="changes_in_inventories",
@@ -200,11 +200,6 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
     ),
 
     # ── Profitability ────────────────────────────────────────────────────
-    # NOTE: ebit and ebitda are financially distinct and are kept as
-    # distinct canonical metrics. dsl_compiler.py previously aliased
-    # "ebit" -> "ebitda", which was a silent cross-file semantic conflict
-    # with entity_resolver.py treating them separately. Resolved here in
-    # favor of entity_resolver's (correct) treatment.
     MetricDefinition(
         canonical_name="ebit",
         aliases=("ebit",),
@@ -384,13 +379,17 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
     # ── EPS / ops metrics ────────────────────────────────────────────────
     MetricDefinition(
         canonical_name="eps_basic",
-        aliases=("earnings per share", "basic earnings per share", "basic eps"),
-        metric_type="raw", dsl_enabled=False, label="Basic EPS",
+        aliases=("earnings per share", "basic earnings per share", "basic eps",
+                 "basic (not annualised)", "basic"),
+        metric_type="raw", dsl_enabled=True, label="Basic EPS",
+        prompt_aliases="basic earnings per share, basic eps",
     ),
     MetricDefinition(
         canonical_name="eps_diluted",
-        aliases=("diluted earnings per share", "diluted eps"),
-        metric_type="raw", dsl_enabled=False, label="Diluted EPS",
+        aliases=("diluted earnings per share", "diluted eps",
+                 "diluted (not annualised)", "diluted"),
+        metric_type="raw", dsl_enabled=True, label="Diluted EPS",
+        prompt_aliases="diluted earnings per share, diluted eps",
     ),
     MetricDefinition(
         canonical_name="orders",
@@ -416,17 +415,78 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
             "impairment of loans/investments in associates",
             "impairment of loans / investments in associates",
             "provision for impairment of loans/investments in subsidiary/associate",
-            "provision for impairment ofloans/investments in subsidiary/associate",  # Catches OCR merged space ('ofloans')
-            "provision for impainnent ofloans/investments in subsidiary/associate",  # Catches OCR typo ('impainnent')
+            "provision for impairment ofloans/investments in subsidiary/associate",
+            "provision for impainnent ofloans/investments in subsidiary/associate",
         ),
         metric_type="raw", dsl_enabled=False, label="Impairment of Loans/Investments in Associates",
     ),
+    MetricDefinition(
+        canonical_name="segment_revenue_watches", 
+        aliases=("watches",),
+        metric_type="raw", dsl_enabled=False, label="Watches Segment Revenue",
+    ),
+    MetricDefinition(
+        canonical_name="segment_revenue_jewellery", 
+        aliases=("jewellery",),
+        metric_type="raw", dsl_enabled=False, label="Jewellery Segment Revenue",
+    ),
+    MetricDefinition(
+        canonical_name="segment_revenue_eyecare", 
+        aliases=("eyecare",),
+        metric_type="raw", dsl_enabled=False, label="Eyecare Segment Revenue",
+    ),
+    MetricDefinition(
+        canonical_name="segment_revenue_others", 
+        aliases=("others",),
+        metric_type="raw", dsl_enabled=False, label="Other Segment Revenue",
+    ),
+    MetricDefinition(
+        canonical_name="segment_unallocated", 
+        aliases=("corporate (unallocated)", "corporate unallocated"),
+        metric_type="raw", dsl_enabled=False, label="Corporate Unallocated",
+    ),
+    MetricDefinition(
+        canonical_name="geo_revenue_india", 
+        aliases=("india",),
+        metric_type="raw", dsl_enabled=True, label="India Revenue",
+    ),
+    MetricDefinition(
+        canonical_name="geo_revenue_rest_of_world", 
+        aliases=("rest of the world",),
+        metric_type="raw", dsl_enabled=True, label="Rest of World Revenue",
+    ),
+    MetricDefinition(
+        canonical_name="oci_tax_on_remeasurement",
+        aliases=("income-tax on (i) above", "income-tax on (i) above*", "income-tax on (i) above•"),
+        metric_type="raw", dsl_enabled=False,
+        label="Income Tax on Remeasurement of Defined Benefit Plans",
+    ),
+    MetricDefinition(
+        canonical_name="oci_tax_on_fx_translation",
+        aliases=("income-tax on (ii) above", "income-tax on (ii) above•"),
+        metric_type="raw", dsl_enabled=False,
+        label="Income Tax on FX Translation Differences",
+    ),
+    MetricDefinition(
+        canonical_name="pat_attributable_to_owners",
+        aliases=("owners of the group",),
+        metric_type="raw", dsl_enabled=True,
+        label="PAT Attributable to Owners of the Group",
+    ),
+    MetricDefinition(
+        canonical_name="purchase_of_stock_in_trade",
+        aliases=("purchase of stock-in-trade",),
+        metric_type="raw", dsl_enabled=True,
+        label="Purchase of Stock-in-Trade",
+    ),
+    MetricDefinition(
+        canonical_name="total_other_comprehensive_income",
+        aliases=("total other comprehensive loss", "total other comprehensive income"),
+        metric_type="raw", dsl_enabled=True,
+        label="Total Other Comprehensive Income/(Loss)",
+    ),
 
     # ── Exceptional items / OCI sub-lines ───────────────────────────────
-    # dsl_enabled=False for the three OCI/PPE sub-lines below: these exist
-    # purely so ingestion has a correct, distinct dedup target instead of
-    # collapsing into "exceptional_items" (the bug this fixed — see module
-    # docstring). They are not meant to be user-queryable via the DSL.
     MetricDefinition(
         canonical_name="exceptional_items",
         aliases=("exceptional items",),
@@ -468,9 +528,6 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
 _BY_CANONICAL: dict[str, MetricDefinition] = {m.canonical_name: m for m in ALL_METRICS}
 
 if len(_BY_CANONICAL) != len(ALL_METRICS):
-    # Duplicate canonical_name across entries — fail loudly at import time
-    # rather than silently letting one shadow another (the exact failure
-    # mode this file exists to prevent).
     seen: dict[str, int] = {}
     for m in ALL_METRICS:
         seen[m.canonical_name] = seen.get(m.canonical_name, 0) + 1
@@ -494,10 +551,7 @@ def all_alias_pairs() -> dict[str, str]:
 
 def dsl_registry() -> dict[str, dict]:
     """canonical_name -> {"available": ..., "column": "value", "label": ...}
-    for dsl_enabled metrics only. Mirrors dsl_compiler.py's old METRIC_REGISTRY shape.
-    "available" reflects metric_type only (raw=True, derived=False) since
-    corpus-level availability is a runtime/data-state concern, not schema —
-    see module docstring."""
+    for dsl_enabled metrics only. Mirrors dsl_compiler.py's old METRIC_REGISTRY shape."""
     return {
         m.canonical_name: {
             "available": m.metric_type == "raw",
