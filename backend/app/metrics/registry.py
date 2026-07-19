@@ -501,6 +501,7 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
             "remeasuremcnls of the defined benefit plans 0 0",
             "-remeasurement of employee defined benefit plan",
             "remeasurement of employee defined benefit plan",
+            "remeasurement of employee defined benefit plans",  # NEW — Titan's plural variant
         ),
         metric_type="raw", dsl_enabled=False, label="OCI: Remeasurement of Defined Benefit Plans",
     ),
@@ -511,6 +512,7 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
             "exchange differences on trnnslation of foreign operations 8 2",
             "exchange differences on lranslation of foreign operations 0 5 i",
             "-exchange differences in translating the financial statements of foreign",
+            "exchange differences in translating the financial statements of foreign",  # NEW — Titan's exact wording, no dash
         ),
         metric_type="raw", dsl_enabled=False, label="OCI: FX Translation",
     ),
