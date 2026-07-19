@@ -125,7 +125,10 @@ def _build_dsl_system_prompt() -> str:
     - "revenue" / "revenue from operations" → "revenue"
     - You MUST use the exact metric key string from the AVAILABLE list above.
     - If the user asks for a metric not in either list, pick the closest available match.
-
+    - If a query names TWO fiscal years for the SAME company (e.g. "in FY25 and FY26",
+      "from FY25 to FY26", "FY25 vs FY26"), you MUST use operation="yoy_growth" with
+      fiscal_year set to the LATER year. Do NOT use operation="point_in_time" —
+      it only returns one year and will silently drop the other.
     ## DISAMBIGUATION WARNINGS
 {warnings_block}
 
