@@ -182,10 +182,19 @@
   },
   {
     "id": "PQ012",
+    "category": "semantic_risk",
+    "question": "Does Paytm have any financial exposure to Paytm Payments Bank following the license cancellation?",
     "expected_path": "semantic",
-    "expected_confidence": "high",
-    "known_limitation": "System retrieves note 9 (PPBL 'no exposure' disclosure) correctly but does not surface note 4 (the ₹190cr JV-loan impairment) for this query phrasing — confirmed via live API call, response_text has zero mention of note 4. The answer given is accurate as far as it goes but incomplete. This is a real retrieval-completeness gap, not a scoring error. Tracked as backlog item.",
-    "notes": "..."
+    "expected_is_blocked": false,
+    "expected_confidence_tier": "high",
+    "expected_keywords": [
+      "impaired"
+    ],
+    "expected_source_pages": [
+      12
+    ],
+    "notes": "Verified: company states no exposure, no board/management involvement, investment fully impaired as of March 31, 2024.",
+    "known_limitation": "System retrieves note 9 (PPBL 'no exposure' disclosure) correctly but does not surface note 4 (the ₹190cr JV-loan impairment) for this query phrasing — confirmed via live API call, response_text has zero mention of note 4. The answer given is accurate as far as it goes but incomplete. This is a real retrieval-completeness gap, not a scoring error. Tracked as backlog item."
   },
   {
     "id": "PQ013",
