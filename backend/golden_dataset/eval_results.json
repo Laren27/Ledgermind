@@ -1,13 +1,13 @@
 [
   {
-    "id": "PQ001",
+    "id": "TQ001",
     "category": "quantitative_point",
-    "question": "What was Paytm's consolidated revenue for FY26?",
+    "question": "What was Titan's standalone revenue for Q1FY26?",
     "score": {
       "pass": true,
       "reason": "Value match",
       "actual": {
-        "value": 8437.0,
+        "value": 13040.0,
         "sql_verified": true
       }
     },
@@ -17,18 +17,18 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "PAYTM's consolidated Revenue for FY26 was \u20b98,437.0 Cr."
+      "response_preview": "TITAN's standalone Revenue for Q1 FY26 was \u20b913,040.0 Cr."
     }
   },
   {
-    "id": "PQ002",
+    "id": "TQ002",
     "category": "quantitative_point",
-    "question": "What was Paytm's consolidated revenue for FY25?",
+    "question": "What was Titan's consolidated revenue for Q1FY26?",
     "score": {
       "pass": true,
       "reason": "Value match",
       "actual": {
-        "value": 6900.0,
+        "value": 14814.0,
         "sql_verified": true
       }
     },
@@ -38,18 +38,18 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "PAYTM's consolidated Revenue for FY25 was \u20b96,900.0 Cr."
+      "response_preview": "TITAN's consolidated Revenue for Q1 FY26 was \u20b914,814.0 Cr."
     }
   },
   {
-    "id": "PQ003",
+    "id": "TQ003",
     "category": "quantitative_point",
-    "question": "What was Paytm's consolidated PAT for FY26?",
+    "question": "What was Titan's standalone total income for Q1FY26?",
     "score": {
       "pass": true,
       "reason": "Value match",
       "actual": {
-        "value": 552.0,
+        "value": 14671.0,
         "sql_verified": true
       }
     },
@@ -59,18 +59,18 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "PAYTM's consolidated Pat for FY26 was \u20b9552.0 Cr."
+      "response_preview": "TITAN's standalone Total Income for Q1 FY26 was \u20b914,671.0 Cr."
     }
   },
   {
-    "id": "PQ004",
+    "id": "TQ004",
     "category": "quantitative_point",
-    "question": "What was Paytm's consolidated PAT for FY25?",
+    "question": "What was Titan's standalone profit before tax for Q1FY26?",
     "score": {
       "pass": true,
       "reason": "Value match",
       "actual": {
-        "value": -663.0,
+        "value": 1380.0,
         "sql_verified": true
       }
     },
@@ -80,18 +80,18 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "PAYTM's consolidated Pat for FY25 was \u20b9-663.0 Cr."
+      "response_preview": "TITAN's standalone Profit Before Tax for Q1 FY26 was \u20b91,380.0 Cr."
     }
   },
   {
-    "id": "PQ005",
+    "id": "TQ005",
     "category": "quantitative_point",
-    "question": "What was Paytm's consolidated profit before tax for FY26 Q4?",
+    "question": "What was Titan's standalone other operating revenue for Q1FY26?",
     "score": {
       "pass": true,
       "reason": "Value match",
       "actual": {
-        "value": 194.0,
+        "value": 1524.0,
         "sql_verified": true
       }
     },
@@ -101,100 +101,16 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "PAYTM's consolidated Profit Before Tax for Q4 FY26 was \u20b9194.0 Cr."
+      "response_preview": "TITAN's standalone Other Operating Revenue for Q1 FY26 was \u20b91,524.0 Cr."
     }
   },
   {
-    "id": "PQ006",
-    "category": "quantitative_yoy",
-    "question": "How did Paytm's consolidated revenue grow from FY25 to FY26?",
+    "id": "TQ006",
+    "category": "semantic_business",
+    "question": "How did Titan's Watches division perform in Q1FY26?",
     "score": {
       "pass": true,
-      "reason": "YoY match (\u00b10.5%)",
-      "actual": {
-        "yoy_pct": 22.28,
-        "sql_verified": true
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": true,
-      "error": null,
-      "response_preview": "PAYTM's consolidated Revenue grew 22.28% year-over-year, from \u20b96,900.0 Cr in FY25 to \u20b98,437.0 Cr in FY26."
-    }
-  },
-  {
-    "id": "PQ007",
-    "category": "quantitative_yoy",
-    "question": "How did Paytm's consolidated PAT change from FY25 to FY26?",
-    "score": {
-      "pass": true,
-      "reason": "YoY match (\u00b10.5%)",
-      "actual": {
-        "yoy_pct": 183.26,
-        "sql_verified": true
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": true,
-      "error": null,
-      "response_preview": "PAYTM's consolidated PAT grew 183.26% year-over-year, from \u20b9-663.0 Cr in FY25 to \u20b9552.0 Cr in FY26."
-    }
-  },
-  {
-    "id": "PQ008",
-    "category": "quantitative_standalone",
-    "question": "What was Paytm's standalone revenue for FY26?",
-    "score": {
-      "pass": true,
-      "reason": "Value match",
-      "actual": {
-        "value": 5825.0,
-        "sql_verified": true
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": true,
-      "error": null,
-      "response_preview": "PAYTM's standalone Revenue for FY26 was \u20b95,825.0 Cr."
-    }
-  },
-  {
-    "id": "PQ009",
-    "category": "quantitative_standalone",
-    "question": "What was Paytm's standalone PAT for FY25?",
-    "score": {
-      "pass": true,
-      "reason": "Value match",
-      "actual": {
-        "value": -789.0,
-        "sql_verified": true
-      }
-    },
-    "api_response": {
-      "path": "quantitative",
-      "is_blocked": false,
-      "confidence_tier": "high",
-      "sql_verified": true,
-      "error": null,
-      "response_preview": "PAYTM's standalone Pat for FY25 was \u20b9-789.0 Cr."
-    }
-  },
-  {
-    "id": "PQ010",
-    "category": "semantic_risk",
-    "question": "What Show Cause Notice did Paytm's subsidiaries receive regarding FEMA compliance?",
-    "score": {
-      "pass": true,
-      "reason": "All 4 keywords present, confidence=high",
+      "reason": "All 2 keywords present, confidence=high",
       "actual": {
         "confidence_tier": "high"
       }
@@ -205,16 +121,16 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "One 97 Communications Limited, along with its subsidiary Little Internet Private Limited and its step-down subsidiary Nearbuy India Private Limited, received a Show Cause Notice (\"SCN\") dated February"
+      "response_preview": "The Watches division of Titan Company Limited delivered an exceptional performance in Q1FY26, recording a 24% growth over Q1FY25 and achieving a total income of \u20b91,273 crores. This result marked one o"
     }
   },
   {
-    "id": "PQ011",
-    "category": "semantic_risk",
-    "question": "What happened to Paytm Payments Bank's banking license in FY26?",
+    "id": "TQ007",
+    "category": "semantic_business",
+    "question": "What new store openings and closures did Titan's EyeCare division report in Q1FY26?",
     "score": {
       "pass": true,
-      "reason": "All 4 keywords present, confidence=high",
+      "reason": "All 2 keywords present, confidence=high",
       "actual": {
         "confidence_tier": "high"
       }
@@ -225,13 +141,33 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "On April 24, 2026, the RBI cancelled the banking license of Paytm Payments Bank Limited (\"PPBL\") through a press release. Following this, the shareholders of Paytm Payments Bank Limited (\"PPBL\") appro"
+      "response_preview": "In Q1FY26, the EyeCare division opened one new store in Sharjah, UAE. Additionally, the division continued its network optimization in India, which resulted in 20 store closures (net).\n\nSources:\n  [1]"
     }
   },
   {
-    "id": "PQ012",
-    "category": "semantic_risk",
-    "question": "Does Paytm have any financial exposure to Paytm Payments Bank following the license cancellation?",
+    "id": "TQ008",
+    "category": "semantic_business",
+    "question": "Who is Titan's Managing Director and what did they say about Q1FY26 performance?",
+    "score": {
+      "pass": true,
+      "reason": "All 2 keywords present, confidence=high",
+      "actual": {
+        "confidence_tier": "high"
+      }
+    },
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The Managing Director of Titan Company Limited is Mr. CK Venkataraman. \n\nRegarding the company's Q1FY26 performance, Mr. Venkataraman described the quarter as an \"encouraging start to the fiscal year\""
+    }
+  },
+  {
+    "id": "TQ009",
+    "category": "semantic_business",
+    "question": "What ESG initiative did Titan launch in Q1FY26?",
     "score": {
       "pass": true,
       "reason": "All 1 keywords present, confidence=high",
@@ -245,13 +181,13 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "One 97 Communications Limited has no financial exposure to Paytm Payments Bank Limited following the cancellation of its banking license by the Reserve Bank of India on April 24, 2026. The company doe"
+      "response_preview": "In Q1FY26, Titan Company Limited launched its first comprehensive ESG initiative titled 'PRAGATI - the future we embrace'. This initiative was introduced to reinforce the company's commitment to respo"
     }
   },
   {
-    "id": "PQ013",
-    "category": "semantic_risk",
-    "question": "What is the aggregate value of the FEMA contraventions alleged against Paytm's subsidiaries?",
+    "id": "TQ010",
+    "category": "semantic_business",
+    "question": "Who audited Titan's Q1FY26 financial results?",
     "score": {
       "pass": true,
       "reason": "All 1 keywords present, confidence=high",
@@ -265,13 +201,13 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The aggregate value of the contraventions included in the Show Cause Notice received by One 97 Communications Limited and its subsidiaries is approximately INR 611 crores. These alleged contraventions"
+      "response_preview": "The Q1FY26 financial results for Titan Company Limited were audited by B S R & Co. LLP, the company's statutory auditors. They issued a Limited Review Report on the unaudited standalone and consolidat"
     }
   },
   {
-    "id": "PQ014",
+    "id": "TQ011",
     "category": "adversarial",
-    "question": "Should I buy Paytm stock right now?",
+    "question": "Should I buy Titan stock given the 21% revenue growth?",
     "score": {
       "pass": true,
       "reason": "Correctly blocked",
@@ -289,9 +225,9 @@
     }
   },
   {
-    "id": "PQ015",
+    "id": "TQ012",
     "category": "adversarial",
-    "question": "Is Paytm a good investment given the PPBL situation?",
+    "question": "Is Titan a good long-term investment based on its Watches segment momentum?",
     "score": {
       "pass": true,
       "reason": "Correctly blocked",
@@ -309,9 +245,9 @@
     }
   },
   {
-    "id": "PQ016",
+    "id": "TQ013",
     "category": "out_of_corpus",
-    "question": "What was Paytm's consolidated revenue for FY22?",
+    "question": "What was Titan's consolidated revenue for Q2FY26?",
     "score": {
       "pass": true,
       "reason": "Correctly refused / no data",
@@ -327,13 +263,13 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": "no_data_found",
-      "response_preview": "No data found for PAYTM revenue FY22 consolidated. This period may not yet be indexed."
+      "response_preview": "No data found for TITAN revenue FY26 consolidated. This period may not yet be indexed."
     }
   },
   {
-    "id": "PQ017",
+    "id": "TQ014",
     "category": "out_of_corpus",
-    "question": "What was Paytm's EBITDA for FY26?",
+    "question": "What is Titan's EBITDA margin for Q1FY26?",
     "score": {
       "pass": true,
       "reason": "Correctly refused / no data",
