@@ -55,6 +55,36 @@ def _get_gemini_client() -> genai.Client:
     return _gemini_client
 
 
+# ---------------------------------------------------------------------------
+# Post-generation refusal detection
+# ---------------------------------------------------------------------------
+# semantic_engine.py's confidence_tier reflects RETRIEVAL quality only — it
+# runs before any answer text exists. A high-scoring retrieval can still
+# produce a refusal-shaped answer once Gemini actually reads the excerpts
+# (e.g. "the excerpts don't cover risk factors"). These patterns are anchored
+# to phrasing SYNTHESIS_SYSTEM_PROMPT itself explicitly asks Gemini to use
+# when excerpts don't answer the question — narrow and deliberate, not a
+# broad keyword scan (same discipline as the blueprint's Trap 7 fix).
+import re as _re
+
+REFUSAL_PATTERNS = [
+    _re.compile(p, _re.IGNORECASE) for p in [
+        r"do(?:es)?\s+not\s+contain",
+        r"documents?\s+(?:do|does)\s+not\s+(?:cover|contain|mention|include)",
+        r"is\s+not\s+mentioned\s+in\s+the",
+        r"no\s+information\s+(?:is\s+)?(?:available\s+|found\s+)?(?:about|regarding|on|concerning)",
+        r"(?:was|were)\s+not\s+(?:found|located)\s+in\s+the\s+(?:provided\s+|retrieved\s+)?(?:excerpts|documents)",
+        r"insufficient\s+information",
+        r"excerpts?\s+(?:do|does)\s+not\s+(?:fully\s+)?answer",
+    ]
+]
+
+
+def _is_refusal_text(text: str) -> bool:
+    """Narrow, anchored check — see REFUSAL_PATTERNS docstring above."""
+    return any(p.search(text) for p in REFUSAL_PATTERNS)
+
+
 SYNTHESIS_SYSTEM_PROMPT = """You are a financial research assistant for LedgerMind. Given retrieved document excerpts, answer the user's question using ONLY information present in the excerpts. Do not add outside knowledge. Do not speculate. If the excerpts don't fully answer the question, say what is and isn't covered. If the source excerpts refer to the company under a former or different
 legal name (for example, following a corporate rename), still treat this
 content as directly relevant to the question about the company's current
@@ -297,9 +327,11 @@ def response_generator_node(state: QueryState) -> QueryState:
     citations_block = _format_citations_block(state.get("citations", []))
     contradiction_block = _format_contradiction_block(state.get("contradictions", []))
 
+    qualitative_text_for_refusal_check = None
     if path == "quantitative":
         body = _format_quant_response(state)
         state["response_text"] = body  # no citations block — SQL is the source of truth
+
 
     elif path == "semantic":
         body = _generate_semantic_response(
@@ -307,6 +339,7 @@ def response_generator_node(state: QueryState) -> QueryState:
             chunks=state.get("retrieved_chunks", []),
         )
         state["response_text"] = body + citations_block
+        qualitative_text_for_refusal_check = body
 
     elif path == "cross":
         qual_body = _generate_semantic_response(
@@ -318,6 +351,7 @@ def response_generator_node(state: QueryState) -> QueryState:
             quant_body = "\n\n" + _format_quant_response(state)
 
         state["response_text"] = qual_body + quant_body + citations_block + contradiction_block
+        qualitative_text_for_refusal_check = qual_body
 
     else:
         state["response_text"] = (
@@ -341,6 +375,28 @@ def response_generator_node(state: QueryState) -> QueryState:
             "related disclosures elsewhere in the filing may not have been retrieved."
         )
         state["response_text"] += f"\n\n_{single_source_caveat}_"
+
+    # -----------------------------------------------------------------------
+    # Post-generation refusal detection (see REFUSAL_PATTERNS docstring above)
+    # -----------------------------------------------------------------------
+    # semantic_engine.py's confidence_tier only reflects retrieval quality —
+    # it runs before this text exists. A high-scoring retrieval can still
+    # produce a refusal once Gemini actually reads the excerpts. Detected
+    # here, after generation, since this is the first point the real answer
+    # text exists. response_text is intentionally left untouched so the
+    # frontend can render Gemini's exact explanation inside the refusal card.
+    if (
+        path in ("semantic", "cross")
+        and qualitative_text_for_refusal_check
+        and _is_refusal_text(qualitative_text_for_refusal_check)
+    ):
+        state["confidence_tier"] = "low"
+        state["error"] = "low_confidence_refusal"
+        state["error_node"] = "response_generator"
+        logger.info(
+            "Post-generation refusal detected | path=%s — confidence_tier capped to low",
+            path,
+        )
 
     logger.info(
         "Response generated | path=%s length=%d contradictions=%d",
