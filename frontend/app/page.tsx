@@ -1,127 +1,228 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import SearchBar from "@/components/SearchBar";
-import AnswerCard from "@/components/AnswerCard";
-import PipelineTrack from "@/components/PipelineTrack";
-import CorpusPanel from "@/components/CorpusPanel";
-import LoginForm from "@/components/LoginForm";
+import { useState, useEffect } from "react";
+import { getSession, logout } from "@/lib/auth";
 import { submitQuery, UnauthorizedError, type QueryResponse } from "@/lib/api";
-import { getSession, logout, type StoredSession } from "@/lib/auth";
+import LoginForm from "@/components/LoginForm";
+import { DocumentEnvironment } from "@/components/document/DocumentEnvironment";
+import { DocumentPage } from "@/components/document/DocumentPage";
+import { WorkingPaperHeader } from "@/components/document/WorkingPaperHeader";
+import { DocumentTitle } from "@/components/document/DocumentTitle";
+import { SectionHeading } from "@/components/document/SectionHeading";
+import { LedgerTable } from "@/components/document/LedgerTable";
+import { MetricCallout } from "@/components/document/MetricCallout";
+import { KeyFinding } from "@/components/document/KeyFinding";
+import { AnalysisSection } from "@/components/document/AnalysisSection";
+import { EvidenceList } from "@/components/document/EvidenceList";
+import { QueryDock } from "@/components/document/QueryDock";
+import { Sidebar } from "@/components/document/Sidebar";
+
+// Strips markdown bold markers and the backend's appended "Sources:" suffix.
+// Gemini's raw prose sometimes includes **bold** and the response_generator
+// appends a plain-text citations block — neither should reach the DOM as-is.
+function cleanProseText(text: string): string {
+  return text
+    .replace(/\n\nSources:[\s\S]*$/, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/^\s*\*\s+/gm, "— ")
+    .trim();
+}
+
+// Strips internal category prefixes like "trading_advice: " that the
+// Prompt Shield includes for its own logging/audit purposes but that
+// shouldn't leak into user-facing text.
+function cleanBlockReason(reason: string): string {
+  return reason.replace(/^[a-z_]+:\s*/i, "");
+}
+
+function buildCitationItems(data: QueryResponse) {
+  return (data.citations ?? []).map((c, i) => ({
+    index: i + 1,
+    label: `${c.company} ${c.fiscal_year} (${c.financial_type})`,
+    page: c.page_number,
+    relevance: c.reranker_score,
+    id: `cite-${c.chunk_id}`,
+  }));
+}
+
+function composeDocumentBody(data: QueryResponse) {
+  if (data.is_blocked) {
+    return (
+      <>
+        <KeyFinding label="Not Permitted">Query declined under research-tool policy</KeyFinding>
+        <AnalysisSection
+          paragraphs={[{
+            text: data.block_reason ? cleanBlockReason(data.block_reason) : "This question falls outside factual research scope.",
+            citations: [],
+          }]}
+        />
+      </>
+    );
+  }
+
+  if (data.error) {
+    const errorCitations = buildCitationItems(data);
+    const errorText = data.response_text
+      ? cleanProseText(data.response_text)
+      : "This could not be resolved from the indexed corpus.";
+    return (
+      <>
+        <MetricCallout label={data.error.replace(/_/g, " ")} value="—" status="refused" />
+        <AnalysisSection
+          paragraphs={[{
+            text: errorText,
+            citations: errorCitations.map((c) => ({ index: c.index, anchorId: c.id })),
+          }]}
+        />
+        <EvidenceList items={errorCitations} />
+      </>
+    );
+  }
+
+  const citationItems = buildCitationItems(data);
+
+  if (data.path === "quantitative" && data.sql_result?.[0]) {
+    const row: any = data.sql_result[0];
+    const rows = [];
+    if ("current_fy" in row) {
+      rows.push({ label: row.prior_fy, value: row.prior_value?.toLocaleString?.() ?? row.prior_value, rule: "none" as const });
+      rows.push({
+        label: row.current_fy,
+        value: row.current_value?.toLocaleString?.() ?? row.current_value,
+        delta: row.yoy_pct != null ? `${row.yoy_pct > 0 ? "+" : ""}${row.yoy_pct}%` : undefined,
+        rule: "single" as const,
+      });
+    }
+    const resultValue =
+      "current_value" in row
+        ? `₹${Number(row.current_value).toLocaleString()} Cr`
+        : "value" in row
+        ? `₹${Number(row.value).toLocaleString()} Cr`
+        : "—";
+
+    return (
+      <>
+        {rows.length > 0 && (
+          <SectionHeading sourceTable="audited_financials">
+            {data.company} — {data.fiscal_year ?? "Period"}
+          </SectionHeading>
+        )}
+        {rows.length > 0 && <LedgerTable columns={["PERIOD", "VALUE", "Δ YoY"]} rows={rows} />}
+        <MetricCallout
+          label="Result"
+          value={resultValue}
+          status={data.sql_verified ? "verified" : "estimated"}
+        />
+        <AnalysisSection paragraphs={[{ text: data.response_text ?? "", citations: [] }]} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <AnalysisSection
+        paragraphs={[{
+          text: cleanProseText(data.response_text ?? ""),
+          citations: citationItems.map((c) => ({ index: c.index, anchorId: c.id })),
+        }]}
+      />
+      <EvidenceList items={citationItems} />
+    </>
+  );
+}
 
 export default function Home() {
-  const [session, setSession] = useState<StoredSession | null | undefined>(undefined);
-  const [answer, setAnswer] = useState<QueryResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [session, setSession] = useState<ReturnType<typeof getSession>>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
     setSession(getSession());
+    setSessionChecked(true);
   }, []);
+  const [answer, setAnswer] = useState<QueryResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [queryCount, setQueryCount] = useState(0);
+  const [revisions, setRevisions] = useState<Record<string, number>>({});
+  const [activeView, setActiveView] = useState<"workbench" | "peer" | "audit">("workbench");
 
-  async function handleQuery(question: string) {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await submitQuery(question);
-      setAnswer(result);
-    } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        setSession(null); // bounce back to login — token expired/invalid
-        setAnswer(null);
-        setError(null);
-        return;
-      }
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong reaching the backend."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Avoid a flash of the login form before localStorage has been checked.
-  if (session === undefined) {
-    return null;
+  if (!sessionChecked) {
+    return null; // matches server's initial render — avoids hydration mismatch
   }
 
   if (!session) {
     return <LoginForm onSuccess={() => setSession(getSession())} />;
   }
 
+  async function handleSubmit(query: string) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await submitQuery(query);
+      setAnswer(result);
+      setQueryCount((n) => n + 1);
+      setRevisions((r) => ({ ...r, [query]: (r[query] ?? 0) + 1 }));
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        setSession(null);
+        setAnswer(null);
+        setError(null);
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Query failed");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
-    <main className="mx-auto max-w-[1080px] px-8 py-10 pb-24">
-      <div className="mb-24 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-base font-semibold font-display">
-          <span className="flex h-[22px] w-[22px] items-center justify-center rounded-md bg-gradient-to-br from-teal to-[#1f8b7a] text-[11px] font-bold text-[#06110E]">
-            L
-          </span>
-          LedgerMind
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center rounded-full border border-hairline bg-white/[0.04] px-3.5 py-1.5 font-mono text-[11px] text-text-secondary">
-            <span className="mr-1.5 text-[8px] text-teal">●</span>
-            {session.role} · {session.tenantId.slice(0, 8)}
-          </div>
-          <button
-            onClick={() => {
-              logout();
-              setSession(null);
-              setAnswer(null);
-              setError(null);
-            }}
-            className="text-[11px] text-text-muted hover:text-text-secondary"
+    <DocumentEnvironment surface="desk">
+      <div className="flex min-h-screen">
+        <Sidebar
+          userRole={session.role}
+          tenantId={session.tenantId}
+          activeView={activeView}
+          onViewChange={setActiveView}
+          onSignOut={() => {
+            logout();
+            setSession(null);
+            setAnswer(null);
+            setError(null);
+          }}
+          indexedFilings={[
+            { company: "ETERNAL", period: "FY26", active: true },
+            { company: "PAYTM", period: "FY26" },
+            { company: "TITAN", period: "Q1FY26" },
+          ]}
+        />
+
+        <div className="flex-1 py-12">
+          <DocumentPage
+            docId={answer ? `LM-WP-${answer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING"}
+            pageNumber={Math.max(queryCount, 1)}
+            totalPages={Math.max(queryCount, 1)}
+            confidential
+            isLoading={isLoading}
           >
-            Sign out
-          </button>
+            <WorkingPaperHeader
+              company={answer?.company ?? null}
+              fiscalYear={answer?.fiscal_year ?? null}
+              quarter={answer?.quarter ?? null}
+              financialType={answer?.financial_type ?? null}
+              wpRef={answer ? `WP-${(answer.path ?? "GEN").toUpperCase()}-${answer.request_id.slice(0, 4)}` : "WP-PENDING"}
+              revision={answer ? revisions[answer.query] ?? 1 : 1}
+              preparer={session.role}
+            />
+
+            <DocumentTitle>Query Workbench</DocumentTitle>
+
+            <QueryDock onSubmit={handleSubmit} isLoading={isLoading} />
+
+            {answer && composeDocumentBody(answer)}
+            {error && <AnalysisSection paragraphs={[{ text: error, citations: [] }]} />}
+          </DocumentPage>
         </div>
       </div>
-
-      <div className="mb-28 grid grid-cols-1 items-start gap-6 md:grid-cols-[1.05fr_0.95fr]">
-        <div className="pt-6">
-          <p className="mb-5 font-mono text-[11px] uppercase tracking-wide text-sky">
-            SEBI filings · Indian capital markets
-          </p>
-          <h1 className="mb-4.5 font-display text-[52px] font-bold leading-[1.1] tracking-tight">
-            Not a{" "}
-            <span className="font-normal text-text-muted line-through decoration-text-muted/50">
-              guess.
-            </span>
-            <br />
-            A{" "}
-            <span className="text-teal drop-shadow-[0_0_28px_rgba(62,217,192,0.4)]">
-              citation
-              <span className="ml-0.5 align-super font-mono text-lg">[1]</span>
-              .
-            </span>
-          </h1>
-          <p className="mb-8 max-w-[440px] border-t border-hairline pt-3 font-mono text-xs text-text-muted">
-            [1] Every answer below is backed by real retrieved chunks and
-            verified SQL — not this line, this one&apos;s just the pitch.
-          </p>
-
-          <SearchBar onSubmit={handleQuery} loading={loading} />
-          {error && <p className="mt-3 max-w-[440px] text-xs text-coral">{error}</p>}
-
-          <CorpusPanel />
-        </div>
-
-        <div className="relative mt-2">
-          {answer ? (
-            <AnswerCard data={answer} />
-          ) : (
-            <div className="rounded-card border border-dashed border-hairline p-10 text-center text-sm text-text-muted">
-              Ask a question to see a verified answer here.
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="mb-16">
-        <PipelineTrack />
-      </div>
-    </main>
+    </DocumentEnvironment>
   );
 }
