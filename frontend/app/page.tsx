@@ -181,9 +181,17 @@ export default function Home() {
   // The document title reflects what this SPECIFIC page is, not whatever
   // sidebar tab happens to be selected right now — same principle as a
   // real document's title never changing based on which folder you browse from.
-  const pageTitle = currentPage
+  const pageTitle = activeView === "audit"
+    ? "Audit Trail"
+    : currentPage
     ? (currentPage.originView === "peer" ? "Peer Comparison" : "Query Workbench")
     : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
+
+  // Draft state (no page yet on this tab) previews the UPCOMING page slot
+  // ("3 of 3") rather than resetting to "1 of N" — flipping to a blank tab
+  // should feel like turning to the next fresh sheet, not going backward.
+  const displayPageNumber = currentPageIndex > 0 ? currentPageIndex : totalPages + 1;
+  const displayTotalPages = currentPageIndex > 0 ? totalPages : totalPages + 1;
 
   if (!sessionChecked) {
     return null; // matches server's initial render — avoids hydration mismatch
@@ -249,8 +257,8 @@ export default function Home() {
         <div className="flex-1 py-12">
           <DocumentPage
             docId={answer ? `LM-WP-${answer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING"}
-            pageNumber={Math.max(currentPageIndex, 1)}
-            totalPages={Math.max(totalPages, 1)}
+            pageNumber={displayPageNumber}
+            totalPages={displayTotalPages}
             confidential
             isLoading={isLoading}
           >
