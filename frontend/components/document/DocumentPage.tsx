@@ -8,12 +8,13 @@ interface DocumentPageProps {
   confidential?: boolean;
   isLoading?: boolean;
   children: React.ReactNode;
+  footerLabelOverride?: string; // e.g. "12 ENTRIES LOGGED" for ledger-style views with no real pagination
 }
 
 const STACK_DEPTH = 4;
 
 export function DocumentPage({
-  docId, pageNumber, totalPages, confidential, isLoading, children,
+  docId, pageNumber, totalPages, confidential, isLoading, children, footerLabelOverride,
 }: DocumentPageProps) {
   const [flattened, setFlattened] = useState(false);
 
@@ -87,7 +88,7 @@ export function DocumentPage({
         >
           <span>DOC ID: {docId}</span>
           {confidential && <span>CONFIDENTIAL — INTERNAL USE ONLY</span>}
-          <span>PAGE {pageNumber} OF {totalPages}</span>
+          <span>{footerLabelOverride ?? `PAGE ${pageNumber} OF ${totalPages}`}</span>
         </div>
       </div>
     </div>
