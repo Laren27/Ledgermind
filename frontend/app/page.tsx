@@ -10,12 +10,15 @@ import { WorkingPaperHeader } from "@/components/document/WorkingPaperHeader";
 import { DocumentTitle } from "@/components/document/DocumentTitle";
 import { SectionHeading } from "@/components/document/SectionHeading";
 import { LedgerTable } from "@/components/document/LedgerTable";
+import { EntityComparisonTable } from "@/components/document/EntityComparisonTable";
 import { MetricCallout } from "@/components/document/MetricCallout";
 import { KeyFinding } from "@/components/document/KeyFinding";
 import { AnalysisSection } from "@/components/document/AnalysisSection";
 import { EvidenceList } from "@/components/document/EvidenceList";
 import { QueryDock } from "@/components/document/QueryDock";
 import { Sidebar } from "@/components/document/Sidebar";
+import { PageNavigator } from "@/components/document/PageNavigator";
+import { AuditLogTable } from "@/components/document/AuditLogTable";
 
 // Strips markdown bold markers and the backend's appended "Sources:" suffix.
 // Gemini's raw prose sometimes includes **bold** and the response_generator
@@ -83,6 +86,31 @@ function composeDocumentBody(data: QueryResponse) {
 
   if (data.path === "quantitative" && data.sql_result?.[0]) {
     const row: any = data.sql_result[0];
+
+    // growth_comparison operation — side-by-side entity table, distinct
+    // from the period-over-period YoY shape below.
+    if ("entity_a" in row) {
+      return (
+        <>
+          <SectionHeading sourceTable="audited_financials">
+            {row.metric} — {row.fiscal_year}
+          </SectionHeading>
+          <EntityComparisonTable
+            entityA={row.entity_a}
+            entityB={row.entity_b}
+            rows={[{
+              label: "YoY Growth",
+              valueA: `${row.yoy_a_pct > 0 ? "+" : ""}${row.yoy_a_pct}%`,
+              valueB: `${row.yoy_b_pct > 0 ? "+" : ""}${row.yoy_b_pct}%`,
+              winner: row.faster_growing_entity === row.entity_a ? "a" : "b",
+            }]}
+          />
+          <MetricCallout label="Faster Growing" value={row.faster_growing_entity} status="verified" />
+          <AnalysisSection paragraphs={[{ text: data.response_text ?? "", citations: [] }]} />
+        </>
+      );
+    }
+
     const rows = [];
     if ("current_fy" in row) {
       rows.push({ label: row.prior_fy, value: row.prior_value?.toLocaleString?.() ?? row.prior_value, rule: "none" as const });
@@ -139,12 +167,15 @@ export default function Home() {
     setSession(getSession());
     setSessionChecked(true);
   }, []);
-  const [answer, setAnswer] = useState<QueryResponse | null>(null);
+  const [pages, setPages] = useState<QueryResponse[]>([]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0); // 1-indexed; 0 = no pages yet
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [queryCount, setQueryCount] = useState(0);
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeView, setActiveView] = useState<"workbench" | "peer" | "audit">("workbench");
+
+  const answer = currentPageIndex > 0 ? pages[currentPageIndex - 1] : null;
+  const totalPages = pages.length;
 
   if (!sessionChecked) {
     return null; // matches server's initial render — avoids hydration mismatch
@@ -159,13 +190,17 @@ export default function Home() {
     setError(null);
     try {
       const result = await submitQuery(query);
-      setAnswer(result);
-      setQueryCount((n) => n + 1);
+      setPages((prev) => {
+        const next = [...prev, result];
+        setCurrentPageIndex(next.length); // jump to the newly-appended page
+        return next;
+      });
       setRevisions((r) => ({ ...r, [query]: (r[query] ?? 0) + 1 }));
     } catch (err) {
       if (err instanceof UnauthorizedError) {
         setSession(null);
-        setAnswer(null);
+        setPages([]);
+        setCurrentPageIndex(0);
         setError(null);
         return;
       }
@@ -186,7 +221,8 @@ export default function Home() {
           onSignOut={() => {
             logout();
             setSession(null);
-            setAnswer(null);
+            setPages([]);
+            setCurrentPageIndex(0);
             setError(null);
           }}
           indexedFilings={[
@@ -199,8 +235,8 @@ export default function Home() {
         <div className="flex-1 py-12">
           <DocumentPage
             docId={answer ? `LM-WP-${answer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING"}
-            pageNumber={Math.max(queryCount, 1)}
-            totalPages={Math.max(queryCount, 1)}
+            pageNumber={Math.max(currentPageIndex, 1)}
+            totalPages={Math.max(totalPages, 1)}
             confidential
             isLoading={isLoading}
           >
@@ -214,13 +250,43 @@ export default function Home() {
               preparer={session.role}
             />
 
-            <DocumentTitle>Query Workbench</DocumentTitle>
+            <DocumentTitle>{activeView === "peer" ? "Peer Comparison" : "Query Workbench"}</DocumentTitle>
 
-            <QueryDock onSubmit={handleSubmit} isLoading={isLoading} />
+            <QueryDock
+              onSubmit={handleSubmit}
+              isLoading={isLoading}
+              suggestions={
+                activeView === "peer"
+                  ? [
+                      "Who grew revenue faster in FY26, Eternal or Paytm?",
+                      "Compare Eternal's and Paytm's PAT for FY26",
+                    ]
+                  : undefined
+              }
+            />
 
-            {answer && composeDocumentBody(answer)}
-            {error && <AnalysisSection paragraphs={[{ text: error, citations: [] }]} />}
+            {activeView === "audit" ? (
+              <AuditLogTable
+                entries={pages.map((p, i) => ({
+                  pageNumber: i + 1,
+                  query: p.query,
+                  path: p.path,
+                  confidenceTier: p.confidence_tier,
+                  latencyMs: p.latency_ms,
+                }))}
+                onJump={(n) => { setCurrentPageIndex(n); setActiveView("workbench"); }}
+              />
+            ) : (
+              <>
+                {answer && composeDocumentBody(answer)}
+                {error && <AnalysisSection paragraphs={[{ text: error, citations: [] }]} />}
+              </>
+            )}
           </DocumentPage>
+
+          {activeView !== "audit" && totalPages > 0 && (
+            <PageNavigator current={currentPageIndex} total={totalPages} onNavigate={setCurrentPageIndex} />
+          )}
         </div>
       </div>
     </DocumentEnvironment>
