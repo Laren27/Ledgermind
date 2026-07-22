@@ -190,8 +190,14 @@ export default function Home() {
   // Draft state (no page yet on this tab) previews the UPCOMING page slot
   // ("3 of 3") rather than resetting to "1 of N" — flipping to a blank tab
   // should feel like turning to the next fresh sheet, not going backward.
-  const displayPageNumber = currentPageIndex > 0 ? currentPageIndex : totalPages + 1;
-  const displayTotalPages = currentPageIndex > 0 ? totalPages : totalPages + 1;
+  // Audit Trail is a meta-view OF the page sequence, not a page within it —
+  // it shows the existing total as-is, with no "preview the next slot" logic.
+  const displayPageNumber = activeView === "audit"
+    ? totalPages
+    : currentPageIndex > 0 ? currentPageIndex : totalPages + 1;
+  const displayTotalPages = activeView === "audit"
+    ? totalPages
+    : currentPageIndex > 0 ? totalPages : totalPages + 1;
 
   if (!sessionChecked) {
     return null; // matches server's initial render — avoids hydration mismatch
