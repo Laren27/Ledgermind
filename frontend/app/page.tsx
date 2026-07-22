@@ -167,15 +167,21 @@ export default function Home() {
     setSession(getSession());
     setSessionChecked(true);
   }, []);
-  const [pages, setPages] = useState<QueryResponse[]>([]);
+  interface Page { response: QueryResponse; originView: "workbench" | "peer"; }
+  const [pages, setPages] = useState<Page[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0); // 1-indexed; 0 = no pages yet
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeView, setActiveView] = useState<"workbench" | "peer" | "audit">("workbench");
 
-  const answer = currentPageIndex > 0 ? pages[currentPageIndex - 1] : null;
+  const currentPage = currentPageIndex > 0 ? pages[currentPageIndex - 1] : null;
+  const answer = currentPage?.response ?? null;
   const totalPages = pages.length;
+  // The document title reflects what this SPECIFIC page is, not whatever
+  // sidebar tab happens to be selected right now — same principle as a
+  // real document's title never changing based on which folder you browse from.
+  const pageTitle = currentPage ? (currentPage.originView === "peer" ? "Peer Comparison" : "Query Workbench") : "Query Workbench";
 
   if (!sessionChecked) {
     return null; // matches server's initial render — avoids hydration mismatch
@@ -191,7 +197,7 @@ export default function Home() {
     try {
       const result = await submitQuery(query);
       setPages((prev) => {
-        const next = [...prev, result];
+        const next = [...prev, { response: result, originView: activeView === "peer" ? "peer" as const : "workbench" as const }];
         setCurrentPageIndex(next.length); // jump to the newly-appended page
         return next;
       });
@@ -250,7 +256,7 @@ export default function Home() {
               preparer={session.role}
             />
 
-            <DocumentTitle>{activeView === "peer" ? "Peer Comparison" : "Query Workbench"}</DocumentTitle>
+            <DocumentTitle>{pageTitle}</DocumentTitle>
 
             <QueryDock
               onSubmit={handleSubmit}
@@ -269,10 +275,10 @@ export default function Home() {
               <AuditLogTable
                 entries={pages.map((p, i) => ({
                   pageNumber: i + 1,
-                  query: p.query,
-                  path: p.path,
-                  confidenceTier: p.confidence_tier,
-                  latencyMs: p.latency_ms,
+                  query: p.response.query,
+                  path: p.response.path,
+                  confidenceTier: p.response.confidence_tier,
+                  latencyMs: p.response.latency_ms,
                 }))}
                 onJump={(n) => { setCurrentPageIndex(n); setActiveView("workbench"); }}
               />
