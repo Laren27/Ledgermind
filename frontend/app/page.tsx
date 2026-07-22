@@ -181,7 +181,9 @@ export default function Home() {
   // The document title reflects what this SPECIFIC page is, not whatever
   // sidebar tab happens to be selected right now — same principle as a
   // real document's title never changing based on which folder you browse from.
-  const pageTitle = currentPage ? (currentPage.originView === "peer" ? "Peer Comparison" : "Query Workbench") : "Query Workbench";
+  const pageTitle = currentPage
+    ? (currentPage.originView === "peer" ? "Peer Comparison" : "Query Workbench")
+    : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
 
   if (!sessionChecked) {
     return null; // matches server's initial render — avoids hydration mismatch
@@ -223,7 +225,13 @@ export default function Home() {
           userRole={session.role}
           tenantId={session.tenantId}
           activeView={activeView}
-          onViewChange={setActiveView}
+          onViewChange={(view) => {
+            setActiveView(view);
+            // Switching workspace tabs starts a fresh draft page matching
+            // that tab, rather than continuing to show whatever page was
+            // open under the previous tab — title/dock update immediately.
+            if (view !== "audit") setCurrentPageIndex(0);
+          }}
           onSignOut={() => {
             logout();
             setSession(null);
