@@ -1,0 +1,54 @@
+# Vercel Speed Insights Installation Report
+
+## Summary
+Successfully installed and configured Vercel Speed Insights for the LedgerMind Next.js project.
+
+## Changes Made
+
+### 1. Package Installation
+- **Package**: `@vercel/speed-insights@2.0.0`
+- **Package Manager**: pnpm
+- **Command**: `pnpm i @vercel/speed-insights`
+
+### 2. Files Modified
+
+#### `app/layout.tsx`
+- Added import statement: `import { SpeedInsights } from "@vercel/speed-insights/next";`
+- Added `<SpeedInsights />` component to the root layout, placed at the end of the `<body>` tag
+- This follows the official Vercel documentation for Next.js 13.5+ with App Router
+
+#### `package.json`
+- Added `@vercel/speed-insights@2.0.0` to dependencies
+
+#### `pnpm-lock.yaml` (new file)
+- Created lockfile to ensure consistent dependency resolution across environments
+
+## Implementation Details
+
+### Framework Detection
+- Identified project as **Next.js 14.2** with App Router
+- Used the framework-specific installation instructions for Next.js from the official Vercel documentation
+
+### Configuration Approach
+- Followed the official Vercel Speed Insights quickstart guide (https://vercel.com/docs/speed-insights/quickstart)
+- Placed the `<SpeedInsights />` component in the root layout (`app/layout.tsx`) as recommended for Next.js App Router
+- The component is placed at the end of the body tag to ensure it doesn't block rendering of main content
+
+### Build Verification
+- Successfully built the project with `pnpm build`
+- No TypeScript errors introduced
+- Build completed without warnings
+- Static pages generated successfully
+
+## Next Steps
+
+To complete the Speed Insights setup:
+1. Enable Speed Insights in the Vercel dashboard for this project
+2. Deploy the application to Vercel
+3. After deployment and user visits, performance metrics will be available in the Speed Insights dashboard
+
+## Technical Notes
+- The SpeedInsights component automatically handles client-side performance tracking
+- No additional configuration is needed for basic functionality
+- The component is designed to have minimal impact on application performance
+- Works seamlessly with Next.js server and client components
