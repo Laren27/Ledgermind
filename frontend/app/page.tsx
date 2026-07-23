@@ -12,7 +12,6 @@ import { SectionHeading } from "@/components/document/SectionHeading";
 import { LedgerTable } from "@/components/document/LedgerTable";
 import { EntityComparisonTable } from "@/components/document/EntityComparisonTable";
 import { MetricCallout } from "@/components/document/MetricCallout";
-import { KeyFinding } from "@/components/document/KeyFinding";
 import { AnalysisSection } from "@/components/document/AnalysisSection";
 import { EvidenceList } from "@/components/document/EvidenceList";
 import { QueryDock } from "@/components/document/QueryDock";
@@ -52,7 +51,7 @@ function composeDocumentBody(data: QueryResponse) {
   if (data.is_blocked) {
     return (
       <>
-        <KeyFinding label="Not Permitted">Query declined under research-tool policy</KeyFinding>
+        <MetricCallout label="Not Permitted" value="Policy Block" status="refused" />
         <AnalysisSection
           paragraphs={[{
             text: data.block_reason ? cleanBlockReason(data.block_reason) : "This question falls outside factual research scope.",
