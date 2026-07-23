@@ -355,4 +355,13 @@ def retrieve_and_rerank(
         logger.warning("hybrid_search returned 0 results — skipping rerank")
         return []
 
+    if os.getenv("DISABLE_LOCAL_RERANKER", "").lower() == "true":
+        logger.info(
+            "DISABLE_LOCAL_RERANKER=true — skipping cross-encoder rerank, "
+            "returning top-%d RRF-fused candidates directly (temporary RAM "
+            "mitigation, see blueprint Phase 7 for planned Cohere Rerank API move)",
+            rerank_top_k,
+        )
+        return candidates[:rerank_top_k]
+
     return rerank(query=query, chunks=candidates, top_k=rerank_top_k)
