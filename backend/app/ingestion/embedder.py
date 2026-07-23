@@ -44,14 +44,14 @@ _sparse_model = None
 
 def _get_dense_model():
     """
-    Load fastembed ONNX dense model on first call.
+    Load sentence-transformers dense model on first call.
     Subsequent calls return the cached instance.
     """
     global _dense_model
     if _dense_model is None:
-        from fastembed import TextEmbedding
-        logger.info("Loading dense model (ONNX/fastembed): %s", DENSE_MODEL_NAME)
-        _dense_model = TextEmbedding(model_name=DENSE_MODEL_NAME)
+        from sentence_transformers import SentenceTransformer
+        logger.info("Loading dense model: %s", DENSE_MODEL_NAME)
+        _dense_model = SentenceTransformer(DENSE_MODEL_NAME)
         logger.info("Dense model loaded — output dim: %d", DENSE_DIMENSIONS)
     return _dense_model
 
@@ -80,8 +80,13 @@ def _embed_dense(texts: list[str]) -> list[list[float]]:
     Returns list of 384-dim float vectors.
     """
     model = _get_dense_model()
-    embeddings = list(model.embed(texts, batch_size=BATCH_SIZE))
-    return [e.tolist() for e in embeddings]
+    embeddings = model.encode(
+        texts,
+        batch_size=BATCH_SIZE,
+        normalize_embeddings=True,   # required for cosine similarity
+        show_progress_bar=False,
+    )
+    return embeddings.tolist()
 
 
 def _embed_sparse(texts: list[str]) -> list[tuple[list[int], list[float]]]:
