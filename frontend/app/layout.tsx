@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Instrument_Sans, Manrope, IBM_Plex_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const instrumentSans = Instrument_Sans({
@@ -36,6 +37,7 @@ export default function RootLayout({
         className={`${instrumentSans.variable} ${manrope.variable} ${plexMono.variable} font-body`}
       >
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
