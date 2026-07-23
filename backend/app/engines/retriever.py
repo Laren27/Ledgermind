@@ -22,8 +22,8 @@ import logging
 import os
 from typing import List, Optional
 
-import numpy as np
-from fastembed import SparseTextEmbedding
+from fastembed import SparseTextEmbedding, TextEmbedding
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     FieldCondition,
@@ -34,7 +34,6 @@ from qdrant_client.models import (
     Prefetch,
     SparseVector,
 )
-from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from app.engines.state import ChunkResult
 
@@ -53,23 +52,25 @@ TOP_K_RERANK = 5
 
 DENSE_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 SPARSE_MODEL_NAME = "Qdrant/bm25"
-RERANKER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+# fastembed's ONNX port of the same cross-encoder model, not a different model —
+# see https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2
+RERANKER_MODEL_NAME = "Xenova/ms-marco-MiniLM-L-6-v2"
 
 # ---------------------------------------------------------------------------
 # Singleton model registry — lazy-loaded, one instance per Python process
 # ---------------------------------------------------------------------------
 
-_dense_model: Optional[SentenceTransformer] = None
+_dense_model: Optional[TextEmbedding] = None
 _sparse_model: Optional[SparseTextEmbedding] = None
-_reranker_model: Optional[CrossEncoder] = None
+_reranker_model: Optional[TextCrossEncoder] = None
 _qdrant_client: Optional[QdrantClient] = None
 
 
-def _get_dense_model() -> SentenceTransformer:
+def _get_dense_model() -> TextEmbedding:
     global _dense_model
     if _dense_model is None:
-        logger.info("Loading dense embedding model: %s", DENSE_MODEL_NAME)
-        _dense_model = SentenceTransformer(DENSE_MODEL_NAME)
+        logger.info("Loading dense embedding model (ONNX/fastembed): %s", DENSE_MODEL_NAME)
+        _dense_model = TextEmbedding(model_name=DENSE_MODEL_NAME)
     return _dense_model
 
 
@@ -81,11 +82,11 @@ def _get_sparse_model() -> SparseTextEmbedding:
     return _sparse_model
 
 
-def _get_reranker() -> CrossEncoder:
+def _get_reranker() -> TextCrossEncoder:
     global _reranker_model
     if _reranker_model is None:
-        logger.info("Loading CrossEncoder reranker: %s", RERANKER_MODEL_NAME)
-        _reranker_model = CrossEncoder(RERANKER_MODEL_NAME)
+        logger.info("Loading CrossEncoder reranker (ONNX/fastembed): %s", RERANKER_MODEL_NAME)
+        _reranker_model = TextCrossEncoder(model_name=RERANKER_MODEL_NAME)
     return _reranker_model
 
 
@@ -106,10 +107,14 @@ def _get_qdrant_client() -> QdrantClient:
 # ---------------------------------------------------------------------------
 
 def _encode_dense(query: str) -> List[float]:
-    """Encode query with bge-small-en-v1.5 → 384-dim dense vector."""
+    """Encode query with bge-small-en-v1.5 (ONNX) → 384-dim dense vector.
+
+    fastembed's query_embed() applies the correct retrieval query prefix
+    internally for this model family — no manual prefix string needed,
+    unlike the old sentence-transformers path.
+    """
     model = _get_dense_model()
-    prefixed = f"Represent this sentence for searching relevant passages: {query}"
-    vector = model.encode(prefixed, normalize_embeddings=True)
+    vector = next(model.query_embed(query))
     return vector.tolist()
 
 
@@ -295,8 +300,8 @@ def rerank(
     reranker = _get_reranker()
     pairs = [(query, chunk["text"]) for chunk in chunks]
 
-    logger.debug("Reranking %d chunks with CrossEncoder", len(pairs))
-    scores: np.ndarray = reranker.predict(pairs)
+    logger.debug("Reranking %d chunks with CrossEncoder (ONNX/fastembed)", len(pairs))
+    scores = list(reranker.rerank_pairs(pairs))
 
     scored_chunks = []
     for chunk, score in zip(chunks, scores):
