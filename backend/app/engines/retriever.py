@@ -70,7 +70,7 @@ def _get_dense_model() -> TextEmbedding:
     global _dense_model
     if _dense_model is None:
         logger.info("Loading dense embedding model (ONNX/fastembed): %s", DENSE_MODEL_NAME)
-        _dense_model = TextEmbedding(model_name=DENSE_MODEL_NAME)
+        _dense_model = TextEmbedding(model_name=DENSE_MODEL_NAME, threads=1)
     return _dense_model
 
 
@@ -86,7 +86,7 @@ def _get_reranker() -> TextCrossEncoder:
     global _reranker_model
     if _reranker_model is None:
         logger.info("Loading CrossEncoder reranker (ONNX/fastembed): %s", RERANKER_MODEL_NAME)
-        _reranker_model = TextCrossEncoder(model_name=RERANKER_MODEL_NAME)
+        _reranker_model = TextCrossEncoder(model_name=RERANKER_MODEL_NAME, threads=1)
     return _reranker_model
 
 
