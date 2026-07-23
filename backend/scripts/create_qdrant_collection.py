@@ -13,16 +13,25 @@ from qdrant_client.models import (
     SparseVectorParams,
     SparseIndexParams,
 )
+from dotenv import load_dotenv
 import os
 import sys
 
-QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")
+load_dotenv()
+
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 COLLECTION_NAME = "ledgermind_chunks"
 DENSE_DIM = 384  # bge-small-en-v1.5 — immutable after creation
 
 
 def main():
-    client = QdrantClient(url=QDRANT_URL)
+    if not QDRANT_URL:
+        print("QDRANT_URL not set. Add it to your .env:")
+        print("  QDRANT_URL=https://your-cluster.qdrant.io")
+        sys.exit(1)
+
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
     existing = [c.name for c in client.get_collections().collections]
     if COLLECTION_NAME in existing:
