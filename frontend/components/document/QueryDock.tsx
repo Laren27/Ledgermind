@@ -15,6 +15,13 @@ export function QueryDock({ onSubmit, isLoading, suggestions }: QueryDockProps) 
     onSubmit(value.trim());
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
+
   return (
     <div className="mb-8">
       <div
@@ -29,7 +36,7 @@ export function QueryDock({ onSubmit, isLoading, suggestions }: QueryDockProps) 
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          onKeyDown={handleKeyDown}
           placeholder="What was Eternal's YoY consolidated revenue growth in Q4FY26?"
           disabled={isLoading}
           className="flex-1 bg-transparent outline-none"
@@ -41,6 +48,7 @@ export function QueryDock({ onSubmit, isLoading, suggestions }: QueryDockProps) 
           }}
         />
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={isLoading}
           style={{
@@ -59,7 +67,7 @@ export function QueryDock({ onSubmit, isLoading, suggestions }: QueryDockProps) 
         <div className="mt-2 flex gap-4" style={{ fontFamily: "var(--font-body)", fontSize: 10.5, color: "var(--paper-text-muted)" }}>
           <span>SUGGESTED:</span>
           {suggestions.map((s, i) => (
-            <button key={i} onClick={() => setValue(s)} style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>
+            <button key={i} type="button" onClick={() => setValue(s)} style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>
               {s}
             </button>
           ))}
