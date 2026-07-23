@@ -17,6 +17,9 @@ from dotenv import load_dotenv
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app.ingestion.qdrant_writer import create_payload_indexes
+
 load_dotenv()
 
 QDRANT_URL = os.getenv("QDRANT_URL")
@@ -39,8 +42,6 @@ def main():
         info = client.get_collection(COLLECTION_NAME)
         print(f"  Points count  : {info.points_count}")
 
-        # Verify the existing collection actually matches our intended schema —
-        # don't just assume a pre-existing collection was created correctly.
         vec_config = info.config.params.vectors
         sparse_config = info.config.params.sparse_vectors
         dense_ok = (
@@ -57,6 +58,10 @@ def main():
             print("\nWARNING: existing collection does not match expected schema.")
             print("Delete it and re-run this script, or investigate before ingesting.")
             sys.exit(1)
+
+        print("  Ensuring payload indexes exist (idempotent)...")
+        create_payload_indexes(client)
+        print("  Payload indexes confirmed.")
         return
 
     client.create_collection(
@@ -74,9 +79,12 @@ def main():
         },
     )
 
+    create_payload_indexes(client)
+
     print(f"Collection '{COLLECTION_NAME}' created.")
     print(f"  Dense dim : {DENSE_DIM} (COSINE)")
     print(f"  Sparse    : enabled (BM25 via on-disk=False)")
+    print(f"  Payload indexes created.")
 
 
 if __name__ == "__main__":
