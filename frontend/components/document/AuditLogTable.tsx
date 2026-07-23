@@ -26,8 +26,8 @@ export function AuditLogTable({ entries, onJump }: { entries: AuditLogEntry[]; o
             className="cursor-pointer"
             style={{ color: "var(--paper-text)", borderTop: "var(--table-rule-single)" }}
           >
-            <td style={{ padding: "6px 12px 6px 0", color: "var(--paper-text-muted)" }}>{e.pageNumber}</td>
-            <td style={{ padding: "6px 16px 6px 0", maxWidth: 320 }}>— {e.query}</td>
+            <td style={{ padding: "6px 4px 6px 0", color: "var(--paper-text-muted)" }}>{e.pageNumber} -</td>
+            <td style={{ padding: "6px 16px 6px 0", maxWidth: 320 }}>{e.query}</td>
             <td style={{ padding: "6px 0", color: "var(--paper-text-muted)" }}>{e.path ?? "—"}</td>
             <td style={{ padding: "6px 0", color: e.confidenceTier === "high" ? "var(--paper-verified)" : "var(--paper-text-muted)" }}>
               {e.confidenceTier}
