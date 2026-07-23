@@ -51,7 +51,7 @@ def _get_dense_model():
     if _dense_model is None:
         from fastembed import TextEmbedding
         logger.info("Loading dense model (ONNX/fastembed): %s", DENSE_MODEL_NAME)
-        _dense_model = TextEmbedding(model_name=DENSE_MODEL_NAME)
+        _dense_model = TextEmbedding(model_name=DENSE_MODEL_NAME, threads=1)
         logger.info("Dense model loaded — output dim: %d", DENSE_DIMENSIONS)
     return _dense_model
 
