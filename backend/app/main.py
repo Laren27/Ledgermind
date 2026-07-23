@@ -16,7 +16,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://ledgermind-ypmv8v239-laren-house.vercel.app",  # Your current preview URL
+    ],
+    # This regex is magic: it automatically allows ALL your Vercel preview URLs and production domains!
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
