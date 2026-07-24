@@ -1,15 +1,6 @@
 """
 LedgerMind — Phase 4: Router
 ==============================
-Second node in the LangGraph graph (runs after prompt_shield).
-
-Two responsibilities in one Gemini call:
-  1. Entity extraction  — company → ticker, fiscal year, quarter, financial_type
-  2. Path classification — semantic | quantitative | cross
-
-Why one call instead of two:
-  Entity extraction needs the same context as path classification.
-  Combining avoids an extra round trip and keeps routing latency low.
 """
 
 import json
@@ -27,6 +18,7 @@ from app.engines.state import QueryState
 
 logger = logging.getLogger(__name__)
 
+
 class RouterResponse(BaseModel):
     company: Optional[str]
     fiscal_year: Optional[str]
@@ -35,8 +27,10 @@ class RouterResponse(BaseModel):
     path: Literal["semantic", "quantitative", "cross"]
     route_reason: str
 
+
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 _gemini_client: Optional[genai.Client] = None
+
 
 def _get_gemini_client() -> genai.Client:
     global _gemini_client
@@ -46,6 +40,7 @@ def _get_gemini_client() -> genai.Client:
             raise RuntimeError("GEMINI_API_KEY environment variable not set")
         _gemini_client = genai.Client(api_key=api_key)
     return _gemini_client
+
 
 _KNOWN_TICKERS = sorted({p.ticker for p in COMPANY_PROFILES})
 _KNOWN_METRICS = sorted(METRIC_REGISTRY.keys())
@@ -64,7 +59,7 @@ company:
 fiscal_year:
   - Indian fiscal year runs April to March
   - Format: FY26, FY25, FY24, FY23 (2-digit year ending March)
-  - "last year" → infer from context; if unclear return null
+  - "last year" -> infer from context; if unclear return null
   - If no year mentioned, return null
 
 quarter:
@@ -80,32 +75,16 @@ financial_type:
 
 quantitative:
   - Query asks for a specific financial metric value
-  - Examples: revenue, income, profit, growth rate, CAGR, margin, EBITDA
   - Known metrics: {_KNOWN_METRICS}
-  - Signal words: "how much", "what was the revenue", "growth", "margin", "compare revenue"
 
 semantic:
   - Query asks for qualitative/textual information
-  - Examples: risks, strategy, governance, ESG, regulatory disclosures, management commentary
-  - Signal words: "what did management say", "what risks", "explain", "describe", "summarize"
 
 cross:
   - Query asks to verify or compare qualitative claims against financial numbers
-  - Signal words: "consistent with", "align with", "does management's claim match", "verify",
-    "contradict", "is what they said true given the numbers"
 
-## RESPONSE FORMAT
-
-Return ONLY a valid JSON object. No explanation. No markdown. No code blocks.
-
-{{
-  "company": "TICKER or null",
-  "fiscal_year": "FYxx or null",
-  "quarter": "Qx or null",
-  "financial_type": "consolidated",
-  "path": "semantic or quantitative or cross",
-  "route_reason": "one sentence explaining why this path was chosen"
-}}"""
+Return ONLY a valid JSON object matching the requested schema. No explanation.
+"""
 
 
 def _classify_query(query: str) -> dict:
@@ -124,13 +103,10 @@ def _classify_query(query: str) -> dict:
         )
 
         raw_text = response.text.strip()
-        logger.debug("Router Gemini raw response: %s", raw_text)
-
         try:
             result = json.loads(raw_text)
         except json.JSONDecodeError:
             cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.DOTALL).strip()
-            logger.warning("Router: primary JSON parse failed, retrying after fence-strip")
             result = json.loads(cleaned)
 
         company_raw = result.get("company")
@@ -142,7 +118,6 @@ def _classify_query(query: str) -> dict:
 
         path = result.get("path", "semantic").lower()
         if path not in ("semantic", "quantitative", "cross"):
-            logger.warning("Router returned unknown path '%s', defaulting to semantic", path)
             path = "semantic"
 
         fiscal_year = result.get("fiscal_year")
@@ -163,14 +138,6 @@ def _classify_query(query: str) -> dict:
         if financial_type not in ("consolidated", "standalone"):
             financial_type = "consolidated"
 
-        route_reason = result.get("route_reason", "")
-
-        logger.info(
-            "Router classified | company=%s fiscal_year=%s quarter=%s "
-            "financial_type=%s path=%s",
-            company, fiscal_year, quarter, financial_type, path,
-        )
-
         return {
             "company": company,
             "ticker": company,
@@ -178,11 +145,9 @@ def _classify_query(query: str) -> dict:
             "quarter": quarter,
             "financial_type": financial_type,
             "path": path,
-            "route_reason": route_reason,
+            "route_reason": result.get("route_reason", ""),
         }
 
-    except json.JSONDecodeError as e:
-        logger.error("Router failed to parse Gemini JSON response: %s", e)
     except Exception as e:
         logger.error("Router Gemini call failed: %s", e)
 
@@ -204,42 +169,17 @@ def _build_resolved_query(
     quarter: Optional[str],
     financial_type: str,
 ) -> str:
-    prefix_parts = []
-    if company:
-        prefix_parts.append(company)
-    if fiscal_year:
-        prefix_parts.append(fiscal_year)
-    if quarter:
-        prefix_parts.append(quarter)
-    prefix_parts.append(financial_type)
-
-    if prefix_parts:
-        return f"{' '.join(prefix_parts)} {original_query}"
-    return original_query
+    prefix_parts = [p for p in [company, fiscal_year, quarter, financial_type] if p]
+    return f"{' '.join(prefix_parts)} {original_query}" if prefix_parts else original_query
 
 
 def router_node(state: QueryState) -> QueryState:
     if state["is_blocked"]:
-        logger.debug("Router skipped — query already blocked by prompt_shield")
         return state
 
     context = state.get("execution_context") or {}
-    
-    # ⚡ FAST PATH: UI Workflow Override (e.g., Peer Comparison desk)
-    # Bypasses Gemini classification entirely for 100% determinism & 0ms LLM latency.
-    if context.get("enforce_path") and context.get("intended_path"):
-        intended = context["intended_path"]
-        logger.info(
-            "⚡ UI Workflow Override: Bypassing Gemini classifier -> forcing path '%s'",
-            intended
-        )
-        state["path"]           = intended
-        state["financial_type"] = context.get("financial_type", "consolidated")
-        state["route_reason"]   = f"UI Workflow Override: Routed directly to {intended} (bypassed LLM classification)"
-        state["resolved_query"] = state["query"]
-        return state
 
-    # --- STANDARD PATH: Fall back to Gemini LLM classification ---
+    # 1. Always run Gemini to preserve entity & period extraction
     result = _classify_query(state["query"])
 
     state["company"]        = result["company"]
@@ -247,8 +187,6 @@ def router_node(state: QueryState) -> QueryState:
     state["fiscal_year"]    = result["fiscal_year"]
     state["quarter"]        = result["quarter"]
     state["financial_type"] = result["financial_type"]
-    state["path"]           = result["path"]
-    state["route_reason"]   = result["route_reason"]
     state["resolved_query"] = _build_resolved_query(
         original_query=state["query"],
         company=result["company"],
@@ -257,13 +195,29 @@ def router_node(state: QueryState) -> QueryState:
         financial_type=result["financial_type"],
     )
 
+    # 2. ⚡ DETERMINISTIC WORKFLOW OVERRIDE: Override classification path & inject DSL hint
+    if context.get("enforce_path") and context.get("intended_path"):
+        intended_path = context["intended_path"]
+        logger.info(
+            "⚡ UI Workflow Override: Forcing path '%s' (ignoring Gemini classification '%s')",
+            intended_path, result["path"]
+        )
+        state["path"] = intended_path
+        state["route_reason"] = f"UI Workflow Override: Routed directly to {intended_path} desk"
+        
+        if context.get("intended_operation"):
+            state["preferred_operation"] = context["intended_operation"]
+            
+        return state
+
+    # --- STANDARD PATH ---
+    state["path"]         = result["path"]
+    state["route_reason"] = result["route_reason"]
     return state
 
 
 def route_after_shield(state: QueryState) -> str:
-    if state["is_blocked"]:
-        return "blocked"
-    return "router"
+    return "blocked" if state["is_blocked"] else "router"
 
 
 def route_after_router(state: QueryState) -> str:
