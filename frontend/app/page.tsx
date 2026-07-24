@@ -196,7 +196,7 @@ export default function Home() {
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeView, setActiveView] = useState<"workbench" | "peer" | "audit">("workbench");
 
-  const currentPage = currentPageIndex > 0 ? pages[currentPageIndex - 1] : null;
+  const currentPage = currentPageIndex > 0 && currentPageIndex <= pages.length ? pages[currentPageIndex - 1] : null;
   const answer = currentPage?.response ?? null;
   const totalPages = pages.length;
 
@@ -207,10 +207,12 @@ export default function Home() {
     : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
 
   // 💡 UNIFIED "PAD OF PAPER" PAGINATION MATH
+  // Total pages available to view is ALWAYS executed pages (N) + 1 (the trailing blank sheet).
   const ledgerTotalPages = activeView === "audit"
     ? totalPages
     : totalPages + 1;
 
+  // If viewing an executed page (1 to N), show its index. If on the blank draft sheet (0 or out of bounds), show N + 1.
   const ledgerCurrentPage = activeView === "audit"
     ? totalPages
     : (currentPageIndex > 0 && currentPageIndex <= totalPages)
@@ -224,7 +226,6 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
 
-    // 💡 Injects execution context override when running from the Peer Comparison desk
     const executionContext = activeView === "peer" ? {
       workspace_view: "peer_comparison",
       intended_path: "cross",
@@ -233,11 +234,10 @@ export default function Home() {
     } : undefined;
 
     try {
-      // Passes the optional execution context to the API client
       const result = await submitQuery(query, executionContext as any);
       setPages((prev) => {
         const next = [...prev, { response: result, originView: activeView === "peer" ? "peer" as const : "workbench" as const }];
-        setCurrentPageIndex(next.length);
+        setCurrentPageIndex(next.length); // Jump directly to the executed result sheet
         return next;
       });
       setRevisions((r) => ({ ...r, [query]: (r[query] ?? 0) + 1 }));
@@ -264,7 +264,8 @@ export default function Home() {
           activeView={activeView}
           onViewChange={(view) => {
             setActiveView(view);
-            if (view !== "audit") setCurrentPageIndex(0);
+            // Clicking a workspace tab flips the pad straight to the blank draft sheet!
+            if (view !== "audit") setCurrentPageIndex(pages.length + 1);
           }}
           onSignOut={() => {
             logout();
@@ -335,10 +336,10 @@ export default function Home() {
             )}
           </DocumentPage>
 
-          {activeView !== "audit" && totalPages > 0 && (
+          {activeView !== "audit" && (
             <PageNavigator
-              current={currentPageIndex > 0 ? currentPageIndex : totalPages}
-              total={totalPages}
+              current={ledgerCurrentPage}
+              total={ledgerTotalPages}
               onNavigate={setCurrentPageIndex}
             />
           )}
