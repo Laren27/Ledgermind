@@ -20,7 +20,7 @@ export function DocumentPage({
   return (
     <div
       className="relative mx-auto my-6"
-      style={{ width: "85%", maxWidth: 820 }}
+      style={{ width: "92%", maxWidth: 1080 }}
       onMouseEnter={() => setFlattened(true)}
       onMouseLeave={() => setFlattened(false)}
     >
@@ -35,7 +35,6 @@ export function DocumentPage({
           background: "var(--paper-background, #E6DFD3)",
           border: "1px solid var(--paper-border, rgba(42, 38, 34, 0.12))",
           borderRadius: "3px",
-          // 💡 WARM BROWN DOUBLE-SHADOWS: Contact shadow + Lift shadow
           boxShadow: "0 8px 18px rgba(40, 30, 20, 0.16), 0 40px 80px rgba(40, 30, 20, 0.20)",
           padding: "var(--spacing-page, 48px)",
           minHeight: 1000,
@@ -103,6 +102,16 @@ export function DocumentPage({
           <span>{footerLabelOverride ?? `PAGE ${pageNumber} OF ${totalPages}`}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DocumentSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-6 w-1/2 rounded" style={{ background: "var(--paper-border)" }} />
+      <div className="h-4 w-full rounded" style={{ background: "var(--paper-border)" }} />
+      <div className="h-4 w-5/6 rounded" style={{ background: "var(--paper-border)" }} />
     </div>
   );
 }
