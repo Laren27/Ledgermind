@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { PaperStack } from "@/components/environment/PaperStack";
 
 interface DocumentPageProps {
   docId: string;
@@ -8,10 +9,8 @@ interface DocumentPageProps {
   confidential?: boolean;
   isLoading?: boolean;
   children: React.ReactNode;
-  footerLabelOverride?: string; // e.g. "12 ENTRIES LOGGED" for ledger-style views with no real pagination
+  footerLabelOverride?: string;
 }
-
-const STACK_DEPTH = 4;
 
 export function DocumentPage({
   docId, pageNumber, totalPages, confidential, isLoading, children, footerLabelOverride,
@@ -20,87 +19,90 @@ export function DocumentPage({
 
   return (
     <div
-      className="relative mx-auto"
+      className="relative mx-auto my-6"
       style={{ width: "85%", maxWidth: 820 }}
       onMouseEnter={() => setFlattened(true)}
       onMouseLeave={() => setFlattened(false)}
     >
-      {Array.from({ length: STACK_DEPTH }).map((_, i) => (
-        <div
-          key={i}
-          className="absolute inset-0 rounded-sm"
-          style={{
-            background: "var(--paper-background-shadowed)",
-            border: "1px solid var(--paper-border)",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
-            transform: `translate(${(i + 1) * 5}px, ${(i + 1) * 5}px)`,
-            zIndex: -1 - i,
-            opacity: 1 - i * 0.14,
-          }}
-        />
-      ))}
+      {/* Layer 4: Pure CSS Stationary Paper Stack */}
+      <PaperStack />
 
+      {/* Layer 5: Active Working Paper Canvas */}
       <div
-        className="relative rounded-sm transition-transform flex flex-col"
+        key={`${docId}-${pageNumber}`}
+        className="relative flex flex-col justify-between transition-transform rounded-sm overflow-hidden"
         style={{
-          background: "var(--paper-background)",
-          border: "1px solid var(--paper-border)",
-          boxShadow: `var(--shadow-contact), var(--shadow-lift)`,
-          padding: "var(--spacing-page)",
+          background: "var(--paper-background, #E6DFD3)",
+          border: "1px solid var(--paper-border, rgba(42, 38, 34, 0.12))",
+          borderRadius: "3px",
+          // 💡 WARM BROWN DOUBLE-SHADOWS: Contact shadow + Lift shadow
+          boxShadow: "0 8px 18px rgba(40, 30, 20, 0.16), 0 40px 80px rgba(40, 30, 20, 0.20)",
+          padding: "var(--spacing-page, 48px)",
           minHeight: 1000,
           height: "auto",
           transform: flattened
-            ? "perspective(1400px) rotateX(0deg) rotateY(0deg)"
-            : "perspective(1400px) rotateX(4deg) rotateY(-2deg) rotateZ(-1deg)",
-          transitionDuration: "var(--animation-duration-normal)",
-          transitionTimingFunction: "var(--animation-easing)",
+            ? "perspective(1400px) rotateX(0deg) rotateY(0deg) rotateZ(0deg)"
+            : "perspective(1400px) rotateX(3deg) rotateY(-1.5deg) rotateZ(-0.5deg)",
+          transitionDuration: "350ms",
+          transitionTimingFunction: "cubic-bezier(0.2, 0.8, 0.2, 1)",
         }}
       >
+        {/* Layer 6: Microscopic Paper Texture Overlay (3.5% Multiply Blend) */}
         <div
-          className="absolute top-0 right-0"
+          className="pointer-events-none absolute inset-0 z-0"
           style={{
-            width: "var(--paper-fold-size)",
-            height: "var(--paper-fold-size)",
+            backgroundImage: `url('/assets/environment/paper-texture.png')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.035,
+            mixBlendMode: "multiply",
+          }}
+        />
+
+        {/* Top-Right Fold Corner */}
+        <div
+          className="absolute top-0 right-0 pointer-events-none z-10"
+          style={{
+            width: "40px",
+            height: "40px",
             background: "linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.08) 50%)",
             clipPath: "polygon(100% 0, 0 0, 100% 100%)",
           }}
         />
 
-        <div className="flex-1">{children}</div>
+        {/* Layer 7: Semantic HTML / Live React Content */}
+        <div className="relative z-10 flex-1">{children}</div>
 
+        {/* Diagonal Watermark */}
         <div
-          className="pointer-events-none absolute select-none"
+          className="pointer-events-none absolute select-none z-0"
           style={{
             bottom: "18%", right: "8%",
-            fontFamily: "var(--font-document-title)",
+            fontFamily: "var(--font-document-title, serif)",
             fontSize: 72,
-            color: "var(--paper-text)",
-            opacity: "var(--watermark-opacity)",
-            transform: "rotate(var(--watermark-rotation))",
+            color: "var(--paper-text, #2A2622)",
+            opacity: 0.05,
+            transform: "rotate(-8deg)",
           }}
         >
           LedgerMind
         </div>
 
+        {/* Institutional Footer */}
         <div
-          className="mt-8 flex items-center justify-between border-t pt-3"
-          style={{ borderColor: "var(--paper-border)", fontFamily: "var(--font-body)", fontSize: 10.5, color: "var(--paper-text-muted)" }}
+          className="relative z-10 mt-8 flex items-center justify-between border-t pt-3"
+          style={{ 
+            borderColor: "var(--paper-border, rgba(42, 38, 34, 0.12))", 
+            fontFamily: "var(--font-body, monospace)", 
+            fontSize: 10.5, 
+            color: "var(--paper-text-muted, #6B6053)" 
+          }}
         >
           <span>DOC ID: {docId}</span>
           {confidential && <span>CONFIDENTIAL — INTERNAL USE ONLY</span>}
           <span>{footerLabelOverride ?? `PAGE ${pageNumber} OF ${totalPages}`}</span>
         </div>
       </div>
-    </div>
-  );
-}
-
-function DocumentSkeleton() {
-  return (
-    <div className="animate-pulse space-y-4">
-      <div className="h-6 w-1/2 rounded" style={{ background: "var(--paper-border)" }} />
-      <div className="h-4 w-full rounded" style={{ background: "var(--paper-border)" }} />
-      <div className="h-4 w-5/6 rounded" style={{ background: "var(--paper-border)" }} />
     </div>
   );
 }
