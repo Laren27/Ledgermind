@@ -87,7 +87,6 @@ function composeDocumentBody(data: QueryResponse) {
 
   const citationItems = buildCitationItems(data);
 
-  // ⚡ PURE DATA-DRIVEN GATE: Gated strictly on SQL shape, zero UI state dependencies
   const isComparativeResult = data.sql_result?.[0] && "entity_a" in data.sql_result[0];
 
   if (isComparativeResult) {
@@ -201,7 +200,6 @@ export default function Home() {
     ? (currentPage.originView === "peer" ? "Peer Comparison" : "Query Workbench")
     : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
 
-  // 💡 UNIFIED "PAD OF PAPER" PAGINATION MATH
   const ledgerTotalPages = activeView === "audit"
     ? totalPages
     : totalPages + 1;
@@ -219,7 +217,6 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
 
-    // 💡 Corrected: Route to quantitative engine with an explicit comparison hint
     const executionContext = activeView === "peer" ? {
       workspace_view: "peer_comparison",
       intended_path: "quantitative",
@@ -252,7 +249,7 @@ export default function Home() {
 
   return (
     <DocumentEnvironment surface="desk">
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen w-full">
         <Sidebar
           userRole={session.role}
           tenantId={session.tenantId}
