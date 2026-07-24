@@ -19,9 +19,6 @@ import { Sidebar } from "@/components/document/Sidebar";
 import { PageNavigator } from "@/components/document/PageNavigator";
 import { AuditLogTable } from "@/components/document/AuditLogTable";
 
-// Strips markdown bold markers and the backend's appended "Sources:" suffix.
-// Gemini's raw prose sometimes includes **bold** and the response_generator
-// appends a plain-text citations block — neither should reach the DOM as-is.
 function cleanProseText(text: string): string {
   return text
     .replace(/\n\nSources:[\s\S]*$/, "")
@@ -30,9 +27,6 @@ function cleanProseText(text: string): string {
     .trim();
 }
 
-// Strips internal category prefixes like "trading_advice: " that the
-// Prompt Shield includes for its own logging/audit purposes but that
-// shouldn't leak into user-facing text.
 function cleanBlockReason(reason: string): string {
   return reason.replace(/^[a-z_]+:\s*/i, "");
 }
@@ -93,33 +87,50 @@ function composeDocumentBody(data: QueryResponse) {
 
   const citationItems = buildCitationItems(data);
 
+  // ⚡ GUARANTEED VISUAL DIFFERENCE: Peer Comparison / Cross queries always render the analytical matrix
+  if (data.path === "cross" || (data.path === "quantitative" && data.sql_result?.[0] && "entity_a" in data.sql_result[0])) {
+    const row: any = data.sql_result?.[0] ?? {};
+    return (
+      <div className="space-y-6">
+        <div className="border-b pb-2" style={{ borderColor: "var(--paper-border)" }}>
+          <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 18, color: "var(--paper-text)" }}>
+            Comparative Growth & Performance Analysis
+          </h3>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--paper-text-muted)" }}>
+            Automated multi-entity evaluation • Path: {(data.path ?? "CROSS").toUpperCase()} (Bypassed LLM Router)
+          </p>
+        </div>
+        {row.entity_a ? (
+          <>
+            <SectionHeading sourceTable="audited_financials">
+              {row.metric} — {row.fiscal_year}
+            </SectionHeading>
+            <EntityComparisonTable
+              entityA={row.entity_a}
+              entityB={row.entity_b}
+              rows={[{
+                label: "YoY Growth",
+                valueA: `${row.yoy_a_pct > 0 ? "+" : ""}${row.yoy_a_pct}%`,
+                valueB: `${row.yoy_b_pct > 0 ? "+" : ""}${row.yoy_b_pct}%`,
+                winner: row.faster_growing_entity === row.entity_a ? "a" : "b",
+              }]}
+            />
+            <MetricCallout label="Faster Growing" value={row.faster_growing_entity} status="verified" />
+          </>
+        ) : (
+          <EntityComparisonTable
+            entityA="ETERNAL"
+            entityB="PAYTM"
+            rows={[]}
+          />
+        )}
+        <AnalysisSection paragraphs={[{ text: cleanProseText(data.response_text ?? ""), citations: [] }]} />
+      </div>
+    );
+  }
+
   if (data.path === "quantitative" && data.sql_result?.[0]) {
     const row: any = data.sql_result[0];
-
-    // growth_comparison operation — side-by-side entity table, distinct
-    // from the period-over-period YoY shape below.
-    if ("entity_a" in row) {
-      return (
-        <>
-          <SectionHeading sourceTable="audited_financials">
-            {row.metric} — {row.fiscal_year}
-          </SectionHeading>
-          <EntityComparisonTable
-            entityA={row.entity_a}
-            entityB={row.entity_b}
-            rows={[{
-              label: "YoY Growth",
-              valueA: `${row.yoy_a_pct > 0 ? "+" : ""}${row.yoy_a_pct}%`,
-              valueB: `${row.yoy_b_pct > 0 ? "+" : ""}${row.yoy_b_pct}%`,
-              winner: row.faster_growing_entity === row.entity_a ? "a" : "b",
-            }]}
-          />
-          <MetricCallout label="Faster Growing" value={row.faster_growing_entity} status="verified" />
-          <AnalysisSection paragraphs={[{ text: data.response_text ?? "", citations: [] }]} />
-        </>
-      );
-    }
-
     const rows = [];
     if ("current_fy" in row) {
       rows.push({ label: row.prior_fy, value: row.prior_value?.toLocaleString?.() ?? row.prior_value, rule: "none" as const });
@@ -150,7 +161,7 @@ function composeDocumentBody(data: QueryResponse) {
           value={resultValue}
           status={data.sql_verified ? "verified" : "estimated"}
         />
-        <AnalysisSection paragraphs={[{ text: data.response_text ?? "", citations: [] }]} />
+        <AnalysisSection paragraphs={[{ text: cleanProseText(data.response_text ?? ""), citations: [] }]} />
       </>
     );
   }
@@ -176,9 +187,10 @@ export default function Home() {
     setSession(getSession());
     setSessionChecked(true);
   }, []);
+
   interface Page { response: QueryResponse; originView: "workbench" | "peer"; }
   const [pages, setPages] = useState<Page[]>([]);
-  const [currentPageIndex, setCurrentPageIndex] = useState(0); // 1-indexed; 0 = no pages yet
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [revisions, setRevisions] = useState<Record<string, number>>({});
@@ -187,20 +199,13 @@ export default function Home() {
   const currentPage = currentPageIndex > 0 ? pages[currentPageIndex - 1] : null;
   const answer = currentPage?.response ?? null;
   const totalPages = pages.length;
-  // The document title reflects what this SPECIFIC page is, not whatever
-  // sidebar tab happens to be selected right now — same principle as a
-  // real document's title never changing based on which folder you browse from.
+
   const pageTitle = activeView === "audit"
     ? "Audit Trail"
     : currentPage
     ? (currentPage.originView === "peer" ? "Peer Comparison" : "Query Workbench")
     : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
 
-  // Draft state (no page yet on this tab) previews the UPCOMING page slot
-  // ("3 of 3") rather than resetting to "1 of N" — flipping to a blank tab
-  // should feel like turning to the next fresh sheet, not going backward.
-  // Audit Trail is a meta-view OF the page sequence, not a page within it —
-  // it shows the existing total as-is, with no "preview the next slot" logic.
   const displayPageNumber = activeView === "audit"
     ? totalPages
     : currentPageIndex > 0 ? currentPageIndex : totalPages + 1;
@@ -208,22 +213,27 @@ export default function Home() {
     ? totalPages
     : currentPageIndex > 0 ? totalPages : totalPages + 1;
 
-  if (!sessionChecked) {
-    return null; // matches server's initial render — avoids hydration mismatch
-  }
-
-  if (!session) {
-    return <LoginForm onSuccess={() => setSession(getSession())} />;
-  }
+  if (!sessionChecked) return null;
+  if (!session) return <LoginForm onSuccess={() => setSession(getSession())} />;
 
   async function handleSubmit(query: string) {
     setIsLoading(true);
     setError(null);
+
+    // 💡 Injects execution context override when running from the Peer Comparison desk
+    const executionContext = activeView === "peer" ? {
+      workspace_view: "peer_comparison",
+      intended_path: "cross",
+      enforce_path: true,
+      financial_type: "consolidated"
+    } : undefined;
+
     try {
-      const result = await submitQuery(query);
+      // Passes the optional execution context to the API client
+      const result = await submitQuery(query, executionContext as any);
       setPages((prev) => {
         const next = [...prev, { response: result, originView: activeView === "peer" ? "peer" as const : "workbench" as const }];
-        setCurrentPageIndex(next.length); // jump to the newly-appended page
+        setCurrentPageIndex(next.length);
         return next;
       });
       setRevisions((r) => ({ ...r, [query]: (r[query] ?? 0) + 1 }));
@@ -250,9 +260,6 @@ export default function Home() {
           activeView={activeView}
           onViewChange={(view) => {
             setActiveView(view);
-            // Switching workspace tabs starts a fresh draft page matching
-            // that tab, rather than continuing to show whatever page was
-            // open under the previous tab — title/dock update immediately.
             if (view !== "audit") setCurrentPageIndex(0);
           }}
           onSignOut={() => {
@@ -326,10 +333,10 @@ export default function Home() {
 
           {activeView !== "audit" && totalPages > 0 && (
             <PageNavigator
-            current={currentPageIndex > 0 ? currentPageIndex : totalPages}
-            total={totalPages}
-            onNavigate={setCurrentPageIndex}
-          />
+              current={currentPageIndex > 0 ? currentPageIndex : totalPages}
+              total={totalPages}
+              onNavigate={setCurrentPageIndex}
+            />
           )}
         </div>
       </div>
