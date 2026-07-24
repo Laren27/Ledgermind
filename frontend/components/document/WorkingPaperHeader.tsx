@@ -19,7 +19,7 @@ export function WorkingPaperHeader({
   revision = 1,
   preparer = "analyst",
 }: WorkingPaperHeaderProps) {
-  const entityName = company ? `${company.toUpperCase()} LIMITED` : "UNKNOWN ENTITY LIMITED";
+  const entityName = company ? `${company.toUpperCase()} LIMITED` : "NEW WORKING PAPER";
   const statementType = financialType
     ? `${financialType.charAt(0).toUpperCase() + financialType.slice(1)} Financial Statements`
     : "Consolidated Financial Statements";
