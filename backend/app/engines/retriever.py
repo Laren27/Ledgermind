@@ -52,8 +52,7 @@ TOP_K_RERANK = 5
 
 DENSE_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 SPARSE_MODEL_NAME = "Qdrant/bm25"
-# fastembed's ONNX port of the same cross-encoder model, not a different model —
-# see https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2
+# fastembed's ONNX port of the same cross-encoder model:
 RERANKER_MODEL_NAME = "Xenova/ms-marco-MiniLM-L-6-v2"
 
 # ---------------------------------------------------------------------------
@@ -64,6 +63,7 @@ _dense_model: Optional[TextEmbedding] = None
 _sparse_model: Optional[SparseTextEmbedding] = None
 _reranker_model: Optional[TextCrossEncoder] = None
 _qdrant_client: Optional[QdrantClient] = None
+_cohere_client = None
 
 
 def _get_dense_model() -> TextEmbedding:
@@ -90,6 +90,24 @@ def _get_reranker() -> TextCrossEncoder:
     return _reranker_model
 
 
+def _get_cohere_client():
+    global _cohere_client
+    if _cohere_client is None:
+        api_key = os.getenv("COHERE_API_KEY")
+        if api_key:
+            try:
+                import cohere
+                logger.info("Initializing Cohere client for cloud reranking (0MB RAM)")
+                _cohere_client = cohere.Client(api_key=api_key)
+            except ImportError:
+                logger.error("COHERE_API_KEY set but 'cohere' package not installed.")
+                return None
+            except Exception as e:
+                logger.error("Failed to initialize Cohere client: %s", e)
+                return None
+    return _cohere_client
+
+
 def _get_qdrant_client() -> QdrantClient:
     global _qdrant_client
     if _qdrant_client is None:
@@ -107,12 +125,7 @@ def _get_qdrant_client() -> QdrantClient:
 # ---------------------------------------------------------------------------
 
 def _encode_dense(query: str) -> List[float]:
-    """Encode query with bge-small-en-v1.5 (ONNX) → 384-dim dense vector.
-
-    fastembed's query_embed() applies the correct retrieval query prefix
-    internally for this model family — no manual prefix string needed,
-    unlike the old sentence-transformers path.
-    """
+    """Encode query with bge-small-en-v1.5 (ONNX) → 384-dim dense vector."""
     model = _get_dense_model()
     vector = next(model.query_embed(query))
     return vector.tolist()
@@ -140,13 +153,7 @@ def _build_filter(
     financial_type: Optional[str] = None,
     is_latest: bool = True,
 ) -> Filter:
-    """
-    Build Qdrant Filter from query metadata.
-
-    tenant_id and is_latest are ALWAYS applied.
-    quarter is applied ONLY when explicitly provided — None means retrieve all periods.
-    This allows annual-level queries (quarter=None) to match annual table chunks.
-    """
+    """Build Qdrant Filter from query metadata."""
     must_conditions = [
         FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id)),
         FieldCondition(key="is_latest", match=MatchValue(value=is_latest)),
@@ -168,13 +175,6 @@ def _build_filter(
         )
 
     if financial_type:
-        # Match the requested financial_type OR chunks that were never
-        # scoped to either type (narrative/general content — see
-        # section_classifier.py's classify_blocks for why FINANCIAL_STATEMENT
-        # is the only block_type that gets a real financial_type tag).
-        # A plain MatchValue-only filter would silently exclude all
-        # untagged narrative chunks regardless of which financial_type
-        # the query defaults to.
         must_conditions.append(
             Filter(
                 should=[
@@ -200,13 +200,7 @@ def hybrid_search(
     financial_type: str = "consolidated",
     top_k: int = TOP_K_RETRIEVAL,
 ) -> List[ChunkResult]:
-    """
-    Hybrid retrieval using Qdrant native RRF fusion.
-
-    Both prefetch legs share the same metadata filter — this ensures the RRF
-    pool only contains chunks matching the tenant/company/period constraints.
-    Returns [] on Qdrant failure (caller checks length and sets confidence=LOW).
-    """
+    """Hybrid retrieval using Qdrant native RRF fusion."""
     client = _get_qdrant_client()
 
     dense_vector = _encode_dense(query)
@@ -287,20 +281,50 @@ def rerank(
     top_k: int = TOP_K_RERANK,
 ) -> List[ChunkResult]:
     """
-    Cross-encoder reranking of retrieved chunks.
-
-    Scores every (query, chunk_text) pair with ms-marco-MiniLM-L-6-v2.
-    Returns top_k chunks sorted by reranker_score (descending).
-    reranker_score is a raw CrossEncoder logit — higher = better, range unbounded.
-    Returns input unchanged if empty.
+    Reranking of retrieved chunks.
+    
+    1. If COHERE_API_KEY is configured, uses Cohere Rerank API (0 MB RAM).
+    2. Otherwise, falls back to local fastembed CrossEncoder ONNX model.
     """
     if not chunks:
         return chunks
 
+    cohere_client = _get_cohere_client()
+
+    # --- PATH A: Cohere Cloud Rerank (0 MB Container RAM) ---
+    if cohere_client is not None:
+        logger.debug("Reranking %d chunks via Cohere API (rerank-english-v3.0)", len(chunks))
+        try:
+            doc_texts = [chunk["text"] for chunk in chunks]
+            response = cohere_client.rerank(
+                model="rerank-english-v3.0",
+                query=query,
+                documents=doc_texts,
+                top_n=top_k,
+            )
+            
+            scored_chunks: List[ChunkResult] = []
+            for hit in response.results:
+                chunk_idx = hit.index
+                updated = dict(chunks[chunk_idx])
+                updated["reranker_score"] = float(hit.relevance_score)
+                scored_chunks.append(ChunkResult(**updated))
+                
+            if scored_chunks:
+                logger.info(
+                    "Cohere Cloud reranking complete | top_score=%.4f | bottom_score=%.4f",
+                    scored_chunks[0]["reranker_score"],
+                    scored_chunks[-1]["reranker_score"],
+                )
+            return scored_chunks
+        except Exception as e:
+            logger.error("Cohere API reranking failed (%s) — falling back to local reranker", e)
+
+    # --- PATH B: Local ONNX CrossEncoder (Fallback) ---
     reranker = _get_reranker()
     pairs = [(query, chunk["text"]) for chunk in chunks]
 
-    logger.debug("Reranking %d chunks with CrossEncoder (ONNX/fastembed)", len(pairs))
+    logger.debug("Reranking %d chunks with local CrossEncoder (ONNX/fastembed)", len(pairs))
     scores = list(reranker.rerank_pairs(pairs))
 
     scored_chunks = []
@@ -314,7 +338,7 @@ def rerank(
 
     if top_chunks:
         logger.info(
-            "Reranking complete | top_score=%.4f | bottom_score=%.4f",
+            "Local reranking complete | top_score=%.4f | bottom_score=%.4f",
             top_chunks[0]["reranker_score"],
             top_chunks[-1]["reranker_score"],
         )
