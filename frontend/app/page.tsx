@@ -34,9 +34,9 @@ function cleanBlockReason(reason: string): string {
 function DocumentBodySkeleton() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-6 w-1/2 rounded" style={{ background: "var(--paper-border)" }} />
-      <div className="h-4 w-full rounded" style={{ background: "var(--paper-border)" }} />
-      <div className="h-4 w-5/6 rounded" style={{ background: "var(--paper-border)" }} />
+      <div className="h-6 w-1/2 rounded" style={{ background: "var(--ink-divider)" }} />
+      <div className="h-4 w-full rounded" style={{ background: "var(--ink-divider)" }} />
+      <div className="h-4 w-5/6 rounded" style={{ background: "var(--ink-divider)" }} />
     </div>
   );
 }
@@ -93,11 +93,11 @@ function composeDocumentBody(data: QueryResponse) {
     const row: any = data.sql_result![0];
     return (
       <div className="space-y-6">
-        <div className="border-b pb-2" style={{ borderColor: "var(--paper-border)" }}>
-          <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 18, color: "var(--paper-text)" }}>
+        <div className="border-b pb-2" style={{ borderColor: "var(--ink-divider)" }}>
+          <h3 style={{ fontFamily: "var(--font-editorial)", fontSize: 18, color: "var(--ink-primary)" }}>
             Comparative Growth & Performance Analysis
           </h3>
-          <p style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--paper-text-muted)" }}>
+          <p style={{ fontFamily: "var(--font-archival)", fontSize: 12, color: "var(--ink-metadata)" }}>
             Automated multi-entity evaluation • Path: {(data.path ?? "QUANTITATIVE").toUpperCase()} (Deterministic Override)
           </p>
         </div>
