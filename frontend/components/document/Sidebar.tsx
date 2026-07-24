@@ -27,16 +27,16 @@ export function Sidebar({
 }: SidebarProps) {
   return (
     <aside
-      className="flex w-64 flex-col justify-between p-7 select-none transition-all z-20 shrink-0"
+      className="flex w-56 flex-col justify-between p-6 select-none transition-all z-20 shrink-0"
       style={{
-        background: "rgba(16, 13, 11, 0.96)",
+        background: "rgba(16, 13, 11, 0.97)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         borderRight: "1px solid rgba(255, 255, 255, 0.04)",
         boxShadow: "6px 0 30px rgba(0, 0, 0, 0.55)",
       }}
     >
-      <div className="space-y-10">
+      <div className="space-y-8">
         {/* Brand & Tenant Info */}
         <div>
           <div className="flex items-center space-x-2">
@@ -47,7 +47,7 @@ export function Sidebar({
               LedgerMind
             </span>
           </div>
-          <div className="mt-1.5 flex items-center space-x-2 text-xs opacity-75" style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}>
+          <div className="mt-1 flex items-center space-x-2 text-xs opacity-75" style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}>
             <span className="uppercase text-[10px] tracking-widest px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08]">
               {userRole}
             </span>
@@ -55,10 +55,10 @@ export function Sidebar({
           </div>
         </div>
 
-        {/* Workspace Views Navigation — Library Archive Aesthetic */}
-        <div className="space-y-1.5">
+        {/* Workspace Views Navigation */}
+        <div className="space-y-1">
           <div
-            className="px-3 mb-3 text-[10px] font-medium uppercase tracking-[0.22em] opacity-50"
+            className="px-3 mb-2.5 text-[10px] font-medium uppercase tracking-[0.22em] opacity-45"
             style={{ color: "#8B8378", fontFamily: "var(--font-archival, monospace)" }}
           >
             Archive Index
@@ -70,25 +70,35 @@ export function Sidebar({
               <button
                 key={view}
                 onClick={() => onViewChange(view)}
-                className="w-full text-left px-3 py-2.5 rounded text-sm transition-all flex items-center justify-between font-normal"
+                className="relative w-full text-left px-3.5 py-2 rounded-sm text-xs transition-all flex items-center justify-between font-normal group"
                 style={{
-                  background: isActive ? "linear-gradient(90deg, rgba(181, 138, 60, 0.15), rgba(181, 138, 60, 0.02))" : "transparent",
-                  color: isActive ? "#ECEDEF" : "#949A6E",
-                  borderLeft: isActive ? "3px solid #B58A3C" : "3px solid transparent",
+                  background: isActive ? "linear-gradient(90deg, rgba(181, 138, 60, 0.12), transparent)" : "transparent",
+                  color: isActive ? "#ECEDEF" : "#8B8378",
                 }}
               >
-                <span className={isActive ? "font-medium" : "opacity-80"}>{label}</span>
-                {isActive && <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#B58A3C" }} />}
+                {/* 💡 PROTRUDING BRASS BOOKMARK TAB ON ACTIVE ITEM */}
+                {isActive && (
+                  <span 
+                    className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-sm transition-all"
+                    style={{
+                      background: "linear-gradient(180deg, #C99B4A 0%, #B58A3C 50%, #8A6D3B 100%)",
+                      boxShadow: "1px 0 6px rgba(181, 138, 60, 0.4)",
+                    }}
+                  />
+                )}
+                <span className={isActive ? "font-medium tracking-wide text-[13px]" : "group-hover:text-[#ECEDEF] transition-colors text-[13px]"}>
+                  {label}
+                </span>
               </button>
             );
           })}
         </div>
 
-        {/* Indexed Filings Registry */}
+        {/* Active Archive Registry with Brass Tab Cues */}
         {indexedFilings.length > 0 && (
-          <div className="space-y-2.5 pt-6 border-t border-white/[0.04]">
+          <div className="space-y-2 pt-5 border-t border-white/[0.04]">
             <div
-              className="px-3 text-[10px] font-medium uppercase tracking-[0.22em] opacity-50"
+              className="px-3 text-[10px] font-medium uppercase tracking-[0.22em] opacity-45"
               style={{ color: "#8B8378", fontFamily: "var(--font-archival, monospace)" }}
             >
               Active Corpus
@@ -97,13 +107,19 @@ export function Sidebar({
               {indexedFilings.map((filing, idx) => (
                 <div
                   key={idx}
-                  className="px-3 py-2 rounded text-xs flex items-center justify-between transition-colors"
+                  className="relative px-3.5 py-2 rounded-sm text-xs flex items-center justify-between transition-colors"
                   style={{
-                    background: filing.active ? "rgba(62, 217, 192, 0.06)" : "transparent",
-                    color: filing.active ? "#3ED9C0" : "#7B8290",
+                    background: filing.active ? "rgba(46, 107, 74, 0.10)" : "transparent",
+                    color: filing.active ? "#2E6B4A" : "#7B8290",
                     fontFamily: "var(--font-archival, monospace)",
                   }}
                 >
+                  {filing.active && (
+                    <span 
+                      className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-sm"
+                      style={{ background: "#2E6B4A" }}
+                    />
+                  )}
                   <span className="font-semibold tracking-wider text-[11px]">{filing.company}</span>
                   <span className="text-[10px] opacity-75">{filing.period}</span>
                 </div>
@@ -114,10 +130,10 @@ export function Sidebar({
       </div>
 
       {/* Sign Out Footer */}
-      <div className="pt-6 border-t border-white/[0.04]">
+      <div className="pt-5 border-t border-white/[0.04]">
         <button
           onClick={onSignOut}
-          className="w-full text-left px-3 py-2 rounded text-xs transition-colors hover:bg-white/5 opacity-70 hover:opacity-100"
+          className="w-full text-left px-3 py-1.5 rounded text-xs transition-colors opacity-65 hover:opacity-100"
           style={{ color: "#E2665A", fontFamily: "var(--font-archival, monospace)" }}
         >
           Sign Out →
