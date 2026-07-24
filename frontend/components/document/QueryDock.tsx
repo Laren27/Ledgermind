@@ -9,11 +9,10 @@ interface QueryDockProps {
 }
 
 const INDEX_TABS = [
-  "Revenue Growth",
-  "PAT Comparison",
-  "Cash Flow Conversion",
-  "EBITDA Margins",
-  "Consolidated CAGR",
+  "What was Eternal's revenue growth in FY26?",
+  "What is Paytm's PAT for FY26?",
+  "What were Titan's key risk factors in Q1FY26?",
+  "Summarize Eternal's management commentary on profitability",
 ];
 
 export function QueryDock({ onSubmit, isLoading, suggestions = INDEX_TABS }: QueryDockProps) {
@@ -60,36 +59,6 @@ export function QueryDock({ onSubmit, isLoading, suggestions = INDEX_TABS }: Que
           </button>
         </div>
       </form>
-
-      {/* 💡 THE VERIFICATION RIBBON (Quiet Confidence beneath Query) */}
-      <div 
-        className="py-2.5 px-4 rounded-sm flex items-center justify-between border-y select-none"
-        style={{
-          backgroundColor: "rgba(223, 212, 196, 0.25)",
-          borderColor: "rgba(216, 206, 193, 0.5)",
-          fontFamily: "var(--font-archival, monospace)",
-          fontSize: "12px",
-          color: "var(--ink-metadata, #8B8378)",
-        }}
-      >
-        <div className="flex items-center space-x-6">
-          <span className="flex items-center space-x-1.5 font-medium" style={{ color: "var(--ink-secondary)" }}>
-            <span style={{ color: "#2E6B4A" }}>✓</span>
-            <span>Filing Verified</span>
-          </span>
-          <span className="flex items-center space-x-1.5 font-medium" style={{ color: "var(--ink-secondary)" }}>
-            <span style={{ color: "#2E6B4A" }}>✓</span>
-            <span>SQL Verified</span>
-          </span>
-          <span className="flex items-center space-x-1.5 font-medium" style={{ color: "var(--ink-secondary)" }}>
-            <span style={{ color: "#2E6B4A" }}>✓</span>
-            <span>Arithmetic Verified</span>
-          </span>
-        </div>
-        <div className="font-semibold tracking-wider text-[11px] uppercase">
-          17 Supporting Citations
-        </div>
-      </div>
 
       {/* 💡 ARCHIVAL INDEX TABS (Clipped Paper Labels, No Button Styling) */}
       <div className="space-y-2.5">
