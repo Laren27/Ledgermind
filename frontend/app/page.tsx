@@ -208,10 +208,10 @@ export default function Home() {
 
   const displayPageNumber = activeView === "audit"
     ? totalPages
-    : currentPageIndex > 0 ? currentPageIndex : totalPages + 1;
+    : (currentPageIndex > 0 && currentPageIndex <= totalPages) ? currentPageIndex : totalPages + 1;
   const displayTotalPages = activeView === "audit"
     ? totalPages
-    : currentPageIndex > 0 ? totalPages : totalPages + 1;
+    : totalPages + 1;
 
   if (!sessionChecked) return null;
   if (!session) return <LoginForm onSuccess={() => setSession(getSession())} />;
