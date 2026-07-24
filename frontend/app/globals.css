@@ -14,16 +14,16 @@
   --color-cream-100: #F0E8DC;
   --color-cream-200: #E7DED0; /* Archival warm ivory paper (#E7DED0) */
   --color-cream-300: #DDD2C2;
-  --color-cream-inset: #DFD4C4; /* Inset paper tone */
+  --color-cream-inset: #DFD4C4;
   
   /* STRICT 4-LEVEL ARCHIVAL INK SYSTEM */
-  --ink-primary: #2A241E;    /* Main headings and primary content */
-  --ink-secondary: #5F574D;  /* Narrative prose paragraphs */
-  --ink-metadata: #8B8378;   /* Labels, table headers, subtitles */
-  --ink-passive: #B7AEA3;    /* Watermarks, helper text, inactive states */
-  --ink-divider: #D8CEC1;    /* Warm architectural rule lines */
-  --ink-placeholder: #746A5D;/* Editorial input placeholder */
-  --ink-footer: #7D7468;     /* Engraved stamped footer ink */
+  --ink-primary: #2A241E;     /* High-contrast printed body ink */
+  --ink-secondary: #5F574D;   /* Narrative prose paragraphs */
+  --ink-metadata: #8B8378;    /* Labels, table headers, document info */
+  --ink-passive: #B7AEA3;     /* Watermarks, helper text, inactive states */
+  --ink-divider: rgba(215, 206, 195, 0.55); /* Hairline 1px rule at 55% opacity */
+  --ink-placeholder: #746A5D; /* Editorial input placeholder */
+  --ink-footer: #7D7468;      /* Engraved stamped footer ink */
 
   --color-charcoal-950: #060709;
   --color-charcoal-900: #0E1015;
@@ -35,14 +35,11 @@
   --color-amber-500: #E8A93B;
   --color-coral-500: #E2665A;
 
-  /* Primitive Spacing Scale (+20% for desktop reading ergonomics) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-12: 48px;
+  /* 💡 STRICT VERTICAL RHYTHM GRID (No Arbitrary Spacing) */
+  --rhythm-major: 72px; /* Major section breaks */
+  --rhythm-minor: 32px; /* Minor section dividers */
+  --rhythm-para: 20px;  /* Paragraph spacing */
+  --rhythm-meta: 12px;  /* Metadata & footnote baselines */
 
   --radius-sm: 3px;
   --radius-md: 10px;
@@ -61,7 +58,7 @@
   --z-querydock: 200;
   --z-modal: 1000;
 
-  /* EXECUTIVE DESKTOP TYPE SCALE (Proportional Hierarchy) */
+  /* PROPORTIONAL EXECUTIVE TYPE SCALE */
   --font-size-footer: 12px;
   --font-size-metadata: 13px;
   --font-size-entity: 14px;
@@ -69,7 +66,7 @@
   --font-size-body: 18px;
   --font-size-input: 20px;
   --font-size-section: 28px;
-  --font-size-title: 44px; /* Scaled down 15% for editorial elegance */
+  --font-size-title: 44px;
   --font-size-hero: 72px;
 
   /* EDITORIAL TYPOGRAPHY FAMILIES */
@@ -77,17 +74,15 @@
   --font-ui: var(--font-plex-sans), 'Inter', -apple-system, sans-serif;
   --font-archival: var(--font-plex-mono), 'Courier New', monospace;
 
-  /* WEIGHTED PHYSICAL MOTION CURVES (No Bounce / Paper Physics) */
+  /* WEIGHTED PHYSICAL MOTION CURVES */
   --duration-fast: 150ms;
+  --duration-paper: 240ms; /* 💡 240ms physical paper shift duration */
   --duration-medium: 350ms;
   --duration-slow: 600ms;
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-paper: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ==========================================================================
-   2. SEMANTIC TOKENS & NAMESPACES
-   ========================================================================== */
 :root {
   --theme-surface-background: var(--color-charcoal-850);
   --theme-surface-sidebar: var(--color-leather-900);
@@ -102,15 +97,10 @@
   --theme-text-sidebarSecondary: #A8AEB8;
   --theme-text-sidebarMuted: #7B8290;
 
-  --theme-border-subtle: rgba(42, 38, 34, 0.14);
+  --theme-border-subtle: var(--ink-divider);
   --theme-border-strong: rgba(42, 38, 34, 0.38);
   --theme-border-sidebar: rgba(255, 255, 255, 0.05);
-}
 
-/* ==========================================================================
-   3. COMPOSITE SHADOW TOKENS & VIGNETTE
-   ========================================================================== */
-:root {
   --shadow-sidebar: 4px 0 20px rgba(0, 0, 0, 0.50);
   --shadow-querydock: inset 0 1px 2px rgba(42, 36, 30, 0.06);
   --shadow-dropdown: 0 10px 28px rgba(0, 0, 0, 0.40);
@@ -139,7 +129,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 💡 5–8% DESK CORNER VIGNETTE TO DRAW FOCUS CENTER */
+/* 5–8% DESK CORNER VIGNETTE */
 body::after {
   content: "";
   position: fixed;
@@ -152,4 +142,10 @@ body::after {
 ::selection {
   background: var(--color-gold-dim);
   color: var(--theme-text-primary);
+}
+
+/* 💡 TABULAR FIGURES FOR ACCOUNTING METRIC ALIGNMENT */
+.tabular-metrics {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
