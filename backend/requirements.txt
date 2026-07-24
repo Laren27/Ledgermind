@@ -12,4 +12,4 @@ fastembed==0.8.0
 psycopg2-binary==2.9.12
 PyJWT
 bcrypt
-pdfplumber
+pdfplumbercohere==7.0.8
