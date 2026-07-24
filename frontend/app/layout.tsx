@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
-import { Instrument_Sans, Manrope, IBM_Plex_Mono } from "next/font/google";
+import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-const instrumentSans = Instrument_Sans({
+const fraunces = Fraunces({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-instrument",
+  variable: "--font-fraunces",
 });
 
-const manrope = Manrope({
+const plexSans = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  variable: "--font-manrope",
+  variable: "--font-plex-sans",
 });
 
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
   variable: "--font-plex-mono",
 });
 
@@ -34,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${instrumentSans.variable} ${manrope.variable} ${plexMono.variable} font-body`}
+        className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable} font-body`}
       >
         {children}
         <SpeedInsights />
