@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React from "react";
 
 interface PageNavigatorProps {
   current: number;
@@ -8,52 +8,44 @@ interface PageNavigatorProps {
 }
 
 export function PageNavigator({ current, total, onNavigate }: PageNavigatorProps) {
-  const [editing, setEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(String(current));
-
-  function commitJump() {
-    const n = parseInt(inputValue, 10);
-    if (!isNaN(n) && n >= 1 && n <= total) onNavigate(n);
-    else setInputValue(String(current));
-    setEditing(false);
-  }
+  if (total <= 1) return null;
 
   return (
-    <div className="mx-auto mt-4 flex items-center justify-center gap-4" style={{ width: "85%", maxWidth: 820 }}>
-      <button
-        onClick={() => onNavigate(current - 1)}
-        disabled={current <= 1}
-        style={{ fontFamily: "var(--font-body)", fontSize: 12, color: current <= 1 ? "#3a3530" : "#C9A876" }}
+    <div className="flex items-center justify-center pb-12 pt-2 select-none z-20">
+      {/* 💡 ENGRAVED DESKTOP TRAY CONTROL (Anchored to Walnut Environment) */}
+      <div 
+        className="flex items-center space-x-8 px-8 py-3 rounded-full border transition-all"
+        style={{
+          background: "rgba(18, 15, 13, 0.92)",
+          backdropFilter: "blur(8px)",
+          borderColor: "rgba(255, 255, 255, 0.06)",
+          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.50), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+          fontFamily: "var(--font-archival, 'IBM Plex Mono', monospace)",
+          fontSize: "15px",
+        }}
       >
-        ← Prior
-      </button>
-
-      {editing ? (
-        <input
-          autoFocus
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onBlur={commitJump}
-          onKeyDown={(e) => e.key === "Enter" && commitJump()}
-          className="w-10 bg-transparent text-center outline-none"
-          style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "#EDE5D8", borderBottom: "1px solid #6B6053" }}
-        />
-      ) : (
         <button
-          onClick={() => { setInputValue(String(current)); setEditing(true); }}
-          style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "#EDE5D8" }}
+          onClick={() => onNavigate(Math.max(1, current - 1))}
+          disabled={current <= 1}
+          className="transition-colors text-[#6E6458] hover:text-[#E7DED0] disabled:opacity-25 disabled:hover:text-[#6E6458] font-medium flex items-center space-x-2 tracking-wide"
         >
-          PAGE {current} OF {total}
+          <span>←</span>
+          <span>Previous</span>
         </button>
-      )}
 
-      <button
-        onClick={() => onNavigate(current + 1)}
-        disabled={current >= total}
-        style={{ fontFamily: "var(--font-body)", fontSize: 12, color: current >= total ? "#3a3530" : "#C9A876" }}
-      >
-        Next →
-      </button>
+        <span className="text-[#8B8378] font-semibold tracking-widest uppercase text-xs">
+          Page <span className="text-[#E7DED0]">{current}</span> / {total}
+        </span>
+
+        <button
+          onClick={() => onNavigate(Math.min(total, current + 1))}
+          disabled={current >= total}
+          className="transition-colors text-[#6E6458] hover:text-[#E7DED0] disabled:opacity-25 disabled:hover:text-[#6E6458] font-medium flex items-center space-x-2 tracking-wide"
+        >
+          <span>Next</span>
+          <span>→</span>
+        </button>
+      </div>
     </div>
   );
 }
