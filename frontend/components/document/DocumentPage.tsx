@@ -66,7 +66,7 @@ export function DocumentPage({
           }}
         />
 
-        <div className="flex-1">{isLoading ? <DocumentSkeleton /> : children}</div>
+        <div className="flex-1">{children}</div>
 
         <div
           className="pointer-events-none absolute select-none"
