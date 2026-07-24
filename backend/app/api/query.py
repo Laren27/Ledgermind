@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user
-from app.engines.graph import compiled_graph
+from app.engines.graph import get_graph
 from app.engines.state import make_initial_state
 
 router = APIRouter(prefix="/api", tags=["Query"])
@@ -25,7 +25,7 @@ async def execute_query(
     tenant_id = payload.tenant_id or current_user.get("tenant_id", "default")
     user_id = str(current_user.get("id", "anonymous"))
 
-    # 💡 Thread the execution_context directly into the state factory
+    # Thread the execution_context directly into the state factory
     initial_state = make_initial_state(
         query=payload.query,
         tenant_id=tenant_id,
@@ -35,8 +35,9 @@ async def execute_query(
     )
 
     try:
-        # Invoke the LangGraph workflow
-        final_state = await compiled_graph.ainvoke(initial_state)
+        # Call get_graph() to retrieve the compiled LangGraph singleton
+        graph = get_graph()
+        final_state = await graph.ainvoke(initial_state)
         return final_state
     except Exception as e:
         raise HTTPException(
