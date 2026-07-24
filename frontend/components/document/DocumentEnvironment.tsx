@@ -24,8 +24,8 @@ export function DocumentEnvironment({ surface = "desk", children }: DocumentEnvi
       <AmbientLighting />
       <ExecutiveObjects />
 
-      {/* Live React Content Layer (Preserves all existing flex and sidebar layouts) */}
-      <div className="relative z-10 flex min-h-screen w-full">
+      {/* Live React Content Layer (Preserves all existing flex and sidebar layouts without shrink-wrapping) */}
+      <div className="relative z-10 min-h-screen w-full">
         {children}
       </div>
     </div>
