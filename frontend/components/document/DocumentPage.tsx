@@ -10,7 +10,7 @@ interface DocumentPageProps {
   isLoading?: boolean;
   children: React.ReactNode;
   footerLabelOverride?: string;
-  isShifting?: boolean; /* 💡 Trigger for 240ms paper movement */
+  isShifting?: boolean;
 }
 
 export function DocumentPage({
@@ -21,11 +21,12 @@ export function DocumentPage({
   return (
     <div
       className="relative mb-16 transition-all duration-500"
+      // 💡 WIDER CANVAS: 93% width / 1140px max to optimize line wrapping for financial reports
       style={{ 
-        width: "90%", 
-        maxWidth: 1080, 
+        width: "93%", 
+        maxWidth: 1140, 
         marginTop: "50px", 
-        marginLeft: "5%", 
+        marginLeft: "4.5%", 
         marginRight: "auto" 
       }}
       onMouseEnter={() => setIsHovered(true)}
@@ -84,11 +85,11 @@ export function DocumentPage({
           }}
         />
 
-        {/* 💡 STRICT VERTICAL RHYTHM SECTION CONTENT */}
+        {/* STRICT VERTICAL RHYTHM SECTION CONTENT */}
         <div className="relative z-10 flex-1 flex flex-col justify-between space-y-[var(--rhythm-major,72px)]">
           <div>{children}</div>
 
-          {/* 💡 UNBOXED CLIPPED EXCERPTS (Replacing UI Cards) */}
+          {/* UNBOXED CLIPPED EXCERPTS */}
           <div className="pt-[var(--rhythm-minor,32px)] border-t space-y-[var(--rhythm-minor,32px)]" style={{ borderColor: "var(--ink-divider)" }}>
             <div>
               <div 
@@ -99,7 +100,6 @@ export function DocumentPage({
               </div>
 
               <div className="space-y-[var(--rhythm-para,20px)] text-[15px] font-normal" style={{ color: "var(--ink-secondary)" }}>
-                {/* Excerpt 1: Typeset left rule, no card box */}
                 <div className="border-l-[2px] pl-5 py-1" style={{ borderColor: "var(--ink-metadata)" }}>
                   <div className="flex items-baseline justify-between mb-1 text-xs font-mono tracking-wider" style={{ color: "var(--ink-primary)" }}>
                     <span className="font-semibold uppercase">ETERNAL LIMITED — Q4 FY26 DISCLOSURE</span>
@@ -110,7 +110,6 @@ export function DocumentPage({
                   </p>
                 </div>
 
-                {/* Excerpt 2: Typeset left rule, no card box */}
                 <div className="border-l-[2px] pl-5 py-1" style={{ borderColor: "var(--ink-metadata)" }}>
                   <div className="flex items-baseline justify-between mb-1 text-xs font-mono tracking-wider" style={{ color: "var(--ink-primary)" }}>
                     <span className="font-semibold uppercase">PAYTM — FY26 COMPARATIVE MARGINS</span>
@@ -132,24 +131,23 @@ export function DocumentPage({
           </div>
         </div>
 
-        {/* 💡 STRUCTURED ARCHIVAL SEAL WATERMARK */}
+        {/* 💡 THE ICONIC ARCHIVAL STAMP WATERMARK (~1.8% Opacity) */}
         <div
-          className="pointer-events-none absolute select-none z-0 p-5"
+          className="pointer-events-none absolute select-none z-0 py-4 px-8 border-y-[1.5px]"
           style={{
-            bottom: "25%", right: "8%",
+            bottom: "26%", right: "7%",
             fontFamily: "var(--font-archival, monospace)",
             color: "var(--ink-primary)",
+            borderColor: "var(--ink-primary)",
             opacity: 0.018,
-            transform: "rotate(-12deg)",
+            transform: "rotate(-10deg)",
           }}
         >
-          <div className="text-center tracking-[0.3em] font-bold text-xs mb-1">━━━━━━━━━━━━━━━━━━━━━━━━━</div>
-          <div className="text-3xl font-extrabold tracking-[0.28em] uppercase text-center">LEDGERMIND</div>
-          <div className="text-[11px] tracking-[0.35em] font-semibold text-center mt-1">WORKING PAPER • CONFIDENTIAL</div>
-          <div className="text-center tracking-[0.3em] font-bold text-xs mt-1">━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+          <div className="text-3xl font-extrabold tracking-[0.32em] uppercase text-center">LEDGERMIND</div>
+          <div className="text-[11px] tracking-[0.40em] font-semibold text-center mt-1.5 uppercase">Working Paper • Verified</div>
         </div>
 
-        {/* 💡 ENGRAVED POWER-USER FOOTER */}
+        {/* ENGRAVED POWER-USER FOOTER */}
         <div
           className="relative z-10 mt-[var(--rhythm-major,72px)] flex items-center justify-between border-t pt-4 font-normal"
           style={{ 
