@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
     user_id              UUID,
     query_text           TEXT,
     query_path           TEXT        CHECK (query_path IN (
-                             'semantic', 'quantitative', 'cross_examination', 'blocked'
+                             'semantic', 'quantitative', 'cross', 'blocked', 'unknown'
                          )),
     retrieved_chunk_ids  TEXT[],
     vector_scores        NUMERIC[],
