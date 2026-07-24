@@ -15,14 +15,21 @@ interface DocumentPageProps {
 export function DocumentPage({
   docId, pageNumber, totalPages, confidential, isLoading, children, footerLabelOverride,
 }: DocumentPageProps) {
-  const [flattened, setFlattened] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
-      className="relative mx-auto my-6"
-      style={{ width: "92%", maxWidth: 1080 }}
-      onMouseEnter={() => setFlattened(true)}
-      onMouseLeave={() => setFlattened(false)}
+      className="relative mb-16 transition-all duration-500"
+      // Asymmetric desk placement: Dropped 60px from top, shifted left (4% margin-left)
+      style={{ 
+        width: "90%", 
+        maxWidth: 1080, 
+        marginTop: "60px", 
+        marginLeft: "4%", 
+        marginRight: "auto" 
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Layer 4: Pure CSS Stationary Paper Stack */}
       <PaperStack />
@@ -30,18 +37,22 @@ export function DocumentPage({
       {/* Layer 5: Active Working Paper Canvas */}
       <div
         key={`${docId}-${pageNumber}`}
-        className="relative flex flex-col justify-between transition-transform rounded-sm overflow-hidden"
+        className="relative flex flex-col justify-between rounded-sm overflow-hidden transition-all"
         style={{
           background: "var(--paper-background, #E6DFD3)",
-          border: "1px solid var(--paper-border, rgba(42, 38, 34, 0.12))",
-          borderRadius: "3px",
-          boxShadow: "0 8px 18px rgba(40, 30, 20, 0.16), 0 40px 80px rgba(40, 30, 20, 0.20)",
+          border: "1px solid var(--paper-border, rgba(42, 38, 34, 0.14))",
+          borderRadius: "var(--paper-corner-radius, 3px)",
+          // Warm ambient occlusion shadows
+          boxShadow: isHovered
+            ? "0 14px 24px rgba(32, 22, 16, 0.30), 0 40px 90px rgba(20, 14, 10, 0.28)"
+            : "0 10px 18px rgba(32, 22, 16, 0.26), 0 28px 70px rgba(20, 14, 10, 0.22)",
           padding: "var(--spacing-page, 48px)",
           minHeight: 1000,
           height: "auto",
-          transform: flattened
-            ? "perspective(1400px) rotateX(0deg) rotateY(0deg) rotateZ(0deg)"
-            : "perspective(1400px) rotateX(3deg) rotateY(-1.5deg) rotateZ(-0.5deg)",
+          // Permanent 1800px camera perspective — Never flattens to 0deg
+          transform: isHovered
+            ? "perspective(1800px) rotateX(1.8deg) rotateY(-0.8deg) rotateZ(-0.15deg) translateY(-4px)"
+            : "perspective(1800px) rotateX(2.5deg) rotateY(-1.2deg) rotateZ(-0.35deg) translateY(0px)",
           transitionDuration: "350ms",
           transitionTimingFunction: "cubic-bezier(0.2, 0.8, 0.2, 1)",
         }}
@@ -58,12 +69,12 @@ export function DocumentPage({
           }}
         />
 
-        {/* Top-Right Fold Corner */}
+        {/* Intentional 30px Fold Corner */}
         <div
           className="absolute top-0 right-0 pointer-events-none z-10"
           style={{
-            width: "40px",
-            height: "40px",
+            width: "30px",
+            height: "30px",
             background: "linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.08) 50%)",
             clipPath: "polygon(100% 0, 0 0, 100% 100%)",
           }}
@@ -72,15 +83,15 @@ export function DocumentPage({
         {/* Layer 7: Semantic HTML / Live React Content */}
         <div className="relative z-10 flex-1">{children}</div>
 
-        {/* Diagonal Watermark */}
+        {/* Subtle Watermark (~2.2% Opacity) */}
         <div
           className="pointer-events-none absolute select-none z-0"
           style={{
             bottom: "18%", right: "8%",
-            fontFamily: "var(--font-document-title, serif)",
+            fontFamily: "var(--font-editorial, 'IBM Plex Serif', serif)",
             fontSize: 72,
             color: "var(--paper-text, #2A2622)",
-            opacity: 0.05,
+            opacity: 0.022,
             transform: "rotate(-8deg)",
           }}
         >
@@ -92,7 +103,7 @@ export function DocumentPage({
           className="relative z-10 mt-8 flex items-center justify-between border-t pt-3"
           style={{ 
             borderColor: "var(--paper-border, rgba(42, 38, 34, 0.12))", 
-            fontFamily: "var(--font-body, monospace)", 
+            fontFamily: "var(--font-archival, 'IBM Plex Mono', monospace)", 
             fontSize: 10.5, 
             color: "var(--paper-text-muted, #6B6053)" 
           }}
