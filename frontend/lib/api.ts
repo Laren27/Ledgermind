@@ -84,7 +84,10 @@ export class UnauthorizedError extends Error {}
  * Throws UnauthorizedError on 401 (expired/invalid token) — callers should
  * catch this and redirect to login, not treat it like a generic failure.
  */
-export async function submitQuery(question: string): Promise<QueryResponse> {
+export async function submitQuery(
+  question: string,
+  executionContext?: Record<string, any>
+): Promise<QueryResponse> {
   const session = getSession();
   if (!session) {
     throw new UnauthorizedError("Not logged in");
@@ -96,7 +99,10 @@ export async function submitQuery(question: string): Promise<QueryResponse> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.accessToken}`,
     },
-    body: JSON.stringify({ query: question }),
+    body: JSON.stringify({
+      query: question,
+      execution_context: executionContext ?? null,
+    }),
   });
 
   if (res.status === 401) {
