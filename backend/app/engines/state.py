@@ -104,14 +104,12 @@ class QueryState(TypedDict):
     request_id: str            # UUID string for this specific query, used in audit
     start_time: float          # time.time() captured at API entry
 
-    # ── Frontend execution overrides ───────────────────────────────────────
-    execution_context: Optional[Dict[str, Any]]  # optional UI workflow hints (e.g. enforce_path)
-
     # ── prompt_shield output ───────────────────────────────────────────────
     is_blocked: bool           # True → terminate immediately, skip all engines
     block_reason: Optional[str]  # human-readable reason for the block
 
     # ── entity_resolver output ─────────────────────────────────────────────
+    # Reuses the entity_resolver module already built in Phase 3.
     company: Optional[str]     # normalised ticker e.g. "ETERNAL"
     ticker: Optional[str]      # same as company for now; kept separate for future
     fiscal_year: Optional[str] # "FY26" | None if not detected
@@ -168,36 +166,42 @@ def make_initial_state(
     tenant_id: str,
     user_id: str,
     request_id: str,
-    execution_context: Optional[Dict[str, Any]] = None,
 ) -> QueryState:
     """
     Returns a fully-initialised QueryState with safe defaults.
     Every field is explicitly set so no node ever sees a missing key.
+
+    Called once at the FastAPI endpoint before the graph is invoked.
     """
     return QueryState(
+        # Entry
         query=query,
         tenant_id=tenant_id,
         user_id=user_id,
         request_id=request_id,
         start_time=time.time(),
-        execution_context=execution_context,
 
+        # Prompt shield (assumed clean until proven otherwise)
         is_blocked=False,
         block_reason=None,
 
+        # Entity resolution
         company=None,
         ticker=None,
         fiscal_year=None,
         quarter=None,
-        financial_type="consolidated",
-        resolved_query=query,
+        financial_type="consolidated",   # default per blueprint §4.1
+        resolved_query=query,            # overwritten by entity_resolver
 
+        # Routing
         path=None,
         route_reason=None,
 
+        # Path 1
         retrieved_chunks=[],
         citations=[],
 
+        # Path 2
         dsl_object=None,
         dsl_valid=False,
         dsl_attempts=0,
@@ -206,19 +210,24 @@ def make_initial_state(
         sql_row_count=0,
         sql_verified=False,
 
+        # Path 3
         contradictions=[],
 
+        # Confidence
         confidence_score=0.0,
         confidence_tier="low",
         crag_triggered=False,
         crag_count=0,
 
+        # Response
         response_text=None,
         restatement_disclosed=False,
 
+        # Errors
         error=None,
         error_node=None,
 
+        # Audit
         tokens_used=0,
         cache_hit=False,
         latency_ms=0,
