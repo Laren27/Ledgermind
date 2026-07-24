@@ -10,10 +10,11 @@ interface DocumentPageProps {
   isLoading?: boolean;
   children: React.ReactNode;
   footerLabelOverride?: string;
+  isShifting?: boolean; /* 💡 Trigger for 240ms paper movement */
 }
 
 export function DocumentPage({
-  docId, pageNumber, totalPages, confidential, isLoading, children, footerLabelOverride,
+  docId, pageNumber, totalPages, confidential, isLoading, children, footerLabelOverride, isShifting = false,
 }: DocumentPageProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -24,33 +25,36 @@ export function DocumentPage({
         width: "90%", 
         maxWidth: 1080, 
         marginTop: "50px", 
-        marginLeft: "4%", 
+        marginLeft: "5%", 
         marginRight: "auto" 
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Layer 4: Pure CSS Organic Imperfect Ream */}
-      <PaperStack />
+      {/* Layer 4: Pure CSS Organic Imperfect Ream with 240ms Paper Shift */}
+      <div className={`transition-all duration-[240ms] ease-out ${isShifting ? "translate-x-[-4px] translate-y-[2px]" : ""}`}>
+        <PaperStack />
+      </div>
 
       {/* Layer 5: Active Working Paper Canvas */}
       <div
         key={`${docId}-${pageNumber}`}
-        className="relative flex flex-col justify-between rounded-sm overflow-hidden transition-all duration-350"
+        className={`relative flex flex-col justify-between rounded-sm overflow-hidden transition-all duration-[240ms] ease-out ${
+          isShifting ? "opacity-40 translate-x-[-8px] scale-[0.997]" : "opacity-100 translate-x-0 scale-100"
+        }`}
         style={{
           background: "var(--theme-surface-paper, #E7DED0)",
-          border: "1px solid var(--theme-border-subtle, rgba(42, 38, 34, 0.16))",
-          borderRadius: "var(--paper-radius, 3px)",
+          border: "1px solid var(--theme-border-subtle)",
+          borderRadius: "var(--radius-sm, 3px)",
           boxShadow: isHovered
             ? "var(--shadow-paper-hover)"
             : "var(--shadow-paper-rest)",
-          padding: "var(--spacing-page, 48px)",
+          padding: "var(--rhythm-major, 72px) var(--space-12, 48px) var(--space-12, 48px)",
           minHeight: 1080,
           height: "auto",
-          transform: isHovered
+          transform: isHovered && !isShifting
             ? "perspective(1800px) rotateX(1.8deg) rotateY(-0.8deg) rotateZ(-0.15deg) translateY(-4px)"
             : "perspective(1800px) rotateX(2.5deg) rotateY(-1.2deg) rotateZ(-0.35deg) translateY(0px)",
-          transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
           fontFamily: "var(--font-ui, sans-serif)",
           fontSize: "var(--font-size-body, 18px)",
           color: "var(--ink-primary, #2A241E)",
@@ -80,77 +84,93 @@ export function DocumentPage({
           }}
         />
 
-        {/* 💡 SECTION RHYTHM TO ELIMINATE 70% EMPTY VOID */}
-        <div className="relative z-10 flex-1 flex flex-col justify-between">
+        {/* 💡 STRICT VERTICAL RHYTHM SECTION CONTENT */}
+        <div className="relative z-10 flex-1 flex flex-col justify-between space-y-[var(--rhythm-major,72px)]">
           <div>{children}</div>
 
-          {/* Structured Document Rhythm Sections (When No Query Active) */}
-          <div className="mt-16 pt-10 border-t space-y-10" style={{ borderColor: "var(--ink-divider, #D8CEC1)" }}>
+          {/* 💡 UNBOXED CLIPPED EXCERPTS (Replacing UI Cards) */}
+          <div className="pt-[var(--rhythm-minor,32px)] border-t space-y-[var(--rhythm-minor,32px)]" style={{ borderColor: "var(--ink-divider)" }}>
             <div>
               <div 
-                className="uppercase text-[11px] tracking-[0.18em] font-semibold mb-3"
-                style={{ fontFamily: "var(--font-archival, monospace)", color: "var(--ink-metadata, #8B8378)" }}
+                className="uppercase text-[11px] tracking-[0.20em] font-semibold mb-[var(--rhythm-para,20px)]"
+                style={{ fontFamily: "var(--font-archival, monospace)", color: "var(--ink-metadata)" }}
               >
-                Recent Audits & Findings
+                Archival Excerpts • Prior Audit Working Papers
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm font-normal" style={{ color: "var(--ink-secondary, #5F574D)" }}>
-                <div className="p-3.5 rounded-sm border bg-[#DFD4C4]/20 border-[#D8CEC1]/60">
-                  <span className="font-semibold block text-xs uppercase font-mono tracking-wider mb-1" style={{ color: "var(--ink-primary)" }}>ETERNAL LIMITED — FY26</span>
-                  Consolidated revenue growth verified at 34.2% YoY. No arithmetic discrepancies detected in Q4 disclosures.
+
+              <div className="space-y-[var(--rhythm-para,20px)] text-[15px] font-normal" style={{ color: "var(--ink-secondary)" }}>
+                {/* Excerpt 1: Typeset left rule, no card box */}
+                <div className="border-l-[2px] pl-5 py-1" style={{ borderColor: "var(--ink-metadata)" }}>
+                  <div className="flex items-baseline justify-between mb-1 text-xs font-mono tracking-wider" style={{ color: "var(--ink-primary)" }}>
+                    <span className="font-semibold uppercase">ETERNAL LIMITED — Q4 FY26 DISCLOSURE</span>
+                    <span className="text-[11px] opacity-75">REF: WP-AUDIT-092</span>
+                  </div>
+                  <p className="m-0 leading-relaxed">
+                    Consolidated revenue growth verified at 34.2% YoY. Independent 3-way reconciliation confirms no arithmetic discrepancies across operating segments or reported treasury cash flows.
+                  </p>
                 </div>
-                <div className="p-3.5 rounded-sm border bg-[#DFD4C4]/20 border-[#D8CEC1]/60">
-                  <span className="font-semibold block text-xs uppercase font-mono tracking-wider mb-1" style={{ color: "var(--ink-primary)" }}>PAYTM — FY26</span>
-                  EBITDA margin expansion outpaced peer median by 410 bps. Audited notes confirm reduced operational overhead.
+
+                {/* Excerpt 2: Typeset left rule, no card box */}
+                <div className="border-l-[2px] pl-5 py-1" style={{ borderColor: "var(--ink-metadata)" }}>
+                  <div className="flex items-baseline justify-between mb-1 text-xs font-mono tracking-wider" style={{ color: "var(--ink-primary)" }}>
+                    <span className="font-semibold uppercase">PAYTM — FY26 COMPARATIVE MARGINS</span>
+                    <span className="text-[11px] opacity-75">REF: WP-PEER-104</span>
+                  </div>
+                  <p className="m-0 leading-relaxed">
+                    EBITDA margin expansion outpaced peer median by 410 bps. Audited notes validate structural reduction in payment processing overhead and customer acquisition expenditures.
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-6 pt-6 border-t font-mono text-xs" style={{ borderColor: "rgba(216, 206, 193, 0.4)", color: "var(--ink-metadata)" }}>
-              <div><span className="block text-[10px] uppercase tracking-widest opacity-70">Corpus Status</span>Active Indexing Validated</div>
-              <div><span className="block text-[10px] uppercase tracking-widest opacity-70">Reconciliation</span>Automated 3-Way Match</div>
-              <div><span className="block text-[10px] uppercase tracking-widest opacity-70">Audit Trail</span>Cryptographically Signed</div>
+            {/* Borderless Tabular Verification Grid */}
+            <div className="grid grid-cols-3 gap-6 pt-[var(--rhythm-para,20px)] border-t font-mono text-xs" style={{ borderColor: "var(--ink-divider)", color: "var(--ink-metadata)" }}>
+              <div><span className="block text-[10px] uppercase tracking-widest opacity-65 mb-0.5">Corpus Status</span><span style={{ color: "var(--ink-primary)" }}>Active Indexing Validated</span></div>
+              <div><span className="block text-[10px] uppercase tracking-widest opacity-65 mb-0.5">Reconciliation</span><span style={{ color: "var(--ink-primary)" }}>Automated 3-Way Match</span></div>
+              <div><span className="block text-[10px] uppercase tracking-widest opacity-65 mb-0.5">Audit Trail</span><span style={{ color: "var(--ink-primary)" }}>Cryptographically Signed</span></div>
             </div>
           </div>
         </div>
 
-        {/* 💡 DIAGONAL ARCHIVAL STAMP WATERMARK (~1.8% Opacity) */}
+        {/* 💡 STRUCTURED ARCHIVAL SEAL WATERMARK */}
         <div
-          className="pointer-events-none absolute select-none z-0 border-4 border-dashed p-6 rounded"
+          className="pointer-events-none absolute select-none z-0 p-5"
           style={{
-            bottom: "22%", right: "6%",
+            bottom: "25%", right: "8%",
             fontFamily: "var(--font-archival, monospace)",
-            color: "var(--ink-primary, #2A241E)",
-            borderColor: "var(--ink-primary, #2A241E)",
+            color: "var(--ink-primary)",
             opacity: 0.018,
             transform: "rotate(-12deg)",
           }}
         >
-          <div className="text-4xl font-bold tracking-[0.25em] uppercase">LEDGERMIND</div>
-          <div className="text-sm tracking-[0.3em] font-semibold text-center mt-1">WORKING PAPER • CONFIDENTIAL</div>
+          <div className="text-center tracking-[0.3em] font-bold text-xs mb-1">━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+          <div className="text-3xl font-extrabold tracking-[0.28em] uppercase text-center">LEDGERMIND</div>
+          <div className="text-[11px] tracking-[0.35em] font-semibold text-center mt-1">WORKING PAPER • CONFIDENTIAL</div>
+          <div className="text-center tracking-[0.3em] font-bold text-xs mt-1">━━━━━━━━━━━━━━━━━━━━━━━━━</div>
         </div>
 
-        {/* 💡 POWER-USER INTERACTIVE FOOTER */}
+        {/* 💡 ENGRAVED POWER-USER FOOTER */}
         <div
-          className="relative z-10 mt-14 flex items-center justify-between border-t pt-4 font-normal"
+          className="relative z-10 mt-[var(--rhythm-major,72px)] flex items-center justify-between border-t pt-4 font-normal"
           style={{ 
-            borderColor: "var(--ink-divider, #D8CEC1)", 
+            borderColor: "var(--ink-divider)", 
             fontFamily: "var(--font-archival, monospace)", 
             fontSize: "var(--font-size-footer, 12px)", 
-            color: "var(--ink-footer, #7D7468)",
+            color: "var(--ink-footer)",
           }}
         >
           <span>DOC ID: {docId}</span>
           
-          {/* Engraved Status Centerline */}
-          <span className="flex items-center space-x-3 tracking-wide text-[11px] bg-[#DFD4C4]/40 px-3 py-1 rounded border border-[#D8CEC1]/50">
+          {/* Stamped Centerline Metrics */}
+          <span className="flex items-center space-x-3 tracking-wider text-[11px] px-3 py-1 rounded bg-[#DFD4C4]/30 border border-[#D8CEC1]/60">
             <span style={{ color: "#2E6B4A" }}>● Verified against Filing</span>
             <span>•</span>
-            <span>184 chunks indexed</span>
+            <span className="tabular-metrics">184 chunks indexed</span>
             <span>•</span>
-            <span>27 tables reconstructed</span>
+            <span className="tabular-metrics">27 tables reconstructed</span>
           </span>
 
-          <span>{footerLabelOverride ?? `PAGE ${pageNumber} OF ${totalPages}`}</span>
+          <span className="tabular-metrics">{footerLabelOverride ?? `PAGE ${pageNumber} OF ${totalPages}`}</span>
         </div>
       </div>
     </div>
