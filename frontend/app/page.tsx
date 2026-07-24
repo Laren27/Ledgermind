@@ -37,6 +37,16 @@ function cleanBlockReason(reason: string): string {
   return reason.replace(/^[a-z_]+:\s*/i, "");
 }
 
+function DocumentBodySkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-6 w-1/2 rounded" style={{ background: "var(--paper-border)" }} />
+      <div className="h-4 w-full rounded" style={{ background: "var(--paper-border)" }} />
+      <div className="h-4 w-5/6 rounded" style={{ background: "var(--paper-border)" }} />
+    </div>
+  );
+}
+
 function buildCitationItems(data: QueryResponse) {
   return (data.citations ?? []).map((c, i) => ({
     index: i + 1,
@@ -304,6 +314,8 @@ export default function Home() {
                 }))}
                 onJump={(n) => { setCurrentPageIndex(n); setActiveView("workbench"); }}
               />
+            ) : isLoading ? (
+              <DocumentBodySkeleton />
             ) : (
               <>
                 {answer && composeDocumentBody(answer)}
@@ -313,7 +325,11 @@ export default function Home() {
           </DocumentPage>
 
           {activeView !== "audit" && totalPages > 0 && (
-            <PageNavigator current={currentPageIndex} total={totalPages} onNavigate={setCurrentPageIndex} />
+            <PageNavigator
+            current={currentPageIndex > 0 ? currentPageIndex : totalPages}
+            total={totalPages}
+            onNavigate={setCurrentPageIndex}
+          />
           )}
         </div>
       </div>
