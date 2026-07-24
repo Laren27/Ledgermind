@@ -87,9 +87,11 @@ function composeDocumentBody(data: QueryResponse) {
 
   const citationItems = buildCitationItems(data);
 
-  // ⚡ GUARANTEED VISUAL DIFFERENCE: Peer Comparison / Cross queries always render the analytical matrix
-  if (data.path === "cross" || (data.path === "quantitative" && data.sql_result?.[0] && "entity_a" in data.sql_result[0])) {
-    const row: any = data.sql_result?.[0] ?? {};
+  // ⚡ PURE DATA-DRIVEN GATE: Gated strictly on SQL shape, zero UI state dependencies
+  const isComparativeResult = data.sql_result?.[0] && "entity_a" in data.sql_result[0];
+
+  if (isComparativeResult) {
+    const row: any = data.sql_result![0];
     return (
       <div className="space-y-6">
         <div className="border-b pb-2" style={{ borderColor: "var(--paper-border)" }}>
@@ -97,33 +99,26 @@ function composeDocumentBody(data: QueryResponse) {
             Comparative Growth & Performance Analysis
           </h3>
           <p style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--paper-text-muted)" }}>
-            Automated multi-entity evaluation • Path: {(data.path ?? "CROSS").toUpperCase()} (Bypassed LLM Router)
+            Automated multi-entity evaluation • Path: {(data.path ?? "QUANTITATIVE").toUpperCase()} (Deterministic Override)
           </p>
         </div>
-        {row.entity_a ? (
-          <>
-            <SectionHeading sourceTable="audited_financials">
-              {row.metric} — {row.fiscal_year}
-            </SectionHeading>
-            <EntityComparisonTable
-              entityA={row.entity_a}
-              entityB={row.entity_b}
-              rows={[{
-                label: "YoY Growth",
-                valueA: `${row.yoy_a_pct > 0 ? "+" : ""}${row.yoy_a_pct}%`,
-                valueB: `${row.yoy_b_pct > 0 ? "+" : ""}${row.yoy_b_pct}%`,
-                winner: row.faster_growing_entity === row.entity_a ? "a" : "b",
-              }]}
-            />
-            <MetricCallout label="Faster Growing" value={row.faster_growing_entity} status="verified" />
-          </>
-        ) : (
-          <EntityComparisonTable
-            entityA="ETERNAL"
-            entityB="PAYTM"
-            rows={[]}
-          />
-        )}
+
+        <SectionHeading sourceTable="audited_financials">
+          {row.metric} — {row.fiscal_year}
+        </SectionHeading>
+        
+        <EntityComparisonTable
+          entityA={row.entity_a}
+          entityB={row.entity_b}
+          rows={[{
+            label: "YoY Growth",
+            valueA: `${row.yoy_a_pct > 0 ? "+" : ""}${row.yoy_a_pct}%`,
+            valueB: `${row.yoy_b_pct > 0 ? "+" : ""}${row.yoy_b_pct}%`,
+            winner: row.faster_growing_entity === row.entity_a ? "a" : "b",
+          }]}
+        />
+        
+        <MetricCallout label="Faster Growing" value={row.faster_growing_entity} status="verified" />
         <AnalysisSection paragraphs={[{ text: cleanProseText(data.response_text ?? ""), citations: [] }]} />
       </div>
     );
@@ -207,12 +202,10 @@ export default function Home() {
     : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
 
   // 💡 UNIFIED "PAD OF PAPER" PAGINATION MATH
-  // Total pages available to view is ALWAYS executed pages (N) + 1 (the trailing blank sheet).
   const ledgerTotalPages = activeView === "audit"
     ? totalPages
     : totalPages + 1;
 
-  // If viewing an executed page (1 to N), show its index. If on the blank draft sheet (0 or out of bounds), show N + 1.
   const ledgerCurrentPage = activeView === "audit"
     ? totalPages
     : (currentPageIndex > 0 && currentPageIndex <= totalPages)
@@ -226,9 +219,11 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
 
+    // 💡 Corrected: Route to quantitative engine with an explicit comparison hint
     const executionContext = activeView === "peer" ? {
       workspace_view: "peer_comparison",
-      intended_path: "cross",
+      intended_path: "quantitative",
+      intended_operation: "growth_comparison",
       enforce_path: true,
       financial_type: "consolidated"
     } : undefined;
@@ -237,7 +232,7 @@ export default function Home() {
       const result = await submitQuery(query, executionContext as any);
       setPages((prev) => {
         const next = [...prev, { response: result, originView: activeView === "peer" ? "peer" as const : "workbench" as const }];
-        setCurrentPageIndex(next.length); // Jump directly to the executed result sheet
+        setCurrentPageIndex(next.length);
         return next;
       });
       setRevisions((r) => ({ ...r, [query]: (r[query] ?? 0) + 1 }));
@@ -264,7 +259,6 @@ export default function Home() {
           activeView={activeView}
           onViewChange={(view) => {
             setActiveView(view);
-            // Clicking a workspace tab flips the pad straight to the blank draft sheet!
             if (view !== "audit") setCurrentPageIndex(pages.length + 1);
           }}
           onSignOut={() => {
