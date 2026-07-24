@@ -3,79 +3,193 @@
 @tailwind utilities;
 
 :root {
-  --bg-base: #08090C;
-  --bg-elevated: #101318;
-  --card-solid: #14171D;
-  --glass-fill: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.09);
-  --hairline: rgba(255, 255, 255, 0.07);
-  --text-primary: #ECEDEF;
-  --text-secondary: #A8AEB8;
-  --text-muted: #7B8290;
-  --teal: #3ED9C0;
-  --teal-dim: rgba(62, 217, 192, 0.12);
-  --sky: #4FB8E8;
-  --sky-dim: rgba(79, 184, 232, 0.12);
-  --amber: #E8A93B;
-  --coral: #E2665A;
+  /* ==========================================================================
+     1. FOUNDATION TOKENS (Primitive Primitives)
+     ========================================================================== */
+  
+  /* Primitive Colors (Scales) */
+  --color-gold-500: #B58A3C;
+  --color-gold-400: #C99B4A;
+  --color-gold-dim: rgba(181, 138, 60, 0.18);
+  --color-gold-fade: rgba(181, 138, 60, 0.05);
+
+  --color-cream-100: #F3EEE6;
+  --color-cream-200: #E6DFD3;
+  --color-cream-300: #DCD4C6;
+  --color-ink-900: #2A2622;
+  --color-ink-800: #4A433A;
+  --color-ink-700: #6B6053;
+
+  --color-charcoal-950: #08090C;
+  --color-charcoal-900: #101318;
+  --color-charcoal-850: #14171D;
+  --color-charcoal-800: #181512;
+  --color-leather-900: rgba(22, 18, 15, 0.96);
+
+  --color-teal-500: #3ED9C0;
+  --color-amber-500: #E8A93B;
+  --color-coral-500: #E2665A;
+
+  /* Primitive Spacing & Sizing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Primitive Radii */
+  --radius-sm: 3px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Primitive Blurs */
+  --blur-subtle: 4px;
+  --blur-element: 14px;
+  --blur-overlay: 22px;
+
+  /* Primitive Z-Index Scale */
+  --z-watermark: 2;
+  --z-paper-stack: 5;
+  --z-document: 10;
+  --z-sidebar: 100;
+  --z-querydock: 200;
+  --z-modal: 1000;
+
+  /* Typography Scale */
+  --font-size-caption: 10.5px;
+  --font-size-mono: 12px;
+  --font-size-body: 14px;
+  --font-size-h2: 18px;
+  --font-size-h1: 24px;
+  --font-size-hero: 72px;
+
+  /* Typography Families */
+  --font-editorial: 'IBM Plex Serif', Georgia, serif;
+  --font-archival: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-ui: 'Inter', -apple-system, sans-serif;
+
+  /* Motion Tokens */
+  --duration-fast: 150ms;
+  --duration-medium: 350ms;
+  --duration-slow: 700ms;
+
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+
+  /* Asset References */
+  --asset-desk: url('/assets/environment/walnut-desk.png');
+  --asset-paper-texture: url('/assets/environment/paper-texture.png');
+  --asset-executive-objects: url('/assets/environment/executive-objects.png');
+
+
+  /* ==========================================================================
+     2. SEMANTIC TOKENS & NAMESPACES (Theme: Classic Ledger)
+     ========================================================================== */
+
+  /* Surfaces */
+  --theme-surface-background: var(--color-charcoal-800);
+  --theme-surface-sidebar: var(--color-leather-900);
+  --theme-surface-paper: var(--color-cream-200);
+  --theme-surface-paperRaised: var(--color-cream-100);
+  --theme-surface-paperUnder: var(--color-cream-300);
+
+  /* Text Roles */
+  --theme-text-primary: var(--color-ink-900);
+  --theme-text-secondary: var(--color-ink-800);
+  --theme-text-muted: var(--color-ink-700);
+  --theme-text-sidebarPrimary: #ECEDEF;
+  --theme-text-sidebarSecondary: #A8AEB8;
+  --theme-text-sidebarMuted: #7B8290;
+
+  /* Borders & Hairlines */
+  --theme-border-subtle: rgba(42, 38, 34, 0.14);
+  --theme-border-strong: rgba(42, 38, 34, 0.35);
+  --theme-border-sidebar: rgba(255, 255, 255, 0.06);
+
+  /* Accents & Statuses */
+  --theme-accent-primary: var(--color-gold-500);
+  --theme-accent-hover: var(--color-gold-400);
+  --theme-status-verified: var(--color-teal-500);
+  --theme-status-warning: var(--color-amber-500);
+  --theme-status-refused: var(--color-coral-500);
+
+  /* ==========================================================================
+     3. COMPOSITE SHADOW TOKENS
+     ========================================================================== */
+  --shadow-sidebar: 5px 0 25px rgba(0, 0, 0, 0.40);
+  --shadow-querydock: 0 8px 24px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.16);
+  --shadow-dropdown: 0 12px 32px rgba(0, 0, 0, 0.35);
+
+  --shadow-paper-rest: 
+    0 10px 18px rgba(32, 22, 16, 0.26), 
+    0 28px 70px rgba(20, 14, 10, 0.22);
+  
+  --shadow-paper-hover: 
+    0 14px 24px rgba(32, 22, 16, 0.30), 
+    0 40px 90px rgba(20, 14, 10, 0.28);
+
+  /* Stack Layers Shadow Composition */
+  --shadow-stack-1: 0 3px 8px rgba(58, 42, 28, 0.12);
+  --shadow-stack-2: 0 5px 12px rgba(58, 42, 28, 0.14);
+  --shadow-stack-3: 0 7px 16px rgba(58, 42, 28, 0.16);
+  --shadow-stack-4: 0 10px 22px rgba(58, 42, 28, 0.18);
+  --shadow-stack-5: 0 14px 30px rgba(58, 42, 28, 0.20);
+  --shadow-stack-6: 0 22px 48px rgba(52, 36, 22, 0.26);
+
+  /* ==========================================================================
+     4. PAPER NAMESPACE TOKENS
+     ========================================================================== */
+  --paper-color: var(--theme-surface-paper);
+  --paper-shadow: var(--shadow-paper-rest);
+  --paper-radius: var(--radius-sm);
+  --paper-textureOpacity: 0.035;
+  --paper-foldSize: 30px;
+  --paper-watermarkOpacity: 0.022;
+  --paper-margin: 60px;
+  --paper-rule-single: rgba(42, 38, 34, 0.35);
+  --paper-rule-double: rgba(42, 38, 34, 0.55);
+  --paper-lineSpacing: 1.6;
+
+  /* ==========================================================================
+     5. QUERYDOCK NAMESPACE TOKENS
+     ========================================================================== */
+  --querydock-blur: var(--blur-element);
+  --querydock-opacity: 0.92;
+  --querydock-border: rgba(255, 255, 255, 0.12);
+  --querydock-shadow: var(--shadow-querydock);
+  --querydock-radius: var(--radius-lg);
+
+  /* ==========================================================================
+     6. CAMERA PHYSICS & GEOMETRY
+     ========================================================================== */
+  --camera-perspective: 1800px;
+  --paper-tilt-rest: rotateX(2.5deg) rotateY(-1.2deg) rotateZ(-0.35deg);
+  --paper-tilt-hover: rotateX(1.8deg) rotateY(-0.8deg) rotateZ(-0.15deg) translateY(-4px);
 }
 
+/* ==========================================================================
+   7. GLOBAL STYLING & BASE RESETS
+   ========================================================================== */
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background:
-    radial-gradient(ellipse 70% 45% at 25% 0%, rgba(62, 217, 192, 0.055), transparent 60%),
-    radial-gradient(ellipse 50% 35% at 100% 30%, rgba(62, 217, 192, 0.03), transparent 60%),
-    var(--bg-base);
-  color: var(--text-primary);
+  background-color: var(--theme-surface-background);
+  color: var(--theme-text-sidebarPrimary);
+  font-family: var(--font-ui);
   min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.pulse {
-  animation: pulse 2.2s ease-in-out infinite;
-}
-
-/* Document design system — ledger/working-paper identity */
-:root {
-  --paper-background: #E6DFD3;
-  --paper-background-shadowed: #DCD4C6;
-  --paper-border: rgba(42, 38, 34, 0.08);
-  --paper-corner-radius: 3px;
-  --paper-fold-size: 40px;
-  --paper-text: #2A2622;
-  --paper-text-muted: #6B6053;
-  --paper-rule-single: rgba(42, 38, 34, 0.35);
-  --paper-rule-double: rgba(42, 38, 34, 0.55);
-  --paper-accent: #8A6D3B;
-  --paper-verified: #3F7A52;
-
-  --desk-background: #181512;
-
-  --shadow-contact: 0 1px 2px rgba(0,0,0,0.5);
-  --shadow-lift: 0 40px 80px rgba(0,0,0,0.45);
-
-  --watermark-opacity: 0.05;
-  --watermark-rotation: -8deg;
-
-  --table-rule-single: 1px solid var(--paper-rule-single);
-  --table-rule-double: 3px double var(--paper-rule-double);
-
-  --font-document-title: 'IBM Plex Serif', serif;
-  --font-body: 'IBM Plex Mono', monospace;
-  --font-ui: 'Inter', sans-serif;
-
-  --spacing-page: 48px;
-  --spacing-section: 28px;
-  --spacing-paragraph: 16px;
-
-  --animation-duration-normal: 300ms;
-  --animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+::selection {
+  background: var(--color-gold-dim);
+  color: var(--theme-text-primary);
 }
