@@ -6,14 +6,15 @@ interface DocumentTitleProps {
 
 export function DocumentTitle({ children }: DocumentTitleProps) {
   return (
-    <div className="mb-6 border-b pb-4" style={{ borderColor: "var(--theme-border-subtle, rgba(42, 38, 34, 0.14))" }}>
+    <div className="mb-8 border-b pb-5" style={{ borderColor: "var(--ink-divider, #D8CEC1)" }}>
       <h1
         className="tracking-tight font-semibold"
         style={{
-          fontFamily: "var(--font-editorial, 'IBM Plex Serif', Georgia, serif)",
-          fontSize: "32px",
-          color: "var(--theme-text-primary, #2A2622)",
-          lineHeight: 1.15,
+          fontFamily: "var(--font-editorial, 'Fraunces', Georgia, serif)",
+          fontSize: "var(--font-size-title, 52px)",
+          color: "var(--ink-primary, #2A241E)",
+          lineHeight: 1.1,
+          fontWeight: 600,
         }}
       >
         {children}
