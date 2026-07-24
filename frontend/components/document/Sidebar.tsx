@@ -27,7 +27,8 @@ export function Sidebar({
 }: SidebarProps) {
   return (
     <aside
-      className="flex w-56 flex-col justify-between p-6 select-none transition-all z-20 shrink-0"
+      // 💡 REDUCED WIDTH: w-[200px] (~10% narrower than before) to let paper own the screen
+      className="flex w-[200px] flex-col justify-between p-5 select-none transition-all z-20 shrink-0"
       style={{
         background: "rgba(16, 13, 11, 0.97)",
         backdropFilter: "blur(12px)",
@@ -41,24 +42,24 @@ export function Sidebar({
         <div>
           <div className="flex items-center space-x-2">
             <span
-              className="font-semibold tracking-tight text-xl"
+              className="font-semibold tracking-tight text-lg"
               style={{ fontFamily: "var(--font-editorial, 'Fraunces', serif)", color: "#ECEDEF" }}
             >
               LedgerMind
             </span>
           </div>
-          <div className="mt-1 flex items-center space-x-2 text-xs opacity-75" style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}>
-            <span className="uppercase text-[10px] tracking-widest px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08]">
+          <div className="mt-1 flex items-center space-x-1.5 text-xs opacity-75" style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}>
+            <span className="uppercase text-[9.5px] tracking-widest px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08]">
               {userRole}
             </span>
-            {tenantId && <span>• {tenantId}</span>}
+            {tenantId && <span className="text-[10px]">• {tenantId}</span>}
           </div>
         </div>
 
         {/* Workspace Views Navigation */}
         <div className="space-y-1">
           <div
-            className="px-3 mb-2.5 text-[10px] font-medium uppercase tracking-[0.22em] opacity-45"
+            className="px-3 mb-2.5 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
             style={{ color: "#8B8378", fontFamily: "var(--font-archival, monospace)" }}
           >
             Archive Index
@@ -76,7 +77,6 @@ export function Sidebar({
                   color: isActive ? "#ECEDEF" : "#8B8378",
                 }}
               >
-                {/* 💡 PROTRUDING BRASS BOOKMARK TAB ON ACTIVE ITEM */}
                 {isActive && (
                   <span 
                     className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-sm transition-all"
@@ -86,7 +86,7 @@ export function Sidebar({
                     }}
                   />
                 )}
-                <span className={isActive ? "font-medium tracking-wide text-[13px]" : "group-hover:text-[#ECEDEF] transition-colors text-[13px]"}>
+                <span className={isActive ? "font-medium tracking-wide text-[12.5px]" : "group-hover:text-[#ECEDEF] transition-colors text-[12.5px]"}>
                   {label}
                 </span>
               </button>
@@ -98,7 +98,7 @@ export function Sidebar({
         {indexedFilings.length > 0 && (
           <div className="space-y-2 pt-5 border-t border-white/[0.04]">
             <div
-              className="px-3 text-[10px] font-medium uppercase tracking-[0.22em] opacity-45"
+              className="px-3 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
               style={{ color: "#8B8378", fontFamily: "var(--font-archival, monospace)" }}
             >
               Active Corpus
@@ -120,8 +120,8 @@ export function Sidebar({
                       style={{ background: "#2E6B4A" }}
                     />
                   )}
-                  <span className="font-semibold tracking-wider text-[11px]">{filing.company}</span>
-                  <span className="text-[10px] opacity-75">{filing.period}</span>
+                  <span className="font-semibold tracking-wider text-[11px] truncate pr-1">{filing.company}</span>
+                  <span className="text-[9.5px] opacity-75 shrink-0">{filing.period}</span>
                 </div>
               ))}
             </div>
