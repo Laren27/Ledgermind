@@ -206,12 +206,16 @@ export default function Home() {
     ? (currentPage.originView === "peer" ? "Peer Comparison" : "Query Workbench")
     : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
 
-  const displayPageNumber = activeView === "audit"
-    ? totalPages
-    : (currentPageIndex > 0 && currentPageIndex <= totalPages) ? currentPageIndex : totalPages + 1;
-  const displayTotalPages = activeView === "audit"
+  // 💡 UNIFIED "PAD OF PAPER" PAGINATION MATH
+  const ledgerTotalPages = activeView === "audit"
     ? totalPages
     : totalPages + 1;
+
+  const ledgerCurrentPage = activeView === "audit"
+    ? totalPages
+    : (currentPageIndex > 0 && currentPageIndex <= totalPages)
+      ? currentPageIndex
+      : ledgerTotalPages;
 
   if (!sessionChecked) return null;
   if (!session) return <LoginForm onSuccess={() => setSession(getSession())} />;
