@@ -10,16 +10,6 @@ Two responsibilities in one Gemini call:
 Why one call instead of two:
   Entity extraction needs the same context as path classification.
   Combining avoids an extra round trip and keeps routing latency low.
-
-Path semantics:
-  semantic     — qualitative question: risks, strategy, management commentary, ESG
-  quantitative — numerical question: revenue, income, growth, CAGR, margins
-  cross        — verification question: does qualitative claim match the numbers?
-
-Fallback on any Gemini failure → semantic (safe default — text retrieval cannot
-return wrong financial figures; wrong SQL can).
-
-financial_type default → consolidated per blueprint §4.1 router rule.
 """
 
 import json
@@ -37,13 +27,6 @@ from app.engines.state import QueryState
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Pydantic schema — enforces structured output from Gemini.
-# Passed as response_schema to GenerateContentConfig.
-# Stronger guarantee than response_mime_type alone: the SDK validates the
-# returned JSON against this model before handing it to our code.
-# ---------------------------------------------------------------------------
-
 class RouterResponse(BaseModel):
     company: Optional[str]
     fiscal_year: Optional[str]
@@ -52,19 +35,8 @@ class RouterResponse(BaseModel):
     path: Literal["semantic", "quantitative", "cross"]
     route_reason: str
 
-# ---------------------------------------------------------------------------
-# Gemini model — read from env so you can swap models without touching code.
-# Add GEMINI_MODEL=gemini-2.5-flash-lite (or any other) to your .env file.
-# ---------------------------------------------------------------------------
-
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
-
-# ---------------------------------------------------------------------------
-# Gemini client singleton
-# ---------------------------------------------------------------------------
-
 _gemini_client: Optional[genai.Client] = None
-
 
 def _get_gemini_client() -> genai.Client:
     global _gemini_client
@@ -74,11 +46,6 @@ def _get_gemini_client() -> genai.Client:
             raise RuntimeError("GEMINI_API_KEY environment variable not set")
         _gemini_client = genai.Client(api_key=api_key)
     return _gemini_client
-
-
-# ---------------------------------------------------------------------------
-# System prompt — controls Gemini's extraction and classification behaviour
-# ---------------------------------------------------------------------------
 
 _KNOWN_TICKERS = sorted({p.ticker for p in COMPANY_PROFILES})
 _KNOWN_METRICS = sorted(METRIC_REGISTRY.keys())
@@ -141,19 +108,8 @@ Return ONLY a valid JSON object. No explanation. No markdown. No code blocks.
 }}"""
 
 
-# ---------------------------------------------------------------------------
-# Gemini classification call
-# ---------------------------------------------------------------------------
-
 def _classify_query(query: str) -> dict:
-    """
-    Call Gemini to extract entities and classify path.
-
-    Returns a dict with keys: company, fiscal_year, quarter, financial_type, path, route_reason.
-    Returns safe defaults on any failure — never raises.
-    """
     client = _get_gemini_client()
-
     try:
         response = client.models.generate_content(
             model=GEMINI_MODEL,
@@ -170,8 +126,6 @@ def _classify_query(query: str) -> dict:
         raw_text = response.text.strip()
         logger.debug("Router Gemini raw response: %s", raw_text)
 
-        # Primary parse — should always succeed with response_schema set.
-        # Fence-stripper is a last-resort fallback for any SDK edge case.
         try:
             result = json.loads(raw_text)
         except json.JSONDecodeError:
@@ -179,17 +133,12 @@ def _classify_query(query: str) -> dict:
             logger.warning("Router: primary JSON parse failed, retrying after fence-strip")
             result = json.loads(cleaned)
 
-        # Normalise and validate fields
         company_raw = result.get("company")
         company = None
         if company_raw and company_raw.lower() != "null":
-            # Accept ticker directly if already in registry values
-            upper = company_raw.strip().upper()
-            company = None
-            if company_raw and company_raw.lower() != "null":
-                resolved = resolve_ticker(company_raw)
-                if resolved in _KNOWN_TICKERS:
-                    company = resolved
+            resolved = resolve_ticker(company_raw)
+            if resolved in _KNOWN_TICKERS:
+                company = resolved
 
         path = result.get("path", "semantic").lower()
         if path not in ("semantic", "quantitative", "cross"):
@@ -207,8 +156,7 @@ def _classify_query(query: str) -> dict:
             quarter = None
         if quarter:
             quarter = quarter.upper().strip()
-            # Extract only Q1-Q4 if LLM glued the year to it
-            match = __import__("re").search(r"(Q[1-4])", quarter)
+            match = re.search(r"(Q[1-4])", quarter)
             quarter = match.group(1) if match else quarter
 
         financial_type = result.get("financial_type", "consolidated").lower().strip()
@@ -238,7 +186,6 @@ def _classify_query(query: str) -> dict:
     except Exception as e:
         logger.error("Router Gemini call failed: %s", e)
 
-    # Safe fallback — semantic path, no entities extracted
     return {
         "company": None,
         "ticker": None,
@@ -250,10 +197,6 @@ def _classify_query(query: str) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Resolved query builder
-# ---------------------------------------------------------------------------
-
 def _build_resolved_query(
     original_query: str,
     company: Optional[str],
@@ -261,16 +204,6 @@ def _build_resolved_query(
     quarter: Optional[str],
     financial_type: str,
 ) -> str:
-    """
-    Rewrite query with normalised entities for cleaner retrieval.
-
-    Example:
-      "What did Zomato say about quick commerce last year?"
-      → "ETERNAL FY26 consolidated What did Zomato say about quick commerce?"
-
-    The entity prefix improves BM25 exact-match retrieval on ticker/year terms.
-    The original phrasing is preserved for semantic meaning.
-    """
     prefix_parts = []
     if company:
         prefix_parts.append(company)
@@ -285,23 +218,28 @@ def _build_resolved_query(
     return original_query
 
 
-# ---------------------------------------------------------------------------
-# LangGraph node
-# ---------------------------------------------------------------------------
-
 def router_node(state: QueryState) -> QueryState:
-    """
-    LangGraph node: entity extraction + path classification.
-
-    Skips Gemini call if prompt_shield already blocked the query.
-    Populates: company, ticker, fiscal_year, quarter, financial_type,
-               path, route_reason, resolved_query.
-    """
-    # Short-circuit if prompt_shield blocked the query
     if state["is_blocked"]:
         logger.debug("Router skipped — query already blocked by prompt_shield")
         return state
 
+    context = state.get("execution_context") or {}
+    
+    # ⚡ FAST PATH: UI Workflow Override (e.g., Peer Comparison desk)
+    # Bypasses Gemini classification entirely for 100% determinism & 0ms LLM latency.
+    if context.get("enforce_path") and context.get("intended_path"):
+        intended = context["intended_path"]
+        logger.info(
+            "⚡ UI Workflow Override: Bypassing Gemini classifier -> forcing path '%s'",
+            intended
+        )
+        state["path"]           = intended
+        state["financial_type"] = context.get("financial_type", "consolidated")
+        state["route_reason"]   = f"UI Workflow Override: Routed directly to {intended} (bypassed LLM classification)"
+        state["resolved_query"] = state["query"]
+        return state
+
+    # --- STANDARD PATH: Fall back to Gemini LLM classification ---
     result = _classify_query(state["query"])
 
     state["company"]        = result["company"]
@@ -322,28 +260,16 @@ def router_node(state: QueryState) -> QueryState:
     return state
 
 
-# ---------------------------------------------------------------------------
-# Conditional edge function — used by graph.py to route between nodes
-# ---------------------------------------------------------------------------
-
 def route_after_shield(state: QueryState) -> str:
-    """
-    Edge function after prompt_shield node.
-    Returns the next node name for LangGraph to invoke.
-    """
     if state["is_blocked"]:
         return "blocked"
     return "router"
 
 
 def route_after_router(state: QueryState) -> str:
-    """
-    Edge function after router node.
-    Returns the engine node name for LangGraph to invoke.
-    """
     path = state.get("path")
     if path == "quantitative":
         return "quant_engine"
     if path == "cross":
         return "cross_engine"
-    return "semantic_engine"   # default for "semantic" and any unknown value
+    return "semantic_engine"
