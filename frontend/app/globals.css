@@ -13,21 +13,26 @@
   --color-gold-fade: rgba(181, 138, 60, 0.05);
 
   --color-cream-100: #F0E8DC;
-  --color-cream-200: #E7DED0; /* Primary warm archival ivory paper (#E7DED0) */
+  --color-cream-200: #E7DED0; /* Archival warm ivory paper (#E7DED0) */
   --color-cream-300: #DDD2C2;
-  --color-cream-inset: #DFD4C4; /* Embedded QueryDock paper tone */
+  --color-cream-inset: #DFD4C4; /* Inset paper query dock tone */
   
-  --color-ink-900: #2A2622;   /* Deep archival brown ink */
-  --color-ink-800: #4A433A;
-  --color-ink-700: #6B6053;
+  /* 💡 STRICT 4-LEVEL ARCHIVAL INK SYSTEM (Never Pure Black) */
+  --ink-primary: #2A241E;   /* Main headings and hero numbers */
+  --ink-secondary: #5F574D; /* Narrative body paragraphs */
+  --ink-metadata: #8B8378;  /* Labels, table headers, document info */
+  --ink-passive: #B7AEA3;   /* Subconscious watermarks, helper text */
+  --ink-divider: #D8CEC1;   /* Warm architectural paper rule lines */
+  --ink-placeholder: #746A5D;/* Editorial notebook input placeholder */
+  --ink-footer: #7D7468;    /* Engraved stamped footer ink */
 
   --color-charcoal-950: #060709;
   --color-charcoal-900: #0E1015;
-  --color-charcoal-850: #100D0B; /* Desaturated 10% executive walnut desk base */
+  --color-charcoal-850: #100D0B; /* Desaturated executive walnut desk base */
   --color-charcoal-800: #14110E;
-  --color-leather-900: rgba(18, 14, 12, 0.97); /* Matte smoked leather, 97% opacity, warmer tone */
+  --color-leather-900: rgba(18, 14, 12, 0.97); /* Matte smoked leather sidebar */
 
-  --color-teal-500: #3ED9C0;
+  --color-teal-500: #2E6B4A; /* Calm accounting green */
   --color-amber-500: #E8A93B;
   --color-coral-500: #E2665A;
 
@@ -53,17 +58,21 @@
   --z-querydock: 200;
   --z-modal: 1000;
 
-  /* Typography Scale */
-  --font-size-caption: 10.5px;
-  --font-size-mono: 12px;
-  --font-size-body: 14px;
-  --font-size-h2: 18px;
-  --font-size-h1: 32px; /* Editorial 32px title hierarchy */
+  /* 💡 EXECUTIVE DESKTOP TYPE SCALE (Scaled +20% for 40-60cm reading distance) */
+  --font-size-footer: 12px;
+  --font-size-metadata: 13px;
+  --font-size-entity: 14px;
+  --font-size-pills: 15px;
+  --font-size-body: 18px;
+  --font-size-input: 19px;
+  --font-size-section: 30px;
+  --font-size-title: 52px;
   --font-size-hero: 72px;
 
-  --font-editorial: 'IBM Plex Serif', Georgia, serif;
-  --font-archival: 'IBM Plex Mono', 'Courier New', monospace;
-  --font-ui: 'Inter', -apple-system, sans-serif;
+  /* 💡 EDITORIAL TYPOGRAPHY FAMILIES */
+  --font-editorial: var(--font-fraunces), 'IBM Plex Serif', Georgia, serif;
+  --font-ui: var(--font-plex-sans), 'Inter', -apple-system, sans-serif;
+  --font-archival: var(--font-plex-mono), 'Courier New', monospace;
 
   /* Motion */
   --duration-fast: 150ms;
@@ -81,9 +90,9 @@
   --theme-surface-paperRaised: var(--color-cream-100);
   --theme-surface-paperUnder: var(--color-cream-300);
 
-  --theme-text-primary: var(--color-ink-900);
-  --theme-text-secondary: var(--color-ink-800);
-  --theme-text-muted: var(--color-ink-700);
+  --theme-text-primary: var(--ink-primary);
+  --theme-text-secondary: var(--ink-secondary);
+  --theme-text-muted: var(--ink-metadata);
   --theme-text-sidebarPrimary: #ECEDEF;
   --theme-text-sidebarSecondary: #A8AEB8;
   --theme-text-sidebarMuted: #7B8290;
@@ -99,7 +108,7 @@
      3. COMPOSITE SHADOW TOKENS (Dual-Shadow Mass)
      ========================================================================== */
   --shadow-sidebar: 4px 0 20px rgba(0, 0, 0, 0.50);
-  --shadow-querydock: inset 0 1px 3px rgba(32, 22, 16, 0.08), 0 2px 6px rgba(32, 22, 16, 0.04);
+  --shadow-querydock: inset 0 2px 4px rgba(42, 36, 30, 0.10), 0 1px 2px rgba(42, 36, 30, 0.04);
   
   --shadow-paper-rest: 
     0 8px 18px rgba(32, 22, 16, 0.28), 
