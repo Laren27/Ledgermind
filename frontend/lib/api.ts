@@ -2,13 +2,6 @@ import { getSession, logout } from "./auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// --- Types mirrored exactly from app/api/query.py's Pydantic models ---
-// Note: role_filtered_response() trims this per-role before it reaches the
-// client, so viewers may receive fewer fields than analysts/admins (e.g.
-// dsl_object/sql_query are likely admin/analyst-only). Every field below
-// is typed optional/nullable to reflect that — don't assume they're always
-// present.
-
 export interface CitationResponse {
   chunk_id: string;
   doc_id: string;
@@ -31,7 +24,6 @@ export interface ContradictionResponse {
   severity: string;
 }
 
-// Added to resolve Vercel build error in CorpusPanel.tsx
 export interface CorpusStatus {
   companies: number;
   filings?: number;
@@ -40,7 +32,7 @@ export interface CorpusStatus {
   chunks?: number;
   last_updated?: string;
   status?: string;
-  [key: string]: any; // Allows custom backend metric fields without TypeScript compilation errors
+  [key: string]: any;
 }
 
 export interface QueryResponse {
@@ -79,11 +71,6 @@ export interface QueryResponse {
 
 export class UnauthorizedError extends Error {}
 
-/**
- * Sends a natural language query to POST /api/query.
- * Throws UnauthorizedError on 401 (expired/invalid token) — callers should
- * catch this and redirect to login, not treat it like a generic failure.
- */
 export async function submitQuery(
   question: string,
   executionContext?: Record<string, any>
