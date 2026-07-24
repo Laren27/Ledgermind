@@ -23,7 +23,7 @@ async def execute_query(
 ):
     request_id = str(uuid.uuid4())
     tenant_id = payload.tenant_id or current_user.get("tenant_id", "default")
-    user_id = str(current_user.get("id", "anonymous"))
+    user_id = str(current_user["user_id"])
 
     # Thread the execution_context directly into the state factory
     initial_state = make_initial_state(
