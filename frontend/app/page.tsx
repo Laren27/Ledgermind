@@ -279,8 +279,8 @@ export default function Home() {
         <div className="flex-1 py-12">
           <DocumentPage
             docId={answer ? `LM-WP-${answer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING"}
-            pageNumber={displayPageNumber}
-            totalPages={displayTotalPages}
+            pageNumber={ledgerCurrentPage}
+            totalPages={ledgerTotalPages}
             footerLabelOverride={activeView === "audit" ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED` : undefined}
             confidential
             isLoading={isLoading}
