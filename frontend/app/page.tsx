@@ -74,6 +74,14 @@ function composeDocumentBody(data: QueryResponse) {
     return (
       <>
         <MetricCallout label={data.error.replace(/_/g, " ")} value="—" status="refused" />
+        {errorCitations.length > 0 && (
+          <div
+            className="py-2 px-3 text-xs font-medium"
+            style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
+          >
+            {errorCitations.length} Supporting {errorCitations.length === 1 ? "Citation" : "Citations"}
+          </div>
+        )}
         <AnalysisSection
           paragraphs={[{
             text: errorText,
