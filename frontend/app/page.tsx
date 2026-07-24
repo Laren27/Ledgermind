@@ -162,6 +162,14 @@ function composeDocumentBody(data: QueryResponse) {
 
   return (
     <>
+      {citationItems.length > 0 && (
+        <div
+          className="py-2 px-3 text-xs font-medium"
+          style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
+        >
+          {citationItems.length} Supporting {citationItems.length === 1 ? "Citation" : "Citations"}
+        </div>
+      )}
       <AnalysisSection
         paragraphs={[{
           text: cleanProseText(data.response_text ?? ""),
