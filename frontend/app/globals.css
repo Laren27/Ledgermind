@@ -6,7 +6,6 @@
   /* ==========================================================================
      1. FOUNDATION TOKENS (Primitive Primitives)
      ========================================================================== */
-  
   --color-gold-500: #B58A3C;
   --color-gold-400: #C99B4A;
   --color-gold-dim: rgba(181, 138, 60, 0.18);
@@ -15,28 +14,28 @@
   --color-cream-100: #F0E8DC;
   --color-cream-200: #E7DED0; /* Archival warm ivory paper (#E7DED0) */
   --color-cream-300: #DDD2C2;
-  --color-cream-inset: #DFD4C4; /* Inset paper query dock tone */
+  --color-cream-inset: #DFD4C4; /* Inset paper tone */
   
-  /* 💡 STRICT 4-LEVEL ARCHIVAL INK SYSTEM (Never Pure Black) */
-  --ink-primary: #2A241E;   /* Main headings and hero numbers */
-  --ink-secondary: #5F574D; /* Narrative body paragraphs */
-  --ink-metadata: #8B8378;  /* Labels, table headers, document info */
-  --ink-passive: #B7AEA3;   /* Subconscious watermarks, helper text */
-  --ink-divider: #D8CEC1;   /* Warm architectural paper rule lines */
-  --ink-placeholder: #746A5D;/* Editorial notebook input placeholder */
-  --ink-footer: #7D7468;    /* Engraved stamped footer ink */
+  /* STRICT 4-LEVEL ARCHIVAL INK SYSTEM */
+  --ink-primary: #2A241E;    /* Main headings and primary content */
+  --ink-secondary: #5F574D;  /* Narrative prose paragraphs */
+  --ink-metadata: #8B8378;   /* Labels, table headers, subtitles */
+  --ink-passive: #B7AEA3;    /* Watermarks, helper text, inactive states */
+  --ink-divider: #D8CEC1;    /* Warm architectural rule lines */
+  --ink-placeholder: #746A5D;/* Editorial input placeholder */
+  --ink-footer: #7D7468;     /* Engraved stamped footer ink */
 
   --color-charcoal-950: #060709;
   --color-charcoal-900: #0E1015;
   --color-charcoal-850: #100D0B; /* Desaturated executive walnut desk base */
   --color-charcoal-800: #14110E;
-  --color-leather-900: rgba(18, 14, 12, 0.97); /* Matte smoked leather sidebar */
+  --color-leather-900: rgba(18, 14, 12, 0.97); /* Smoked leather sidebar */
 
   --color-teal-500: #2E6B4A; /* Calm accounting green */
   --color-amber-500: #E8A93B;
   --color-coral-500: #E2665A;
 
-  /* Primitive Spacing & Radii */
+  /* Primitive Spacing Scale (+20% for desktop reading ergonomics) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -50,6 +49,10 @@
   --radius-lg: 14px;
   --radius-pill: 999px;
 
+  --blur-subtle: 2px;
+  --blur-element: 10px;
+  --blur-overlay: 18px;
+
   /* Z-Index Scale */
   --z-watermark: 2;
   --z-paper-stack: 5;
@@ -58,32 +61,34 @@
   --z-querydock: 200;
   --z-modal: 1000;
 
-  /* 💡 EXECUTIVE DESKTOP TYPE SCALE (Scaled +20% for 40-60cm reading distance) */
+  /* EXECUTIVE DESKTOP TYPE SCALE (Proportional Hierarchy) */
   --font-size-footer: 12px;
   --font-size-metadata: 13px;
   --font-size-entity: 14px;
-  --font-size-pills: 15px;
+  --font-size-pills: 14.5px;
   --font-size-body: 18px;
-  --font-size-input: 19px;
-  --font-size-section: 30px;
-  --font-size-title: 52px;
+  --font-size-input: 20px;
+  --font-size-section: 28px;
+  --font-size-title: 44px; /* Scaled down 15% for editorial elegance */
   --font-size-hero: 72px;
 
-  /* 💡 EDITORIAL TYPOGRAPHY FAMILIES */
+  /* EDITORIAL TYPOGRAPHY FAMILIES */
   --font-editorial: var(--font-fraunces), 'IBM Plex Serif', Georgia, serif;
   --font-ui: var(--font-plex-sans), 'Inter', -apple-system, sans-serif;
   --font-archival: var(--font-plex-mono), 'Courier New', monospace;
 
-  /* Motion */
+  /* WEIGHTED PHYSICAL MOTION CURVES (No Bounce / Paper Physics) */
   --duration-fast: 150ms;
   --duration-medium: 350ms;
+  --duration-slow: 600ms;
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-paper: cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-
-  /* ==========================================================================
-     2. SEMANTIC TOKENS & NAMESPACES
-     ========================================================================== */
-
+/* ==========================================================================
+   2. SEMANTIC TOKENS & NAMESPACES
+   ========================================================================== */
+:root {
   --theme-surface-background: var(--color-charcoal-850);
   --theme-surface-sidebar: var(--color-leather-900);
   --theme-surface-paper: var(--color-cream-200);
@@ -100,16 +105,16 @@
   --theme-border-subtle: rgba(42, 38, 34, 0.14);
   --theme-border-strong: rgba(42, 38, 34, 0.38);
   --theme-border-sidebar: rgba(255, 255, 255, 0.05);
+}
 
-  --theme-accent-primary: var(--color-gold-500);
-  --theme-accent-hover: var(--color-gold-400);
-
-  /* ==========================================================================
-     3. COMPOSITE SHADOW TOKENS (Dual-Shadow Mass)
-     ========================================================================== */
+/* ==========================================================================
+   3. COMPOSITE SHADOW TOKENS & VIGNETTE
+   ========================================================================== */
+:root {
   --shadow-sidebar: 4px 0 20px rgba(0, 0, 0, 0.50);
-  --shadow-querydock: inset 0 2px 4px rgba(42, 36, 30, 0.10), 0 1px 2px rgba(42, 36, 30, 0.04);
-  
+  --shadow-querydock: inset 0 1px 2px rgba(42, 36, 30, 0.06);
+  --shadow-dropdown: 0 10px 28px rgba(0, 0, 0, 0.40);
+
   --shadow-paper-rest: 
     0 8px 18px rgba(32, 22, 16, 0.28), 
     0 28px 70px rgba(18, 12, 8, 0.22);
@@ -117,17 +122,6 @@
   --shadow-paper-hover: 
     0 12px 26px rgba(32, 22, 16, 0.34), 
     0 40px 90px rgba(18, 12, 8, 0.28);
-
-  /* ==========================================================================
-     4. PAPER NAMESPACE TOKENS
-     ========================================================================== */
-  --paper-color: var(--theme-surface-paper);
-  --paper-shadow: var(--shadow-paper-rest);
-  --paper-radius: var(--radius-sm);
-  --paper-textureOpacity: 0.018;
-  --paper-foldSize: 30px;
-  --paper-watermarkOpacity: 0.02;
-  --paper-margin: 60px;
 }
 
 * {
@@ -143,6 +137,16 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 💡 5–8% DESK CORNER VIGNETTE TO DRAW FOCUS CENTER */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, transparent 60%, rgba(6, 7, 9, 0.45) 100%);
+  z-index: 1;
 }
 
 ::selection {
