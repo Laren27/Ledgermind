@@ -5,7 +5,7 @@ import { getSession, logout } from "@/lib/auth";
 import { submitQuery, UnauthorizedError, type QueryResponse } from "@/lib/api";
 import LoginForm from "@/components/LoginForm";
 import { DocumentEnvironment } from "@/components/document/DocumentEnvironment";
-import { DocumentPage } from "@/components/document/DocumentPage";
+import { DocumentPage, type ShiftPhase } from "@/components/document/DocumentPage";
 import { WorkingPaperHeader } from "@/components/document/WorkingPaperHeader";
 import { DocumentTitle } from "@/components/document/DocumentTitle";
 import { SectionHeading } from "@/components/document/SectionHeading";
@@ -206,6 +206,10 @@ export default function Home() {
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeView, setActiveView] = useState<"workbench" | "peer" | "audit">("workbench");
 
+  // 💡 CLAUDE ADDITION 1: Animation State Machine
+  const [shiftPhase, setShiftPhase] = useState<ShiftPhase>(null);
+  const [pendingPageIndex, setPendingPageIndex] = useState<number | null>(null);
+
   const currentPage = currentPageIndex > 0 && currentPageIndex <= pages.length ? pages[currentPageIndex - 1] : null;
   const answer = currentPage?.response ?? null;
   const totalPages = pages.length;
@@ -225,6 +229,25 @@ export default function Home() {
     : (currentPageIndex > 0 && currentPageIndex <= totalPages)
       ? currentPageIndex
       : ledgerTotalPages;
+
+  // 💡 CLAUDE ADDITION 2: Animation Orchestrators
+  function handleNavigate(targetPage: number) {
+    if (shiftPhase !== null || targetPage === currentPageIndex) return;
+    const dir = targetPage > currentPageIndex ? "next" : "prev";
+    setPendingPageIndex(targetPage);
+    setShiftPhase(`exiting-${dir}`);
+  }
+
+  function handleSheetTransitionEnd() {
+    if (shiftPhase === "exiting-next" || shiftPhase === "exiting-prev") {
+      const dir = shiftPhase === "exiting-next" ? "next" : "prev";
+      if (pendingPageIndex !== null) setCurrentPageIndex(pendingPageIndex);
+      setPendingPageIndex(null);
+      setShiftPhase(`entering-${dir}`);
+    } else if (shiftPhase === "entering-next" || shiftPhase === "entering-prev") {
+      setShiftPhase(null);
+    }
+  }
 
   if (!sessionChecked) return null;
   if (!session) return <LoginForm onSuccess={() => setSession(getSession())} />;
@@ -289,6 +312,7 @@ export default function Home() {
         />
 
         <div className="flex-1 py-12">
+          {/* 💡 CLAUDE ADDITION 4: Passed shiftPhase + onSheetTransitionEnd */}
           <DocumentPage
             docId={answer ? `LM-WP-${answer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING"}
             pageNumber={ledgerCurrentPage}
@@ -296,6 +320,8 @@ export default function Home() {
             footerLabelOverride={activeView === "audit" ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED` : undefined}
             confidential
             isLoading={isLoading}
+            shiftPhase={shiftPhase}
+            onSheetTransitionEnd={handleSheetTransitionEnd}
           >
             <WorkingPaperHeader
               company={answer?.company ?? null}
@@ -309,7 +335,6 @@ export default function Home() {
 
             <DocumentTitle>{pageTitle}</DocumentTitle>
 
-            {/* 💡 Suppress QueryDock on Audit Trail so the sheet remains an immutable historical ledger */}
             {activeView !== "audit" && (
               <QueryDock
                 onSubmit={handleSubmit}
@@ -347,11 +372,13 @@ export default function Home() {
             )}
           </DocumentPage>
 
+          {/* 💡 CLAUDE ADDITION 3: Wired handleNavigate + disabled state */}
           {activeView !== "audit" && (
             <PageNavigator
               current={ledgerCurrentPage}
               total={ledgerTotalPages}
-              onNavigate={setCurrentPageIndex}
+              onNavigate={handleNavigate}
+              disabled={shiftPhase !== null}
             />
           )}
         </div>
