@@ -92,19 +92,19 @@ export function DocumentPage({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Layer 4: Ream Stack with Dynamic Friction Compression */}
-      <div className={`transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isCompressing ? "translate-y-[6px] scale-y-[0.99]" : ""}`}>
+      {/* 💡 LAYER 4: Absolute inset-0 guarantees containing block height never collapses to 0px */}
+      <div className={`absolute inset-0 pointer-events-none z-0 transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isCompressing ? "translate-y-[6px] scale-y-[0.99]" : ""}`}>
         <PaperStack />
       </div>
 
-      {/* Layer 5: Active Working Paper Canvas (Remount key stripped for native CSS transitions) */}
+      {/* Layer 5: Active Working Paper Canvas (Remount key stripped, z-10 enforced above stack) */}
       <div
         onTransitionEnd={(e) => {
           if (e.target === e.currentTarget && e.propertyName === "transform") {
             onSheetTransitionEnd?.();
           }
         }}
-        className="relative flex flex-col justify-between rounded-sm overflow-hidden"
+        className="relative z-10 flex flex-col justify-between rounded-sm overflow-hidden"
         style={getSheetStyles()}
       >
         {/* Layer 6: Microscopic Subconscious Texture Overlay */}
