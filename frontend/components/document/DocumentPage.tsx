@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PaperStack } from "@/components/environment/PaperStack";
 
 export type ShiftPhase = null | "exiting-next" | "exiting-prev" | "entering-next" | "entering-prev";
@@ -12,6 +12,7 @@ interface DocumentPageProps {
   isLoading?: boolean;
   children: React.ReactNode;
   footerLabelOverride?: string;
+  isShifting?: boolean;
   shiftPhase?: ShiftPhase;
   onSheetTransitionEnd?: () => void;
 }
@@ -24,6 +25,7 @@ export function DocumentPage({
   isLoading,
   children,
   footerLabelOverride,
+  isShifting = false,
   shiftPhase = null,
   onSheetTransitionEnd,
 }: DocumentPageProps) {
@@ -31,7 +33,16 @@ export function DocumentPage({
 
   const isCompressing = shiftPhase === "exiting-next" || shiftPhase === "exiting-prev";
 
-  // Compute transform and opacity strictly from parent-controlled shiftPhase
+  // 💡 INDESTRUCTIBLE SAFETY BUFFER: Guarantees transition never gets bricked if CSS event is swallowed
+  useEffect(() => {
+    if (shiftPhase === null) return;
+    const timer = setTimeout(() => {
+      onSheetTransitionEnd?.();
+    }, 260); // 240ms CSS transition + 20ms safety buffer
+    return () => clearTimeout(timer);
+  }, [shiftPhase, onSheetTransitionEnd]);
+
+  // Compute transform strictly from parent shiftPhase with ZERO opacity drop (opacity: 1 always)
   const getSheetStyles = (): React.CSSProperties => {
     const baseTransform = isHovered && shiftPhase === null
       ? "perspective(1800px) rotateX(1.8deg) rotateY(-0.8deg) rotateZ(-0.15deg) translateY(-4px)"
@@ -49,22 +60,23 @@ export function DocumentPage({
       fontSize: "var(--font-size-body, 18px)",
       color: "var(--ink-primary, #2A241E)",
       lineHeight: 1.6,
-      transition: "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1)",
+      transition: "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1)",
+      opacity: 1, // 💡 NEVER TURN TRANSPARENT: Keeps physical paper solid and visible at all times
     };
 
     if (shiftPhase === "exiting-next") {
-      return { ...base, transform: "translate(-18px, -4px) rotate(-0.4deg) rotateX(2.5deg) rotateY(-1.2deg)", opacity: 0 };
+      return { ...base, transform: "translate(-16px, -3px) rotate(-0.4deg) rotateX(2.5deg) rotateY(-1.2deg)" };
     }
     if (shiftPhase === "exiting-prev") {
-      return { ...base, transform: "translate(18px, 4px) rotate(0.4deg) rotateX(2.5deg) rotateY(-1.2deg)", opacity: 0 };
+      return { ...base, transform: "translate(16px, 3px) rotate(0.4deg) rotateX(2.5deg) rotateY(-1.2deg)" };
     }
     if (shiftPhase === "entering-next") {
-      return { ...base, transform: "translateY(3px) rotateX(2.5deg) rotateY(-1.2deg)", opacity: 0 };
+      return { ...base, transform: "translateY(3px) rotateX(2.5deg) rotateY(-1.2deg)" };
     }
     if (shiftPhase === "entering-prev") {
-      return { ...base, transform: "translate(-18px, -4px) rotate(-0.4deg) rotateX(2.5deg) rotateY(-1.2deg)", opacity: 0 };
+      return { ...base, transform: "translate(-16px, -3px) rotate(-0.4deg) rotateX(2.5deg) rotateY(-1.2deg)" };
     }
-    return { ...base, transform: baseTransform, opacity: 1 };
+    return { ...base, transform: baseTransform };
   };
 
   return (
@@ -85,7 +97,7 @@ export function DocumentPage({
         <PaperStack />
       </div>
 
-      {/* Layer 5: Active Working Paper Canvas (Remount key removed for native transitionend) */}
+      {/* Layer 5: Active Working Paper Canvas (Remount key stripped for native CSS transitions) */}
       <div
         onTransitionEnd={(e) => {
           if (e.target === e.currentTarget && e.propertyName === "transform") {
@@ -139,7 +151,7 @@ export function DocumentPage({
           <div className="text-[11px] tracking-[0.40em] font-semibold text-center mt-1.5 uppercase">Working Paper • Verified</div>
         </div>
 
-        {/* ENGRAVED POWER-USER FOOTER (Zero Fabricated Text) */}
+        {/* ENGRAVED POWER-USER FOOTER */}
         <div
           className="relative z-10 mt-[var(--rhythm-major,72px)] flex items-center justify-between border-t pt-4 font-normal"
           style={{ 
