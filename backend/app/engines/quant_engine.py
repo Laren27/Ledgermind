@@ -359,6 +359,7 @@ def _compute_yoy_growth(
     prior_val   = float(prior_rows[0]["value"])
     current_fy  = current_rows[0]["fiscal_year"]
     prior_fy    = prior_rows[0]["fiscal_year"]
+    quarter     = current_rows[0].get("quarter")  # None = annual; else "Q1"-"Q4"
 
     if prior_val == 0:
         yoy_pct = None
@@ -370,9 +371,10 @@ def _compute_yoy_growth(
     return {
         "metric": metric_label,
         "current_value": current_val,
-        "current_fy": current_fy,
+        "current_fy": f"{quarter} {current_fy}" if quarter else current_fy,
         "prior_value": prior_val,
-        "prior_fy": prior_fy,
+        "prior_fy": f"{quarter} {prior_fy}" if quarter else prior_fy,
+        "quarter": quarter,
         "yoy_pct": yoy_pct,
         "unit": current_rows[0].get("unit", "crore_inr"),
         "note": yoy_note,
