@@ -309,18 +309,21 @@ export default function Home() {
 
             <DocumentTitle>{pageTitle}</DocumentTitle>
 
-            <QueryDock
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-              suggestions={
-                activeView === "peer"
-                  ? [
-                      "Who grew revenue faster in FY26, Eternal or Paytm?",
-                      "Compare Eternal's and Paytm's PAT for FY26",
-                    ]
-                  : undefined
-              }
-            />
+            {/* 💡 Suppress QueryDock on Audit Trail so the sheet remains an immutable historical ledger */}
+            {activeView !== "audit" && (
+              <QueryDock
+                onSubmit={handleSubmit}
+                isLoading={isLoading}
+                suggestions={
+                  activeView === "peer"
+                    ? [
+                        "Who grew revenue faster in FY26, Eternal or Paytm?",
+                        "Compare Eternal's and Paytm's PAT for FY26",
+                      ]
+                    : undefined
+                }
+              />
+            )}
 
             {activeView === "audit" ? (
               <AuditLogTable
@@ -330,6 +333,7 @@ export default function Home() {
                   path: p.response.path,
                   confidenceTier: p.response.confidence_tier,
                   latencyMs: p.response.latency_ms,
+                  isSuccess: !p.response.error && !p.response.is_blocked,
                 }))}
                 onJump={(n) => { setCurrentPageIndex(n); setActiveView("workbench"); }}
               />
