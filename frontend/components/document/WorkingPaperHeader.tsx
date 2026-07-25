@@ -19,7 +19,8 @@ export function WorkingPaperHeader({
   revision = 1,
   preparer = "analyst",
 }: WorkingPaperHeaderProps) {
-  const entityName = company ? `${company.toUpperCase()} LIMITED` : "NEW WORKING PAPER";
+  // 💡 Replaced "UNKNOWN ENTITY LIMITED" with "GENERAL CORPUS ARCHIVE" for clean draft state
+  const entityName = company ? `${company.toUpperCase()} LIMITED` : "GENERAL CORPUS ARCHIVE";
   const statementType = financialType
     ? `${financialType.charAt(0).toUpperCase() + financialType.slice(1)} Financial Statements`
     : "Consolidated Financial Statements";
@@ -27,7 +28,7 @@ export function WorkingPaperHeader({
 
   return (
     <div className="flex items-start justify-between pb-5 mb-8 border-b" style={{ borderColor: "var(--ink-divider, #D8CEC1)" }}>
-      {/* 💡 Tight Left Baseline Grid */}
+      {/* Tight Left Baseline Grid */}
       <div className="space-y-0.5">
         <div
           className="font-semibold uppercase tracking-[0.12em]"
@@ -51,7 +52,7 @@ export function WorkingPaperHeader({
         </div>
       </div>
 
-      {/* 💡 Ultra-Small Engineering Drawing Specification */}
+      {/* Ultra-Small Engineering Drawing Specification */}
       <div
         className="text-right space-y-0.5 uppercase tracking-[0.14em] select-none"
         style={{
