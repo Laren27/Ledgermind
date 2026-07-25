@@ -1,31 +1,15 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 
 interface PageNavigatorProps {
   current: number;
   total: number;
   onNavigate: (page: number) => void;
-  onShiftStart?: () => void;
-  onShiftEnd?: () => void;
+  disabled?: boolean;
 }
 
-export function PageNavigator({ current, total, onNavigate, onShiftStart, onShiftEnd }: PageNavigatorProps) {
-  const [disabled, setDisabled] = useState(false);
-
+export function PageNavigator({ current, total, onNavigate, disabled = false }: PageNavigatorProps) {
   if (total <= 1) return null;
-
-  const handlePageChange = (targetPage: number) => {
-    if (disabled || targetPage === current) return;
-    setDisabled(true);
-    if (onShiftStart) onShiftStart();
-
-    // 💡 240ms physical paper slide duration
-    setTimeout(() => {
-      onNavigate(targetPage);
-      if (onShiftEnd) onShiftEnd();
-      setDisabled(false);
-    }, 240);
-  };
 
   return (
     <div className="flex items-center justify-center pb-12 pt-4 select-none z-20">
@@ -42,7 +26,7 @@ export function PageNavigator({ current, total, onNavigate, onShiftStart, onShif
         }}
       >
         <button
-          onClick={() => handlePageChange(Math.max(1, current - 1))}
+          onClick={() => onNavigate(Math.max(1, current - 1))}
           disabled={current <= 1 || disabled}
           className="transition-colors text-[#8B8378] hover:text-[#E7DED0] disabled:opacity-25 disabled:hover:text-[#8B8378] font-medium flex items-center space-x-2 tracking-wide"
         >
@@ -55,7 +39,7 @@ export function PageNavigator({ current, total, onNavigate, onShiftStart, onShif
         </span>
 
         <button
-          onClick={() => handlePageChange(Math.min(total, current + 1))}
+          onClick={() => onNavigate(Math.min(total, current + 1))}
           disabled={current >= total || disabled}
           className="transition-colors text-[#8B8378] hover:text-[#E7DED0] disabled:opacity-25 disabled:hover:text-[#8B8378] font-medium flex items-center space-x-2 tracking-wide"
         >
