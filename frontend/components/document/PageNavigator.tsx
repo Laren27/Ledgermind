@@ -6,6 +6,8 @@ interface PageNavigatorProps {
   total: number;
   onNavigate: (page: number) => void;
   disabled?: boolean;
+  onShiftStart?: () => void;
+  onShiftEnd?: () => void;
 }
 
 export function PageNavigator({ current, total, onNavigate, disabled = false }: PageNavigatorProps) {
