@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { PaperStack } from "@/components/environment/PaperStack";
 
+export type ShiftPhase = null | "exiting-next" | "exiting-prev" | "entering-next" | "entering-prev";
+
 interface DocumentPageProps {
   docId: string;
   pageNumber: number;
@@ -10,18 +12,64 @@ interface DocumentPageProps {
   isLoading?: boolean;
   children: React.ReactNode;
   footerLabelOverride?: string;
-  isShifting?: boolean;
+  shiftPhase?: ShiftPhase;
+  onSheetTransitionEnd?: () => void;
 }
 
 export function DocumentPage({
-  docId, pageNumber, totalPages, confidential, isLoading, children, footerLabelOverride, isShifting = false,
+  docId,
+  pageNumber,
+  totalPages,
+  confidential,
+  isLoading,
+  children,
+  footerLabelOverride,
+  shiftPhase = null,
+  onSheetTransitionEnd,
 }: DocumentPageProps) {
   const [isHovered, setIsHovered] = useState(false);
 
+  const isCompressing = shiftPhase === "exiting-next" || shiftPhase === "exiting-prev";
+
+  // Compute transform and opacity strictly from parent-controlled shiftPhase
+  const getSheetStyles = (): React.CSSProperties => {
+    const baseTransform = isHovered && shiftPhase === null
+      ? "perspective(1800px) rotateX(1.8deg) rotateY(-0.8deg) rotateZ(-0.15deg) translateY(-4px)"
+      : "perspective(1800px) rotateX(2.5deg) rotateY(-1.2deg) rotateZ(-0.35deg) translateY(0px)";
+
+    const base: React.CSSProperties = {
+      background: "var(--theme-surface-paper, #E7DED0)",
+      border: "1px solid var(--theme-border-subtle)",
+      borderRadius: "var(--radius-sm, 3px)",
+      boxShadow: isHovered || isCompressing ? "var(--shadow-paper-hover)" : "var(--shadow-paper-rest)",
+      padding: "var(--rhythm-major, 72px) var(--space-12, 48px) var(--space-12, 48px)",
+      minHeight: 1080,
+      height: "auto",
+      fontFamily: "var(--font-ui, sans-serif)",
+      fontSize: "var(--font-size-body, 18px)",
+      color: "var(--ink-primary, #2A241E)",
+      lineHeight: 1.6,
+      transition: "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1)",
+    };
+
+    if (shiftPhase === "exiting-next") {
+      return { ...base, transform: "translate(-18px, -4px) rotate(-0.4deg) rotateX(2.5deg) rotateY(-1.2deg)", opacity: 0 };
+    }
+    if (shiftPhase === "exiting-prev") {
+      return { ...base, transform: "translate(18px, 4px) rotate(0.4deg) rotateX(2.5deg) rotateY(-1.2deg)", opacity: 0 };
+    }
+    if (shiftPhase === "entering-next") {
+      return { ...base, transform: "translateY(3px) rotateX(2.5deg) rotateY(-1.2deg)", opacity: 0 };
+    }
+    if (shiftPhase === "entering-prev") {
+      return { ...base, transform: "translate(-18px, -4px) rotate(-0.4deg) rotateX(2.5deg) rotateY(-1.2deg)", opacity: 0 };
+    }
+    return { ...base, transform: baseTransform, opacity: 1 };
+  };
+
   return (
     <div
-      className="relative mb-16 transition-all duration-500"
-      // 💡 WIDER CANVAS: 93% width / 1140px max to optimize line wrapping for financial reports
+      className="relative mb-16 select-none"
       style={{ 
         width: "93%", 
         maxWidth: 1140, 
@@ -32,35 +80,20 @@ export function DocumentPage({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Layer 4: Pure CSS Organic Imperfect Ream with 240ms Paper Shift */}
-      <div className={`transition-all duration-[240ms] ease-out ${isShifting ? "translate-x-[-4px] translate-y-[2px]" : ""}`}>
+      {/* Layer 4: Ream Stack with Dynamic Friction Compression */}
+      <div className={`transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isCompressing ? "translate-y-[6px] scale-y-[0.99]" : ""}`}>
         <PaperStack />
       </div>
 
-      {/* Layer 5: Active Working Paper Canvas */}
+      {/* Layer 5: Active Working Paper Canvas (Remount key removed for native transitionend) */}
       <div
-        key={`${docId}-${pageNumber}`}
-        className={`relative flex flex-col justify-between rounded-sm overflow-hidden transition-all duration-[240ms] ease-out ${
-          isShifting ? "opacity-40 translate-x-[-8px] scale-[0.997]" : "opacity-100 translate-x-0 scale-100"
-        }`}
-        style={{
-          background: "var(--theme-surface-paper, #E7DED0)",
-          border: "1px solid var(--theme-border-subtle)",
-          borderRadius: "var(--radius-sm, 3px)",
-          boxShadow: isHovered
-            ? "var(--shadow-paper-hover)"
-            : "var(--shadow-paper-rest)",
-          padding: "var(--rhythm-major, 72px) var(--space-12, 48px) var(--space-12, 48px)",
-          minHeight: 1080,
-          height: "auto",
-          transform: isHovered && !isShifting
-            ? "perspective(1800px) rotateX(1.8deg) rotateY(-0.8deg) rotateZ(-0.15deg) translateY(-4px)"
-            : "perspective(1800px) rotateX(2.5deg) rotateY(-1.2deg) rotateZ(-0.35deg) translateY(0px)",
-          fontFamily: "var(--font-ui, sans-serif)",
-          fontSize: "var(--font-size-body, 18px)",
-          color: "var(--ink-primary, #2A241E)",
-          lineHeight: 1.6,
+        onTransitionEnd={(e) => {
+          if (e.target === e.currentTarget && e.propertyName === "transform") {
+            onSheetTransitionEnd?.();
+          }
         }}
+        className="relative flex flex-col justify-between rounded-sm overflow-hidden"
+        style={getSheetStyles()}
       >
         {/* Layer 6: Microscopic Subconscious Texture Overlay */}
         <div
@@ -88,7 +121,6 @@ export function DocumentPage({
         {/* STRICT VERTICAL RHYTHM SECTION CONTENT */}
         <div className="relative z-10 flex-1 flex flex-col justify-between space-y-[var(--rhythm-major,72px)]">
           <div>{children}</div>
-
         </div>
 
         {/* 💡 THE ICONIC ARCHIVAL STAMP WATERMARK (~1.8% Opacity) */}
@@ -107,7 +139,7 @@ export function DocumentPage({
           <div className="text-[11px] tracking-[0.40em] font-semibold text-center mt-1.5 uppercase">Working Paper • Verified</div>
         </div>
 
-        {/* ENGRAVED POWER-USER FOOTER */}
+        {/* ENGRAVED POWER-USER FOOTER (Zero Fabricated Text) */}
         <div
           className="relative z-10 mt-[var(--rhythm-major,72px)] flex items-center justify-between border-t pt-4 font-normal"
           style={{ 
