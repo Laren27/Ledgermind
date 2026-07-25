@@ -206,7 +206,7 @@ export default function Home() {
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeView, setActiveView] = useState<"workbench" | "peer" | "audit">("workbench");
 
-  // 1. Add state (Claude's addition)
+  // 1. Add state (Animation lifecycle)
   const [shiftPhase, setShiftPhase] = useState<ShiftPhase>(null);
   const [pendingPageIndex, setPendingPageIndex] = useState<number | null>(null);
 
@@ -230,7 +230,7 @@ export default function Home() {
       ? currentPageIndex
       : ledgerTotalPages;
 
-  // 2. Add the orchestrators (Claude's addition)
+  // 2. Add the orchestrator (Coordinates exit/entry vectors)
   function handleNavigate(targetPage: number) {
     if (shiftPhase !== null || targetPage === currentPageIndex) return;
     const dir = targetPage > currentPageIndex ? "next" : "prev";
@@ -312,7 +312,7 @@ export default function Home() {
         />
 
         <div className="flex-1 py-12">
-          {/* 4. Update DocumentPage usage — add shiftPhase + callback */}
+          {/* 4. Update DocumentPage usage — wire shiftPhase + callback */}
           <DocumentPage
             docId={answer ? `LM-WP-${answer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING"}
             pageNumber={ledgerCurrentPage}
