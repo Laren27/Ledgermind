@@ -23,6 +23,7 @@ class ChunkResult(TypedDict):
     sparse_score: float
     rrf_score: float
     reranker_score: float
+    reranker_backend: str  # "cohere" | "local" | "none" — scores are on different scales per backend
 
 
 class Citation(TypedDict):
