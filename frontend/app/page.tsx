@@ -284,6 +284,13 @@ export default function Home() {
     }
   }
 
+  // 💡 Helper: Calculates dynamic Document ID for any page index
+  function getDocId(idx: number) {
+    const targetPage = idx > 0 && idx <= pages.length ? pages[idx - 1] : null;
+    const targetAnswer = targetPage?.response ?? null;
+    return targetAnswer ? `LM-WP-${targetAnswer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING";
+  }
+
   // 💡 Helper: Renders exact DOM content tree for any page index (Active or Underneath)
   function renderSheetContent(idx: number) {
     const targetPage = idx > 0 && idx <= pages.length ? pages[idx - 1] : null;
@@ -295,55 +302,58 @@ export default function Home() {
       : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
 
     return (
-      <>
-        <WorkingPaperHeader
-          company={targetAnswer?.company ?? null}
-          fiscalYear={targetAnswer?.fiscal_year ?? null}
-          quarter={targetAnswer?.quarter ?? null}
-          financialType={targetAnswer?.financial_type ?? null}
-          wpRef={targetAnswer ? `WP-${(targetAnswer.path ?? "GEN").toUpperCase()}-${targetAnswer.request_id.slice(0, 4)}` : "WP-PENDING"}
-          revision={targetAnswer ? revisions[targetAnswer.query] ?? 1 : 1}
-          preparer={session?.role ?? ""}
-        />
-
-        <DocumentTitle>{targetTitle}</DocumentTitle>
-
-        {activeView !== "audit" && (
-          <QueryDock
-            onSubmit={handleSubmit}
-            isLoading={isLoading && idx === ledgerCurrentPage}
-            suggestions={
-              activeView === "peer"
-                ? [
-                    "Who grew revenue faster in FY26, Eternal or Paytm?",
-                    "Compare Eternal's and Paytm's PAT for FY26",
-                  ]
-                : undefined
-            }
+      <div key={`sheet-tree-${idx}-${targetAnswer?.request_id ?? "pending"}`} className="flex-1 flex flex-col justify-between space-y-[var(--rhythm-major,72px)]">
+        <div>
+          <WorkingPaperHeader
+            company={targetAnswer?.company ?? null}
+            fiscalYear={targetAnswer?.fiscal_year ?? null}
+            quarter={targetAnswer?.quarter ?? null}
+            financialType={targetAnswer?.financial_type ?? null}
+            wpRef={targetAnswer ? `WP-${(targetAnswer.path ?? "GEN").toUpperCase()}-${targetAnswer.request_id.slice(0, 4)}` : "WP-PENDING"}
+            revision={targetAnswer ? revisions[targetAnswer.query] ?? 1 : 1}
+            preparer={session?.role ?? ""}
           />
-        )}
 
-        {activeView === "audit" ? (
-          <AuditLogTable
-            entries={pages.map((p, i) => ({
-              pageNumber: i + 1,
-              query: p.response.query,
-              path: p.response.path,
-              confidenceTier: p.response.confidence_tier,
-              latencyMs: p.response.latency_ms,
-              isSuccess: !p.response.error && !p.response.is_blocked,
-            }))}
-            onJump={(n) => { setCurrentPageIndex(n); setActiveView("workbench"); }}
-          />
-        ) : isLoading && idx === ledgerCurrentPage ? (
-          <DocumentBodySkeleton />
-        ) : (
-          <>
-            {targetAnswer && composeDocumentBody(targetAnswer)}
-            {error && idx === ledgerCurrentPage && <AnalysisSection paragraphs={[{ text: error, citations: [] }]} />}
-          </>
-        )}
-      </>
+          <DocumentTitle>{targetTitle}</DocumentTitle>
+
+          {activeView !== "audit" && (
+            <QueryDock
+              key={`query-dock-${idx}-${targetAnswer?.request_id ?? "pending"}`}
+              onSubmit={handleSubmit}
+              isLoading={isLoading && idx === ledgerCurrentPage}
+              suggestions={
+                activeView === "peer"
+                  ? [
+                      "Who grew revenue faster in FY26, Eternal or Paytm?",
+                      "Compare Eternal's and Paytm's PAT for FY26",
+                    ]
+                  : undefined
+              }
+            />
+          )}
+
+          {activeView === "audit" ? (
+            <AuditLogTable
+              entries={pages.map((p, i) => ({
+                pageNumber: i + 1,
+                query: p.response.query,
+                path: p.response.path,
+                confidenceTier: p.response.confidence_tier,
+                latencyMs: p.response.latency_ms,
+                isSuccess: !p.response.error && !p.response.is_blocked,
+              }))}
+              onJump={(n) => { setCurrentPageIndex(n); setActiveView("workbench"); }}
+            />
+          ) : isLoading && idx === ledgerCurrentPage ? (
+            <DocumentBodySkeleton />
+          ) : (
+            <>
+              {targetAnswer && composeDocumentBody(targetAnswer)}
+              {error && idx === ledgerCurrentPage && <AnalysisSection paragraphs={[{ text: error, citations: [] }]} />}
+            </>
+          )}
+        </div>
+      </div>
     );
   }
 
@@ -375,7 +385,7 @@ export default function Home() {
         <div className="flex-1 py-12">
           {/* 4. Update DocumentPage usage — wire shiftPhase, callback, and pre-loaded Underneath Content */}
           <DocumentPage
-            docId={answer ? `LM-WP-${answer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING"}
+            docId={getDocId(ledgerCurrentPage)}
             pageNumber={ledgerCurrentPage}
             totalPages={ledgerTotalPages}
             footerLabelOverride={activeView === "audit" ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED` : undefined}
@@ -385,6 +395,7 @@ export default function Home() {
             onSheetTransitionEnd={handleSheetTransitionEnd}
             underneathContent={pendingPageIndex !== null ? renderSheetContent(pendingPageIndex) : undefined}
             underneathPageNumber={pendingPageIndex !== null ? pendingPageIndex : undefined}
+            underneathDocId={pendingPageIndex !== null ? getDocId(pendingPageIndex) : undefined}
           >
             {renderSheetContent(ledgerCurrentPage)}
           </DocumentPage>
