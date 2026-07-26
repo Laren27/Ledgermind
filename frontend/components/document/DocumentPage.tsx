@@ -17,6 +17,7 @@ interface DocumentPageProps {
   onSheetTransitionEnd?: () => void;
   underneathContent?: React.ReactNode;
   underneathPageNumber?: number;
+  underneathDocId?: string;
 }
 
 export function DocumentPage({
@@ -32,6 +33,7 @@ export function DocumentPage({
   onSheetTransitionEnd,
   underneathContent,
   underneathPageNumber,
+  underneathDocId,
 }: DocumentPageProps) {
   const [isHovered, setIsHovered] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -202,7 +204,7 @@ export function DocumentPage({
             color: "var(--ink-footer)",
           }}
         >
-          <span>DOC ID: {docId}</span>
+          <span>DOC ID: {underneathDocId ?? docId}</span>
           {confidential && <span>CONFIDENTIAL — INTERNAL USE ONLY</span>}
           <span className="tabular-metrics">{footerLabelOverride ?? `PAGE ${underneathPageNumber ?? pageNumber} OF ${totalPages}`}</span>
         </div>
