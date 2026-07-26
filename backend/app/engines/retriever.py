@@ -312,6 +312,19 @@ def rerank(
                 updated["reranker_backend"] = "cohere"
                 scored_chunks.append(ChunkResult(**updated))
                 
+            # --- TEMP CALIBRATION LOGGING (remove after threshold calibration) ---
+            if scored_chunks:
+                logger.info(
+                    "COHERE_CALIBRATION",
+                    extra={
+                        "query_text": query[:200],
+                        "top_relevance_score": scored_chunks[0]["reranker_score"],
+                        "all_scores": [c["reranker_score"] for c in scored_chunks[:5]],
+                        "reranker_backend": "cohere",
+                    },
+                )
+            # --- END TEMP CALIBRATION LOGGING ---
+
             if scored_chunks:
                 logger.info(
                     "Cohere Cloud reranking complete | top_score=%.4f | bottom_score=%.4f",
