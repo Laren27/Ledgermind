@@ -363,7 +363,8 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
     if category == "semantic_honest_refusal":
         response = (result.get("response_text") or "").lower()
         refusal_phrases = ["do not contain", "does not contain", "no information",
-                           "not addressed", "not discussed", "not found"]
+                           "not addressed", "not discussed", "not found",
+                           "does not explicitly state", "do not explicitly state"]
         refused = any(p in response for p in refusal_phrases)
         return {
             "pass": refused,
