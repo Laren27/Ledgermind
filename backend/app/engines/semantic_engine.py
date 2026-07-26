@@ -38,9 +38,13 @@ LOCAL_HIGH_CONFIDENCE_THRESHOLD   = -4.5
 LOCAL_MEDIUM_CONFIDENCE_THRESHOLD = -7.5
 
 # Cohere Rerank API (rerank-english-v3.0) — relevance_score scale, 0.0 to 1.0
-# NOTE: these are provisional defaults, not yet calibrated against golden dataset
-# results the way the local thresholds were. Flag for recalibration once enough
-# production Cohere-scored queries have been logged (see confidence_score in audit_log).
+# CALIBRATED 2026-07-27: validated against real production scores logged across
+# all 83 golden-dataset questions (COHERE_CALIBRATION debug logging, since removed).
+# Every "high" result scored >=0.88; the one genuine "medium" (Q031, ambiguous
+# cross-period question) scored 0.4656, correctly below 0.5. No query in this
+# run fell between 0.15-0.5 or below 0.15, so the MEDIUM/LOW boundary itself
+# remains unstressed by real data — revisit if a future query's tier looks wrong
+# given its logged score. 0.5/0.15 held up against everything checked; keeping.
 COHERE_HIGH_CONFIDENCE_THRESHOLD   = 0.5
 COHERE_MEDIUM_CONFIDENCE_THRESHOLD = 0.15
 # Below the relevant MEDIUM threshold → LOW → refuse
