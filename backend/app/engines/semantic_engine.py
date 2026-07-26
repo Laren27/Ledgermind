@@ -33,9 +33,26 @@ logger = logging.getLogger(__name__)
 # Adjust after Phase 7 eval once golden dataset scores are measured.
 # ---------------------------------------------------------------------------
 
-HIGH_CONFIDENCE_THRESHOLD   = -4.5   # top reranker score above this → HIGH
-MEDIUM_CONFIDENCE_THRESHOLD = -7.5   # top reranker score above this → MEDIUM
-# Below MEDIUM_CONFIDENCE_THRESHOLD → LOW → refuse
+# Local ONNX CrossEncoder (ms-marco-MiniLM-L-6-v2) — raw logit scale, roughly -12 to +2
+LOCAL_HIGH_CONFIDENCE_THRESHOLD   = -4.5
+LOCAL_MEDIUM_CONFIDENCE_THRESHOLD = -7.5
+
+# Cohere Rerank API (rerank-english-v3.0) — relevance_score scale, 0.0 to 1.0
+# NOTE: these are provisional defaults, not yet calibrated against golden dataset
+# results the way the local thresholds were. Flag for recalibration once enough
+# production Cohere-scored queries have been logged (see confidence_score in audit_log).
+COHERE_HIGH_CONFIDENCE_THRESHOLD   = 0.5
+COHERE_MEDIUM_CONFIDENCE_THRESHOLD = 0.15
+# Below the relevant MEDIUM threshold → LOW → refuse
+
+# Bug history: prior to this fix, a single fixed threshold pair (-4.5 / -7.5,
+# calibrated for the LOCAL reranker's logit scale) was applied to scores from
+# EITHER backend. Cohere's 0-1 relevance_score is always >= -4.5, so any query
+# that got Cohere-scored was silently classified HIGH confidence regardless of
+# actual relevance — while the same query hitting the local fallback (e.g. on
+# a Cohere API hiccup) was scored correctly. This produced confidence_tier
+# results that changed run-to-run for the same query, depending purely on
+# which reranker backend happened to serve that request.
 
 MIN_CHUNKS_FOR_ANSWER = 1   # refuse if fewer chunks than this after reranking
 
@@ -64,11 +81,23 @@ def _score_confidence(chunks: List[ChunkResult]) -> Tuple[float, str]:
 
     top_score = chunks[0]["reranker_score"]
     bottom_score = chunks[-1]["reranker_score"]
+    backend = chunks[0].get("reranker_backend", "local")  # default to stricter/local scale if untagged
 
-    # Normalise to [0, 1] using empirical range for financial text
-    # Observed range: roughly -12 (weak) to -2 (strong) for this domain
-    EMPIRICAL_MIN = -12.0
-    EMPIRICAL_MAX = -2.0
+    # Backend-specific scale: Cohere returns 0-1 relevance_score; local
+    # CrossEncoder returns raw logits (~-12 weak to ~-2 strong). Using the
+    # wrong scale's thresholds silently misclassifies confidence — see
+    # bug history note above the threshold constants.
+    if backend == "cohere":
+        high_threshold = COHERE_HIGH_CONFIDENCE_THRESHOLD
+        medium_threshold = COHERE_MEDIUM_CONFIDENCE_THRESHOLD
+        EMPIRICAL_MIN = 0.0
+        EMPIRICAL_MAX = 1.0
+    else:
+        high_threshold = LOCAL_HIGH_CONFIDENCE_THRESHOLD
+        medium_threshold = LOCAL_MEDIUM_CONFIDENCE_THRESHOLD
+        EMPIRICAL_MIN = -12.0
+        EMPIRICAL_MAX = -2.0
+
     normalised = (top_score - EMPIRICAL_MIN) / (EMPIRICAL_MAX - EMPIRICAL_MIN)
     normalised = max(0.0, min(1.0, normalised))   # clamp to [0, 1]
 
@@ -77,17 +106,18 @@ def _score_confidence(chunks: List[ChunkResult]) -> Tuple[float, str]:
     gap_bonus = min(0.05, gap * 0.005)   # max 5% bonus, keeps tier decisions clean
     final_score = min(1.0, normalised + gap_bonus)
 
-    # Tier decision based on raw top score (not normalised)
-    if top_score >= HIGH_CONFIDENCE_THRESHOLD:
+    # Tier decision based on raw top score (not normalised), using the
+    # threshold pair that matches this chunk's actual scoring backend
+    if top_score >= high_threshold:
         tier = "high"
-    elif top_score >= MEDIUM_CONFIDENCE_THRESHOLD:
+    elif top_score >= medium_threshold:
         tier = "medium"
     else:
         tier = "low"
 
     logger.debug(
-        "Confidence: top_score=%.4f gap=%.4f normalised=%.4f tier=%s",
-        top_score, gap, final_score, tier,
+        "Confidence: backend=%s top_score=%.4f gap=%.4f normalised=%.4f tier=%s",
+        backend, top_score, gap, final_score, tier,
     )
 
     return round(final_score, 4), tier
