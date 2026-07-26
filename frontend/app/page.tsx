@@ -303,7 +303,7 @@ export default function Home() {
           financialType={targetAnswer?.financial_type ?? null}
           wpRef={targetAnswer ? `WP-${(targetAnswer.path ?? "GEN").toUpperCase()}-${targetAnswer.request_id.slice(0, 4)}` : "WP-PENDING"}
           revision={targetAnswer ? revisions[targetAnswer.query] ?? 1 : 1}
-          preparer={session.role}
+          preparer={session?.role ?? ""}
         />
 
         <DocumentTitle>{targetTitle}</DocumentTitle>
@@ -351,8 +351,8 @@ export default function Home() {
     <DocumentEnvironment surface="desk">
       <div className="flex min-h-screen w-full">
         <Sidebar
-          userRole={session.role}
-          tenantId={session.tenantId}
+          userRole={session?.role ?? ""}
+          tenantId={session?.tenantId ?? ""}
           activeView={activeView}
           onViewChange={(view) => {
             setActiveView(view);
