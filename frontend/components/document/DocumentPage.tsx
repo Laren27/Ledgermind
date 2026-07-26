@@ -81,11 +81,11 @@ export function DocumentPage({
       ], { duration: 720, easing: 'ease-out', fill: "forwards" });
 
       anim.onfinish = () => {
-        // 💡 COMMIT & RELEASE: Commit computed styles before drop to prevent visual snapping
-        anim.commitStyles();
-        fadeAnim.commitStyles();
+        // 💡 STRIP COMMIT STYLES: Do NOT call commitStyles() on exit flight!
+        // Cancelling detaches WAAPI so React's style prop (opacity: 1, center desk) takes over instantly.
         anim.cancel();
         fadeAnim.cancel();
+        sheet.style.opacity = "1";
         onSheetTransitionEnd?.();
       };
       return () => { anim.cancel(); fadeAnim.cancel(); };
@@ -97,7 +97,6 @@ export function DocumentPage({
       ];
       const anim = sheet.animate(keyframes, { duration: 35, fill: "forwards", easing: "ease-out" });
       anim.onfinish = () => {
-        anim.commitStyles();
         anim.cancel();
         onSheetTransitionEnd?.();
       };
