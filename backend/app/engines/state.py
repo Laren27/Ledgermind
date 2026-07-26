@@ -173,7 +173,7 @@ def make_initial_state(
         crag_triggered=False,
         crag_count=0,
 
-        response_text=None,
+        response_text=None, 
         restatement_disclosed=False,
 
         error=None,
