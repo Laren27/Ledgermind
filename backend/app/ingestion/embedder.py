@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 DENSE_MODEL_NAME  = "BAAI/bge-small-en-v1.5"
 SPARSE_MODEL_NAME = "Qdrant/bm25"
-BATCH_SIZE        = 32
+BATCH_SIZE        = 8  # reduced from 32 — 32 caused OOM/near-freeze on large docs (1999+ chunks) even at 8GB WSL2 cap
 DENSE_DIMENSIONS  = 384   # bge-small output dimension — must match Qdrant collection
 
 # ---------------------------------------------------------------------------
