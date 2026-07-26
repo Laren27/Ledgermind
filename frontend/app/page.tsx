@@ -14,6 +14,7 @@ import { EntityComparisonTable } from "@/components/document/EntityComparisonTab
 import { MetricCallout } from "@/components/document/MetricCallout";
 import { AnalysisSection } from "@/components/document/AnalysisSection";
 import { EvidenceList } from "@/components/document/EvidenceList";
+import { CitationSummary } from "@/components/document/CitationSummary";
 import { QueryDock } from "@/components/document/QueryDock";
 import { Sidebar } from "@/components/document/Sidebar";
 import { PageNavigator } from "@/components/document/PageNavigator";
@@ -74,14 +75,7 @@ function composeDocumentBody(data: QueryResponse) {
     return (
       <>
         <MetricCallout label={data.error.replace(/_/g, " ")} value="—" status="refused" />
-        {errorCitations.length > 0 && (
-          <div
-            className="py-2 px-3 text-xs font-medium"
-            style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
-          >
-            {errorCitations.length} Supporting {errorCitations.length === 1 ? "Citation" : "Citations"}
-          </div>
-        )}
+        <CitationSummary count={errorCitations.length} />
         <AnalysisSection
           paragraphs={[{
             text: errorText,
@@ -210,14 +204,7 @@ function composeDocumentBody(data: QueryResponse) {
 
   return (
     <>
-      {citationItems.length > 0 && (
-        <div
-          className="py-2 px-3 text-xs font-medium"
-          style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
-        >
-          {citationItems.length} Supporting {citationItems.length === 1 ? "Citation" : "Citations"}
-        </div>
-      )}
+      <CitationSummary count={citationItems.length} />
       <AnalysisSection
         paragraphs={[{
           text: cleanProseText(data.response_text ?? ""),
