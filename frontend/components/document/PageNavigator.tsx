@@ -15,7 +15,7 @@ export function PageNavigator({ current, total, onNavigate, disabled = false }: 
 
   return (
     <div className="flex items-center justify-center pb-12 pt-4 select-none z-20">
-      {/* ENGRAVED DESKTOP TRAY CONTROL (Anchored to Walnut Desk) */}
+      {/* Engraved Desktop Tray Control (Anchored to Walnut Desk) */}
       <div 
         className="flex items-center space-x-8 px-8 py-2.5 rounded-full border transition-all"
         style={{
