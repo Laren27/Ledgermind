@@ -95,6 +95,47 @@ function composeDocumentBody(data: QueryResponse) {
 
   const citationItems = buildCitationItems(data);
   const isComparativeResult = data.sql_result?.[0] && "entity_a" in data.sql_result[0];
+  const isPlainComparisonResult = data.sql_result?.[0] && "entity1" in data.sql_result[0];
+
+  if (isPlainComparisonResult) {
+    const row: any = data.sql_result![0];
+    const v1 = Number(row.value1);
+    const v2 = Number(row.value2);
+    const unitLabel = row.unit === "crore_inr" ? "Cr" : row.unit ?? "";
+    const winner: "a" | "b" = v1 > v2 ? "a" : "b";
+    const higherEntity = winner === "a" ? row.entity1 : row.entity2;
+
+    return (
+      <div className="space-y-6">
+        <div className="border-b pb-2" style={{ borderColor: "var(--ink-divider)" }}>
+          <h3 style={{ fontFamily: "var(--font-editorial)", fontSize: 18, color: "var(--ink-primary)" }}>
+            Comparative Metric Analysis
+          </h3>
+          <p style={{ fontFamily: "var(--font-archival)", fontSize: 12, color: "var(--ink-metadata)" }}>
+            Automated multi-entity evaluation • Path: {(data.path ?? "QUANTITATIVE").toUpperCase()} (Deterministic Override)
+          </p>
+        </div>
+
+        <SectionHeading sourceTable="audited_financials">
+          {row.metric} — {data.fiscal_year ?? "Period"}
+        </SectionHeading>
+
+        <EntityComparisonTable
+          entityA={row.entity1}
+          entityB={row.entity2}
+          rows={[{
+            label: row.metric,
+            valueA: `₹${v1.toLocaleString()} ${unitLabel}`,
+            valueB: `₹${v2.toLocaleString()} ${unitLabel}`,
+            winner,
+          }]}
+        />
+
+        <MetricCallout label="Higher Reported Value" value={higherEntity} status="verified" />
+        <AnalysisSection paragraphs={[{ text: cleanProseText(data.response_text ?? ""), citations: [] }]} />
+      </div>
+    );
+  }
 
   if (isComparativeResult) {
     const row: any = data.sql_result![0];
