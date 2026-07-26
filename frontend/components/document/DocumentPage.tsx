@@ -38,8 +38,6 @@ export function DocumentPage({
   const [isHovered, setIsHovered] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  const isCompressing = shiftPhase === "exiting-next" || shiftPhase === "exiting-prev";
-
   // 💡 WEB ANIMATIONS API INTEGRATION: Exact 720ms Exit Flight + 35ms Settle
   useEffect(() => {
     if (!sheetRef.current || !shiftPhase) return;
@@ -132,8 +130,8 @@ export function DocumentPage({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Layer 4: Ream Stack with Dynamic Friction Compression & Containing Block Anchor */}
-      <div className={`absolute inset-0 pointer-events-none z-0 transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isCompressing ? "translate-y-[5px] scale-y-[0.995]" : ""}`}>
+      {/* 💡 Layer 4: Ream Stack (100% Rock-Solid & Motionless — Zero Compression Shift) */}
+      <div className="absolute inset-0 pointer-events-none z-0">
         <PaperStack />
       </div>
 
@@ -223,7 +221,7 @@ export function DocumentPage({
           background: "var(--theme-surface-paper, #E7DED0)",
           border: "1px solid var(--theme-border-subtle)",
           borderRadius: "var(--radius-sm, 3px)",
-          boxShadow: isHovered || isCompressing ? "var(--shadow-paper-hover)" : "var(--shadow-paper-rest)",
+          boxShadow: isHovered && !shiftPhase ? "var(--shadow-paper-hover)" : "var(--shadow-paper-rest)",
           padding: "var(--rhythm-major, 72px) var(--space-12, 48px) var(--space-12, 48px)",
           minHeight: 1080,
           height: "auto",
