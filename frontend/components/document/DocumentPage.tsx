@@ -87,14 +87,19 @@ export function DocumentPage({
       ], { duration: 720, easing: 'ease-out', fill: "forwards" });
 
       anim.onfinish = () => {
-        // 💡 STRIP COMMIT STYLES: Do NOT call commitStyles() on exit flight!
-        // Cancelling detaches WAAPI so React's style prop (opacity: 1, center desk) takes over instantly.
-        anim.cancel();
-        fadeAnim.cancel();
-        sheet.style.opacity = "1";
+        // 💡 DEFER CANCELLATION: Do not call .cancel() here! Let fill: "forwards" keep the old sheet
+        // locked invisibly off-screen while React updates state and reconciles DOM nodes.
         onSheetTransitionEnd?.();
       };
-      return () => { anim.cancel(); fadeAnim.cancel(); };
+
+      // 💡 CLEANUP REVEAL: This runs AFTER React has synchronously painted the new page into Layer 5!
+      return () => {
+        anim.cancel();
+        fadeAnim.cancel();
+        if (sheetRef.current) {
+          sheetRef.current.style.opacity = "1";
+        }
+      };
     } else if (shiftPhase === "settling") {
       // 💡 35ms SETTLE: Pure shadow relaxation; text is already rendered synchronously
       const keyframes: Keyframe[] = [
