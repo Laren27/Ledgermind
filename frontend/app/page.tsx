@@ -20,7 +20,7 @@ import { Sidebar } from "@/components/document/Sidebar";
 import { PageNavigator } from "@/components/document/PageNavigator";
 import { AuditLogTable } from "@/components/document/AuditLogTable";
 
-const PEER_ENTITIES = ["Eternal", "Paytm", "Titan"];
+const PEER_ENTITIES = ["Eternal", "Paytm"]; // Titan excluded: no annual-aggregate revenue in corpus, growth_comparison always fails for it (known limitation)
 
 function cleanProseText(text: string): string {
   return text
