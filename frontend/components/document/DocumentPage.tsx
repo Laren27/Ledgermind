@@ -15,6 +15,8 @@ interface DocumentPageProps {
   isShifting?: boolean;
   shiftPhase?: ShiftPhase;
   onSheetTransitionEnd?: () => void;
+  underneathContent?: React.ReactNode;
+  underneathPageNumber?: number;
 }
 
 export function DocumentPage({
@@ -28,6 +30,8 @@ export function DocumentPage({
   isShifting = false,
   shiftPhase = null,
   onSheetTransitionEnd,
+  underneathContent,
+  underneathPageNumber,
 }: DocumentPageProps) {
   const [isHovered, setIsHovered] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -124,6 +128,84 @@ export function DocumentPage({
       {/* Layer 4: Ream Stack with Dynamic Friction Compression & Containing Block Anchor */}
       <div className={`absolute inset-0 pointer-events-none z-0 transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isCompressing ? "translate-y-[5px] scale-y-[0.995]" : ""}`}>
         <PaperStack />
+      </div>
+
+      {/* 💡 Layer 4.5: Persistent Under-Sheet Canvas (Identical Cream Styling & Pre-Loaded Content) */}
+      <div
+        className="absolute inset-0 z-[5] flex flex-col justify-between rounded-sm overflow-hidden pointer-events-none"
+        style={{
+          background: "var(--theme-surface-paper, #E7DED0)",
+          border: "1px solid var(--theme-border-subtle)",
+          borderRadius: "var(--radius-sm, 3px)",
+          boxShadow: "var(--shadow-paper-rest)",
+          padding: "var(--rhythm-major, 72px) var(--space-12, 48px) var(--space-12, 48px)",
+          fontFamily: "var(--font-ui, sans-serif)",
+          fontSize: "var(--font-size-body, 18px)",
+          color: "var(--ink-primary, #2A241E)",
+          lineHeight: 1.6,
+          transform: baseTransform,
+          transformOrigin: "42% 60%",
+          opacity: 1,
+        }}
+      >
+        {/* Identical Subconscious Texture Overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url('/assets/environment/paper-texture.png')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.018,
+            mixBlendMode: "multiply",
+          }}
+        />
+
+        {/* 30px Precision Fold Corner */}
+        <div
+          className="absolute top-0 right-0 pointer-events-none z-10"
+          style={{
+            width: "30px",
+            height: "30px",
+            background: "linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.08) 50%)",
+            clipPath: "polygon(100% 0, 0 0, 100% 100%)",
+          }}
+        />
+
+        {/* STRICT VERTICAL RHYTHM SECTION CONTENT (Pre-loaded Underneath Page) */}
+        <div className="relative z-10 flex-1 flex flex-col justify-between space-y-[var(--rhythm-major,72px)]">
+          <div>{underneathContent || children}</div>
+        </div>
+
+        {/* Archival Stamp Watermark (~1.8% Opacity) */}
+        <div
+          className="pointer-events-none absolute select-none z-0 py-4 px-8 border-y-[1.5px]"
+          style={{
+            bottom: "26%", right: "7%",
+            fontFamily: "var(--font-archival, monospace)",
+            color: "var(--ink-primary)",
+            borderColor: "var(--ink-primary)",
+            opacity: 0.018,
+            transform: "rotate(-10deg)",
+          }}
+        >
+          <div className="text-3xl font-extrabold tracking-[0.32em] uppercase text-center">LEDGERMIND</div>
+          <div className="text-[11px] tracking-[0.40em] font-semibold text-center mt-1.5 uppercase">Working Paper • Verified</div>
+        </div>
+
+        {/* Engraved Power-User Footer (Strict Dynamic Mapping) */}
+        <div
+          className="relative z-10 mt-[var(--rhythm-major,72px)] flex items-center justify-between border-t pt-4 font-normal"
+          style={{ 
+            borderColor: "var(--ink-divider)", 
+            fontFamily: "var(--font-archival, monospace)", 
+            fontSize: "var(--font-size-footer, 12px)", 
+            color: "var(--ink-footer)",
+          }}
+        >
+          <span>DOC ID: {docId}</span>
+          {confidential && <span>CONFIDENTIAL — INTERNAL USE ONLY</span>}
+          <span className="tabular-metrics">{footerLabelOverride ?? `PAGE ${underneathPageNumber ?? pageNumber} OF ${totalPages}`}</span>
+        </div>
       </div>
 
       {/* Layer 5: Active Working Paper Canvas (Permanent 42% 60% Pivot & GPU Hints) */}
