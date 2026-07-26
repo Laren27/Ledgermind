@@ -265,6 +265,7 @@ def hybrid_search(
             sparse_score=0.0,
             rrf_score=point.score,
             reranker_score=float("-inf"),
+            reranker_backend="none",
         )
         chunks.append(chunk)
 
@@ -308,6 +309,7 @@ def rerank(
                 chunk_idx = hit.index
                 updated = dict(chunks[chunk_idx])
                 updated["reranker_score"] = float(hit.relevance_score)
+                updated["reranker_backend"] = "cohere"
                 scored_chunks.append(ChunkResult(**updated))
                 
             if scored_chunks:
@@ -331,6 +333,7 @@ def rerank(
     for chunk, score in zip(chunks, scores):
         updated = dict(chunk)
         updated["reranker_score"] = float(score)
+        updated["reranker_backend"] = "local"
         scored_chunks.append(ChunkResult(**updated))
 
     scored_chunks.sort(key=lambda c: c["reranker_score"], reverse=True)
