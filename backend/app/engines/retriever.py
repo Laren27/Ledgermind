@@ -314,14 +314,12 @@ def rerank(
                 
             # --- TEMP CALIBRATION LOGGING (remove after threshold calibration) ---
             if scored_chunks:
+                top_scores = [c["reranker_score"] for c in scored_chunks[:5]]
                 logger.info(
-                    "COHERE_CALIBRATION",
-                    extra={
-                        "query_text": query[:200],
-                        "top_relevance_score": scored_chunks[0]["reranker_score"],
-                        "all_scores": [c["reranker_score"] for c in scored_chunks[:5]],
-                        "reranker_backend": "cohere",
-                    },
+                    "COHERE_CALIBRATION | query=%r | top_score=%.4f | all_scores=%s",
+                    query[:200],
+                    scored_chunks[0]["reranker_score"],
+                    top_scores,
                 )
             # --- END TEMP CALIBRATION LOGGING ---
 
