@@ -8,7 +8,12 @@ from app.auth.router import router as auth_router
 from app.api.query import router as query_router
 from app.core.config import settings
 from app.api.documents import router as documents_router
+import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 app = FastAPI(title="LedgerMind API", version="0.1.0")
 
