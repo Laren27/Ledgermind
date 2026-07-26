@@ -20,6 +20,8 @@ import { Sidebar } from "@/components/document/Sidebar";
 import { PageNavigator } from "@/components/document/PageNavigator";
 import { AuditLogTable } from "@/components/document/AuditLogTable";
 
+const PEER_ENTITIES = ["Eternal", "Paytm", "Titan"];
+
 function cleanProseText(text: string): string {
   return text
     .replace(/\n\nSources:[\s\S]*$/, "")
@@ -349,14 +351,7 @@ export default function Home() {
               key={`query-dock-${idx}-${targetAnswer?.request_id ?? "pending"}`}
               onSubmit={handleSubmit}
               isLoading={isLoading && idx === ledgerCurrentPage}
-              suggestions={
-                activeView === "peer"
-                  ? [
-                      "Who grew revenue faster in FY26, Eternal or Paytm?",
-                      "Compare Eternal's and Paytm's PAT for FY26",
-                    ]
-                  : undefined
-              }
+              entityOptions={activeView === "peer" ? PEER_ENTITIES : undefined}
             />
           )}
 
