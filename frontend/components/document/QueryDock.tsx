@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { EntityPillSelector } from "./EntityPillSelector";
 
 interface QueryDockProps {
   onSubmit: (query: string) => void;
   isLoading?: boolean;
   suggestions?: string[];
+  entityOptions?: string[];
 }
 
 const INDEX_TABS = [
@@ -15,14 +17,32 @@ const INDEX_TABS = [
   "Summarize Eternal's management commentary on profitability",
 ];
 
-export function QueryDock({ onSubmit, isLoading, suggestions = INDEX_TABS }: QueryDockProps) {
+function buildComparisonQuery(a: string, b: string) {
+  return `Who grew revenue faster in FY26, ${a} or ${b}?`;
+}
+
+export function QueryDock({ onSubmit, isLoading, suggestions = INDEX_TABS, entityOptions }: QueryDockProps) {
   const [query, setQuery] = useState("");
+  const [selectedEntities, setSelectedEntities] = useState<string[]>([]);
   const activeTabs = suggestions.length > 0 ? suggestions : INDEX_TABS;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || isLoading) return;
     onSubmit(query);
+  };
+
+  const handleEntityToggle = (entity: string) => {
+    setSelectedEntities((prev) => {
+      const next = prev.includes(entity)
+        ? prev.filter((e) => e !== entity)
+        : prev.length < 2
+        ? [...prev, entity]
+        : prev;
+
+      setQuery(next.length === 2 ? buildComparisonQuery(next[0], next[1]) : "");
+      return next;
+    });
   };
 
   return (
@@ -60,34 +80,49 @@ export function QueryDock({ onSubmit, isLoading, suggestions = INDEX_TABS }: Que
         </div>
       </form>
 
-      {/* 💡 ARCHIVAL INDEX TABS (Clipped Paper Labels, No Button Styling) */}
-      <div className="space-y-2.5">
-        <div 
-          className="uppercase text-[11px] tracking-[0.16em] font-medium"
-          style={{ fontFamily: "var(--font-archival, monospace)", color: "var(--ink-metadata, #8B8378)" }}
-        >
-          Suggested Investigations
+      {entityOptions && entityOptions.length > 0 ? (
+        <div className="space-y-2.5">
+          <div
+            className="uppercase text-[11px] tracking-[0.16em] font-medium"
+            style={{ fontFamily: "var(--font-archival, monospace)", color: "var(--ink-metadata, #8B8378)" }}
+          >
+            Select Two Entities To Compare
+          </div>
+          <EntityPillSelector
+            entities={entityOptions}
+            selected={selectedEntities}
+            onToggle={handleEntityToggle}
+          />
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          {activeTabs.map((tab, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => { setQuery(tab); }}
-              className="px-3.5 py-1.5 rounded-sm text-[14.5px] font-normal transition-all duration-150 text-left border select-none hover:-translate-y-[1px]"
-              style={{
-                fontFamily: "var(--font-ui, sans-serif)",
-                color: "var(--ink-secondary, #5F574D)",
-                backgroundColor: "rgba(223, 212, 196, 0.35)",
-                borderColor: "rgba(216, 206, 193, 0.8)",
-                boxShadow: "0 1px 2px rgba(42, 36, 30, 0.04)",
-              }}
-            >
-              {tab}
-            </button>
-          ))}
+      ) : (
+        <div className="space-y-2.5">
+          <div 
+            className="uppercase text-[11px] tracking-[0.16em] font-medium"
+            style={{ fontFamily: "var(--font-archival, monospace)", color: "var(--ink-metadata, #8B8378)" }}
+          >
+            Suggested Investigations
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {activeTabs.map((tab, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => { setQuery(tab); }}
+                className="px-3.5 py-1.5 rounded-sm text-[14.5px] font-normal transition-all duration-150 text-left border select-none hover:-translate-y-[1px]"
+                style={{
+                  fontFamily: "var(--font-ui, sans-serif)",
+                  color: "var(--ink-secondary, #5F574D)",
+                  backgroundColor: "rgba(223, 212, 196, 0.35)",
+                  borderColor: "rgba(216, 206, 193, 0.8)",
+                  boxShadow: "0 1px 2px rgba(42, 36, 30, 0.04)",
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
