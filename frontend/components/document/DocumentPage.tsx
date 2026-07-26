@@ -38,23 +38,19 @@ export function DocumentPage({
   const [isHovered, setIsHovered] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  // 💡 WEB ANIMATIONS API INTEGRATION: Exact 720ms Exit Flight + 35ms Settle
   useEffect(() => {
     if (!sheetRef.current || !shiftPhase) return;
     const sheet = sheetRef.current;
 
-    // Shadow States: Separated RISE and PEAK to create momentum after visual lift
-    const REST      = "0 12px 18px rgba(0,0,0,0.18)";
-    const TIGHT     = "0 8px 14px rgba(0,0,0,0.22)";   // anticipation: pressed down
-    const LIFT_RISE = "0 38px 64px rgba(0,0,0,0.28)";  // apex reach
-    const LIFT_PEAK = "0 46px 76px rgba(0,0,0,0.33)";  // peaks AFTER vertical motion stops
-    const LAND_SH   = "0 14px 20px rgba(0,0,0,0.20)";  // landing: shadow narrows back down
+    const REST    = "0 12px 18px rgba(0,0,0,0.18)";
+    const TIGHT   = "0 8px 14px rgba(0,0,0,0.22)";   // anticipation: pressed down
+    const LIFT_PEAK = "0 46px 76px rgba(0,0,0,0.33)"; // full elevation shadow
+    const LAND_SH   = "0 14px 20px rgba(0,0,0,0.20)"; // landing: shadow narrows back down
     const BASE      = "rotateX(2.5deg) rotateY(-1.2deg)";
 
     if (shiftPhase === "exiting-next" || shiftPhase === "exiting-prev") {
       const isNext = shiftPhase === "exiting-next";
-      
-      // Dynamically compute travel distance based on rendered width (30% x, -19% y)
+
       const w = sheet.offsetWidth || 1000;
       const dx = (isNext ? 1 : -1) * (w * 0.30);
       const dy = -(w * 0.19);
@@ -64,33 +60,34 @@ export function DocumentPage({
       const liftRot = isNext ? "0.8deg" : "-0.8deg";
       const liftTransform = `translate(0, -26px) rotateZ(${liftRot}) scale(1.012)`;
 
-      // Timeline offsets: 45ms Anticipate -> 180ms Lift -> 60ms Plateau -> 435ms Glide = 720ms
+      // No plateau: shadow evolves continuously alongside position instead of
+      // freezing the transform to let shadow "catch up" — that identical-
+      // keyframe pattern is exactly what tested as a stutter previously.
+      // 45ms anticipation -> 180ms lift (position AND shadow moving together)
+      // -> 435ms glide to destination = 660ms total exit.
       const keyframes: Keyframe[] = [
         { transform: `scale(1) translate(0,0) rotateZ(0deg) ${BASE}`, boxShadow: REST, easing: "ease-in", offset: 0 },
-        { transform: `scale(0.997) translate(0,1px) rotateZ(0deg) ${BASE}`, boxShadow: TIGHT, easing: "cubic-bezier(0.22, 0.8, 0.22, 1)", offset: 45 / 720 },
-        { transform: `${liftTransform} ${BASE}`, boxShadow: LIFT_RISE, easing: "linear", offset: 225 / 720 },
-        // 💡 60ms Apex Hold Plateau: Zero spatial movement while shadow expands to LIFT_PEAK
-        { transform: `${liftTransform} ${BASE}`, boxShadow: LIFT_PEAK, easing: "cubic-bezier(0.4, 0, 0.2, 1)", offset: 285 / 720 },
+        { transform: `scale(0.997) translate(0,1px) rotateZ(0deg) ${BASE}`, boxShadow: TIGHT, easing: "cubic-bezier(0.22, 0.8, 0.22, 1)", offset: 45 / 660 },
+        { transform: `${liftTransform} ${BASE}`, boxShadow: LIFT_PEAK, easing: "cubic-bezier(0.4, 0, 0.2, 1)", offset: 225 / 660 },
         { transform: `${destTransform} ${BASE}`, boxShadow: LAND_SH, offset: 1 },
       ];
 
-      const anim = sheet.animate(keyframes, { duration: 720, fill: "forwards" });
-      
-      // Decoupled Late Opacity Fade (Fades naturally during last ~12% of travel)
+      const anim = sheet.animate(keyframes, { duration: 660, fill: "forwards" });
+
       const fadeAnim = sheet.animate([
         { opacity: 1, offset: 0 },
         { opacity: 1, offset: 0.88 },
         { opacity: 0.65, offset: 0.96 },
         { opacity: 0, offset: 1 }
-      ], { duration: 720, easing: 'ease-out', fill: "forwards" });
+      ], { duration: 660, easing: 'ease-out', fill: "forwards" });
 
       anim.onfinish = () => {
-        // 💡 DEFER CANCELLATION: Do not call .cancel() here! Let fill: "forwards" keep the old sheet
-        // locked invisibly off-screen while React updates state and reconciles DOM nodes.
+        // Do not cancel here — fill:"forwards" holds the old sheet locked
+        // invisibly off-screen while React updates state and reconciles.
         onSheetTransitionEnd?.();
       };
 
-      // 💡 CLEANUP REVEAL: This runs AFTER React has synchronously painted the new page into Layer 5!
+      // Cleanup runs AFTER React has painted the new page into this layer.
       return () => {
         anim.cancel();
         fadeAnim.cancel();
@@ -99,7 +96,7 @@ export function DocumentPage({
         }
       };
     } else if (shiftPhase === "settling") {
-      // 💡 35ms SETTLE: Pure shadow relaxation; text is already rendered synchronously
+      // Pure shadow relaxation; text is already rendered synchronously.
       const keyframes: Keyframe[] = [
         { boxShadow: LAND_SH },
         { boxShadow: REST }
@@ -120,22 +117,22 @@ export function DocumentPage({
   return (
     <div
       className="relative mb-16 select-none"
-      style={{ 
-        width: "93%", 
-        maxWidth: 1140, 
-        marginTop: "50px", 
-        marginLeft: "4.5%", 
-        marginRight: "auto" 
+      style={{
+        width: "93%",
+        maxWidth: 1140,
+        marginTop: "50px",
+        marginLeft: "4.5%",
+        marginRight: "auto"
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 💡 Layer 4: Ream Stack (100% Rock-Solid & Motionless — Zero Compression Shift) */}
+      {/* Layer 4: Ream Stack — 100% static, motionless, uncompressed */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <PaperStack />
       </div>
 
-      {/* 💡 Layer 4.5: Persistent Under-Sheet Canvas (Identical Cream Styling & Pre-Loaded Content) */}
+      {/* Layer 4.5: Persistent Under-Sheet Canvas — pre-loaded next content */}
       <div
         className="absolute inset-0 z-[5] flex flex-col justify-between rounded-sm overflow-hidden pointer-events-none"
         style={{
@@ -153,7 +150,6 @@ export function DocumentPage({
           opacity: 1,
         }}
       >
-        {/* Identical Subconscious Texture Overlay */}
         <div
           className="pointer-events-none absolute inset-0 z-0"
           style={{
@@ -164,8 +160,6 @@ export function DocumentPage({
             mixBlendMode: "multiply",
           }}
         />
-
-        {/* 30px Precision Fold Corner */}
         <div
           className="absolute top-0 right-0 pointer-events-none z-10"
           style={{
@@ -175,13 +169,9 @@ export function DocumentPage({
             clipPath: "polygon(100% 0, 0 0, 100% 100%)",
           }}
         />
-
-        {/* STRICT VERTICAL RHYTHM SECTION CONTENT (Pre-loaded Underneath Page) */}
         <div className="relative z-10 flex-1 flex flex-col justify-between space-y-[var(--rhythm-major,72px)]">
           <div>{underneathContent || children}</div>
         </div>
-
-        {/* Archival Stamp Watermark (~1.8% Opacity) */}
         <div
           className="pointer-events-none absolute select-none z-0 py-4 px-8 border-y-[1.5px]"
           style={{
@@ -196,14 +186,12 @@ export function DocumentPage({
           <div className="text-3xl font-extrabold tracking-[0.32em] uppercase text-center">LEDGERMIND</div>
           <div className="text-[11px] tracking-[0.40em] font-semibold text-center mt-1.5 uppercase">Working Paper • Verified</div>
         </div>
-
-        {/* Engraved Power-User Footer (Strict Dynamic Mapping) */}
         <div
           className="relative z-10 mt-[var(--rhythm-major,72px)] flex items-center justify-between border-t pt-4 font-normal"
-          style={{ 
-            borderColor: "var(--ink-divider)", 
-            fontFamily: "var(--font-archival, monospace)", 
-            fontSize: "var(--font-size-footer, 12px)", 
+          style={{
+            borderColor: "var(--ink-divider)",
+            fontFamily: "var(--font-archival, monospace)",
+            fontSize: "var(--font-size-footer, 12px)",
             color: "var(--ink-footer)",
           }}
         >
@@ -213,7 +201,7 @@ export function DocumentPage({
         </div>
       </div>
 
-      {/* Layer 5: Active Working Paper Canvas (Permanent 42% 60% Pivot & GPU Hints) */}
+      {/* Layer 5: Active Working Paper Canvas — permanent pivot, no remount key */}
       <div
         ref={sheetRef}
         className="relative z-10 flex flex-col justify-between rounded-sm overflow-hidden"
@@ -232,10 +220,9 @@ export function DocumentPage({
           transform: baseTransform,
           transformOrigin: "42% 60%",
           willChange: "transform, box-shadow",
-          opacity: 1, // ZERO FADES: Paper remains 100% solid at all times
+          opacity: 1,
         }}
       >
-        {/* Subconscious Texture Overlay */}
         <div
           className="pointer-events-none absolute inset-0 z-0"
           style={{
@@ -246,8 +233,6 @@ export function DocumentPage({
             mixBlendMode: "multiply",
           }}
         />
-
-        {/* 30px Precision Fold Corner */}
         <div
           className="absolute top-0 right-0 pointer-events-none z-10"
           style={{
@@ -257,13 +242,9 @@ export function DocumentPage({
             clipPath: "polygon(100% 0, 0 0, 100% 100%)",
           }}
         />
-
-        {/* STRICT VERTICAL RHYTHM SECTION CONTENT (Zero Fabricated Mockups) */}
         <div className="relative z-10 flex-1 flex flex-col justify-between space-y-[var(--rhythm-major,72px)]">
           <div>{children}</div>
         </div>
-
-        {/* Archival Stamp Watermark (~1.8% Opacity) */}
         <div
           className="pointer-events-none absolute select-none z-0 py-4 px-8 border-y-[1.5px]"
           style={{
@@ -278,14 +259,12 @@ export function DocumentPage({
           <div className="text-3xl font-extrabold tracking-[0.32em] uppercase text-center">LEDGERMIND</div>
           <div className="text-[11px] tracking-[0.40em] font-semibold text-center mt-1.5 uppercase">Working Paper • Verified</div>
         </div>
-
-        {/* Engraved Power-User Footer (Strict Dynamic Mapping) */}
         <div
           className="relative z-10 mt-[var(--rhythm-major,72px)] flex items-center justify-between border-t pt-4 font-normal"
-          style={{ 
-            borderColor: "var(--ink-divider)", 
-            fontFamily: "var(--font-archival, monospace)", 
-            fontSize: "var(--font-size-footer, 12px)", 
+          style={{
+            borderColor: "var(--ink-divider)",
+            fontFamily: "var(--font-archival, monospace)",
+            fontSize: "var(--font-size-footer, 12px)",
             color: "var(--ink-footer)",
           }}
         >
