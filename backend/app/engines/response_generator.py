@@ -81,8 +81,30 @@ REFUSAL_PATTERNS = [
 
 
 def _is_refusal_text(text: str) -> bool:
-    """Narrow, anchored check — see REFUSAL_PATTERNS docstring above."""
-    return any(p.search(text) for p in REFUSAL_PATTERNS)
+    """
+    Narrow, anchored check — see REFUSAL_PATTERNS docstring above.
+
+    A genuine refusal is short and LEADS with the refusal ("the documents
+    do not contain risk factor information"). A substantive answer can
+    legitimately use the same phrasing to flag ONE limitation after
+    several paragraphs of real content (e.g. "...do not contain the final
+    audit opinion" as the last sentence of an otherwise complete answer) —
+    that is a caveat, not a refusal, and should not cap confidence to low.
+
+    Guard: only counts as a refusal if the match starts within the first
+    40% of the text, OR the text is short overall (<300 chars) — i.e. the
+    refusal is the point of the response, not a footnote to it.
+    """
+    if not text:
+        return False
+    for pattern in REFUSAL_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            is_short_response = len(text) < 300
+            match_is_early = match.start() < len(text) * 0.4
+            if is_short_response or match_is_early:
+                return True
+    return False
 
 
 SYNTHESIS_SYSTEM_PROMPT = """You are a financial research assistant for LedgerMind. Given retrieved document excerpts, answer the user's question using ONLY information present in the excerpts. Do not add outside knowledge. Do not speculate. If the excerpts don't fully answer the question, say what is and isn't covered. If the source excerpts refer to the company under a former or different
