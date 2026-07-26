@@ -94,7 +94,6 @@ function composeDocumentBody(data: QueryResponse) {
   }
 
   const citationItems = buildCitationItems(data);
-
   const isComparativeResult = data.sql_result?.[0] && "entity_a" in data.sql_result[0];
 
   if (isComparativeResult) {
@@ -206,7 +205,7 @@ export default function Home() {
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeView, setActiveView] = useState<"workbench" | "peer" | "audit">("workbench");
 
-  // 1. Add state (Animation lifecycle)
+  // 💡 ANIMATION STATE MACHINE: 720ms Exit Flight -> Synchronous Text Swap -> 35ms Settle
   const [shiftPhase, setShiftPhase] = useState<ShiftPhase>(null);
   const [pendingPageIndex, setPendingPageIndex] = useState<number | null>(null);
 
@@ -230,7 +229,7 @@ export default function Home() {
       ? currentPageIndex
       : ledgerTotalPages;
 
-  // 2. Add the orchestrator (Coordinates exit/entry vectors)
+  // 💡 ORCHESTRATORS: Synchronous page update on exact frame of flight completion
   function handleNavigate(targetPage: number) {
     if (shiftPhase !== null || targetPage === currentPageIndex) return;
     const dir = targetPage > currentPageIndex ? "next" : "prev";
@@ -240,11 +239,10 @@ export default function Home() {
 
   function handleSheetTransitionEnd() {
     if (shiftPhase === "exiting-next" || shiftPhase === "exiting-prev") {
-      const dir = shiftPhase === "exiting-next" ? "next" : "prev";
       if (pendingPageIndex !== null) setCurrentPageIndex(pendingPageIndex);
       setPendingPageIndex(null);
-      setShiftPhase(`entering-${dir}`);
-    } else if (shiftPhase === "entering-next" || shiftPhase === "entering-prev") {
+      setShiftPhase("settling");
+    } else if (shiftPhase === "settling") {
       setShiftPhase(null);
     }
   }
@@ -312,7 +310,6 @@ export default function Home() {
         />
 
         <div className="flex-1 py-12">
-          {/* 4. Update DocumentPage usage — wire shiftPhase + callback */}
           <DocumentPage
             docId={answer ? `LM-WP-${answer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING"}
             pageNumber={ledgerCurrentPage}
@@ -372,7 +369,6 @@ export default function Home() {
             )}
           </DocumentPage>
 
-          {/* 3. Update PageNavigator usage — wire orchestrator + disabled state */}
           {activeView !== "audit" && (
             <PageNavigator
               current={ledgerCurrentPage}
