@@ -56,6 +56,24 @@ def _is_dev_environment() -> bool:
     return os.getenv("ENVIRONMENT", "").strip().lower() == "development"
 
 
+def _run_background_ingestion(doc_id: str, **ingest_kwargs) -> None:
+    """
+    Wraps ingest_from_storage_sync with explicit error handling.
+
+    Plain FastAPI BackgroundTasks give no equivalent of Celery's
+    task_logger.error() + retry safety net — an uncaught exception here
+    can vanish silently (thread-pool execution, no app-level logger
+    ever sees it). This wrapper guarantees a loud ERROR-level log line
+    on any failure, so a stalled/failed background ingestion is always
+    visible in logs instead of just... never finishing, with no trace.
+    """
+    try:
+        result = ingest_from_storage_sync(**ingest_kwargs)
+        logger.info("Background ingestion complete doc_id=%s result=%s", doc_id, result)
+    except Exception:
+        logger.exception("Background ingestion FAILED doc_id=%s", doc_id)
+
+
 @router.post("/upload")
 async def upload_document(
     background_tasks: BackgroundTasks,
@@ -134,7 +152,7 @@ async def upload_document(
         _INGEST_TASK.delay(**ingest_kwargs)
         mode = "celery"
     else:
-        background_tasks.add_task(ingest_from_storage_sync, **ingest_kwargs)
+        background_tasks.add_task(_run_background_ingestion, doc_id=doc_id, **ingest_kwargs)
         mode = "background_task"
 
     logger.info("Ingestion triggered doc_id=%s mode=%s", doc_id, mode)
