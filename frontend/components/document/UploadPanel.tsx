@@ -25,10 +25,9 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
   failed: "#B0453A",
 };
 
-// REVISED from 3 to 2: this photo's photographed paper region genuinely
-// cannot hold 3 real history rows plus everything above it without
-// overflowing onto raw wood (verified 2026-07-28 with real test uploads —
-// earlier "3 rows fits" claim was only ever tested with 1 real row visible).
+// This photo's photographed paper region cannot hold 3 real history rows
+// plus everything above it without overflowing onto raw wood (verified
+// 2026-07-28 with real test uploads).
 const INTAKE_PREVIEW_COUNT = 2;
 
 interface UploadPanelProps {
@@ -40,6 +39,7 @@ interface UploadPanelProps {
 
 export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory }: UploadPanelProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [company, setCompany] = useState("");
   const [ticker, setTicker] = useState("");
   const [fiscalYear, setFiscalYear] = useState("");
@@ -57,6 +57,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
 
   const resetForm = () => {
     setFile(null);
+    setFileInputKey((k) => k + 1); // forces the file input to remount, clearing its native display
     setCompany("");
     setTicker("");
     setFiscalYear("");
@@ -81,9 +82,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         filingDate,
         quarter: quarter || undefined,
       });
-      // Confirmation is now the "RECEIVED" stamp + the new row appearing at
-      // the top of Registration History below — no separate text block,
-      // which was adding height at exactly the moment overflow was worst.
       setLastPendingId(result.pending_id);
       resetForm();
       onRefresh();
@@ -168,9 +166,17 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         <div>
           <label style={labelStyle}>PDF Document</label>
           <input
+            key={fileInputKey}
             type="file"
             accept="application/pdf"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              // Starting a new file selection means the user is beginning a
+              // new registration attempt — the previous submission's
+              // confirmation stamp is no longer relevant and would be
+              // misleading if left showing.
+              setLastPendingId(null);
+            }}
             className="file:mr-3 file:px-3 file:py-1.5 file:rounded-[3px] file:border file:border-[#9C8C72] file:bg-[#D9CDB5] file:text-[#1A140E] file:text-xs file:font-bold file:uppercase file:tracking-wide file:cursor-pointer file:font-mono hover:file:bg-[#CFC0A2]"
             style={inputStyle}
           />
