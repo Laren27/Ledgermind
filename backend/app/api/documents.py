@@ -1,38 +1,40 @@
 """
 app/api/documents.py
 
-Document upload endpoint. Runs the pre-ingestion gate synchronously
-(cheap: ~2-page text scan), uploads the file to Supabase Storage (shared
-durable storage — FastAPI and whatever runs ingestion do not reliably
-share a filesystem), then triggers ingestion.
+Document upload endpoint.
+
+Runs the pre-ingestion gate synchronously (cheap: ~2-page text scan),
+uploads the file to Supabase Storage, then records a `pending_uploads`
+row — it does NOT trigger ingestion automatically.
+
+Why no auto-trigger: loading the bge-small-en-v1.5 embedding model
+in-process OOM-killed Render's 512MB free-tier web service (confirmed
+via repeated "Exited with status 137" events). Running that step inside
+the same process that serves live queries is unsafe on this tier
+regardless of whether it's triggered via Celery or BackgroundTasks.
+
+Instead: backend/scripts/process_pending_uploads.py polls this table
+and runs ingestion locally (proven-safe RAM), matching every other
+ingestion in this project's history (always CLI/admin-triggered, never
+fully self-service).
 
 financial_type is NOT collected here — it is auto-detected per-section
 from document content inside pipeline._run_ingestion (detect_sections /
 register_sections), per the Trap 1 fix (classify from content, never
 from filename or user input).
-
-Ingestion execution mode depends on environment:
-  - ENVIRONMENT=development (local docker-compose, worker service running):
-      enqueue via Celery — matches the local dev topology exactly.
-  - anything else (production on Render — no free Background Worker tier):
-      run in-process via FastAPI BackgroundTasks. No dedicated worker
-      service required. Same underlying pipeline function either way
-      (ingest_from_storage_sync in pipeline.py) — this is purely an
-      execution-context decision, not a different ingestion implementation.
 """
 
 import logging
-import os
 import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 
 from app.auth.dependencies import require_role
+from app.db.session import get_connection
 from app.ingestion.gate import GateDecision, check_is_financial_filing
 from app.ingestion.pdf_text import extract_first_n_pages_text
-from app.ingestion.pipeline import get_ingest_task, ingest_from_storage_sync
 from app.ingestion.storage import upload_file_to_storage
 
 logger = logging.getLogger(__name__)
@@ -44,39 +46,17 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50MB — generous for annual reports
 
-# Memoized task handle — get_ingest_task() re-registers the task with Celery
-# on every call (see pipeline._get_celery_task); calling it once at import
-# time and reusing the handle avoids repeated task registration per-request.
-# Only used in the local-dev/Celery execution path (see _is_dev_environment
-# below) — harmless if None in production, since that path is never taken.
-_INGEST_TASK = get_ingest_task()
-
-
-def _is_dev_environment() -> bool:
-    return os.getenv("ENVIRONMENT", "").strip().lower() == "development"
-
-
-def _run_background_ingestion(doc_id: str, **ingest_kwargs) -> None:
-    """
-    Wraps ingest_from_storage_sync with explicit error handling.
-
-    Plain FastAPI BackgroundTasks give no equivalent of Celery's
-    task_logger.error() + retry safety net — an uncaught exception here
-    can vanish silently (thread-pool execution, no app-level logger
-    ever sees it). This wrapper guarantees a loud ERROR-level log line
-    on any failure, so a stalled/failed background ingestion is always
-    visible in logs instead of just... never finishing, with no trace.
-    """
-    try:
-        result = ingest_from_storage_sync(**ingest_kwargs)
-        logger.info("Background ingestion complete doc_id=%s result=%s", doc_id, result)
-    except Exception:
-        logger.exception("Background ingestion FAILED doc_id=%s", doc_id)
+_SQL_INSERT_PENDING = """
+INSERT INTO pending_uploads
+    (tenant_id, storage_key, company, ticker, fiscal_year, quarter,
+     doc_type, filing_date, version, status)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+RETURNING id
+"""
 
 
 @router.post("/upload")
 async def upload_document(
-    background_tasks: BackgroundTasks,
     file: UploadFile,
     company: str = Form(...),
     ticker: str = Form(...),
@@ -123,7 +103,7 @@ async def upload_document(
         temp_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=gate_result.reason)
 
-    # --- Hand off to Supabase Storage (shared durable storage) ---
+    # --- Hand off to Supabase Storage (durable, shared with the local script) ---
     tenant_id = user["tenant_id"]
     storage_key = f"{tenant_id}/{doc_id}.pdf"
 
@@ -135,30 +115,27 @@ async def upload_document(
     finally:
         temp_path.unlink(missing_ok=True)
 
-    # --- Trigger ingestion ---
-    ingest_kwargs = dict(
-        storage_key=storage_key,
-        tenant_id=tenant_id,
-        company=company,
-        ticker=ticker,
-        fiscal_year=fiscal_year,
-        quarter=quarter,
-        doc_type=doc_type,
-        filing_date=filing_date,
-        version=version,
-    )
+    # --- Record as pending — NOT auto-triggered (see module docstring) ---
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SET app.tenant_id = %s", (tenant_id,))
+            cur.execute(
+                _SQL_INSERT_PENDING,
+                (tenant_id, storage_key, company, ticker, fiscal_year,
+                 quarter, doc_type, filing_date, version),
+            )
+            pending_id = cur.fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
 
-    if _is_dev_environment() and _INGEST_TASK is not None:
-        _INGEST_TASK.delay(**ingest_kwargs)
-        mode = "celery"
-    else:
-        background_tasks.add_task(_run_background_ingestion, doc_id=doc_id, **ingest_kwargs)
-        mode = "background_task"
-
-    logger.info("Ingestion triggered doc_id=%s mode=%s", doc_id, mode)
+    logger.info("Recorded pending upload doc_id=%s pending_id=%s", doc_id, pending_id)
 
     return {
         "doc_id": doc_id,
-        "status": "queued",
+        "pending_id": str(pending_id),
+        "status": "pending",
         "gate_score": gate_result.score,
+        "message": "File stored. Run process_pending_uploads.py to ingest.",
     }
