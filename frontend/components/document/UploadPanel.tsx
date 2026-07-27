@@ -187,6 +187,7 @@ export function UploadPanel() {
             type="file"
             accept="application/pdf"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="file:mr-3 file:px-3 file:py-1.5 file:rounded-[3px] file:border file:border-[#9C8C72] file:bg-[#D9CDB5] file:text-[#1A140E] file:text-xs file:font-bold file:uppercase file:tracking-wide file:cursor-pointer file:font-mono hover:file:bg-[#CFC0A2]"
             style={inputStyle}
           />
         </div>
@@ -250,7 +251,13 @@ export function UploadPanel() {
               style={inputStyle}
             >
               {DOC_TYPES.map((dt) => (
-                <option key={dt.value} value={dt.value}>{dt.label}</option>
+                <option
+                  key={dt.value}
+                  value={dt.value}
+                  style={{ backgroundColor: "#EDE4D3", color: "#1A140E" }}
+                >
+                  {dt.label}
+                </option>
               ))}
             </select>
           </div>
