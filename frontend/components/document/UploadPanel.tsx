@@ -22,9 +22,9 @@ const STATUS_LABEL: Record<PendingUpload["status"], string> = {
 };
 
 const STATUS_COLOR: Record<PendingUpload["status"], string> = {
-  pending: "var(--ink-metadata, #8B8378)",
+  pending: "#8B7355",
   processing: "#B58A3C",
-  done: "var(--paper-verified, #2E6B4A)",
+  done: "#2E6B4A",
   failed: "#B0453A",
 };
 
@@ -102,12 +102,13 @@ export function UploadPanel() {
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
     fontSize: 14,
-    color: "var(--ink-primary, #2A241E)",
-    background: "rgba(223, 212, 196, 0.20)",
-    border: "1px solid var(--ink-divider, #D8CEC1)",
+    color: "#2A241E",
+    background: "#F2ECE1",
+    border: "1px solid #C9BDA9",
     borderRadius: 4,
     padding: "8px 10px",
     width: "100%",
+    colorScheme: "light",
   };
 
   const labelStyle: React.CSSProperties = {
@@ -115,7 +116,7 @@ export function UploadPanel() {
     fontSize: 10.5,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
-    color: "var(--ink-metadata, #8B8378)",
+    color: "#8B7355",
     display: "block",
     marginBottom: 4,
   };
@@ -124,9 +125,9 @@ export function UploadPanel() {
     <div
       className="space-y-10 p-10 rounded-sm"
       style={{
-        background: "var(--paper-bg, #E6DFD3)",
+        background: "#E6DFD3",
         boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
-        border: "1px solid rgba(0,0,0,0.06)",
+        border: "1px solid rgba(0,0,0,0.08)",
       }}
     >
       {/* Honesty banner — always visible, not just after upload */}
@@ -134,9 +135,9 @@ export function UploadPanel() {
         className="px-4 py-3 text-[12.5px] leading-relaxed"
         style={{
           fontFamily: "var(--font-body)",
-          color: "var(--ink-secondary, #5F574D)",
-          background: "rgba(181, 138, 60, 0.08)",
-          border: "1px solid rgba(181, 138, 60, 0.25)",
+          color: "#4A4238",
+          background: "rgba(181, 138, 60, 0.12)",
+          border: "1px solid rgba(181, 138, 60, 0.35)",
           borderRadius: 4,
         }}
       >
@@ -234,9 +235,9 @@ export function UploadPanel() {
           className="px-4 py-2 text-xs font-semibold tracking-[0.16em] uppercase transition-all"
           style={{
             fontFamily: "var(--font-archival, monospace)",
-            color: submitting ? "var(--ink-passive, #B7AEA3)" : "var(--ink-primary, #2A241E)",
-            background: "rgba(223, 212, 196, 0.35)",
-            border: "1px solid rgba(216, 206, 193, 0.8)",
+            color: submitting ? "#B7AEA3" : "#2A241E",
+            background: "#D8CEB8",
+            border: "1px solid #B9AB8E",
             borderRadius: 4,
             cursor: submitting ? "default" : "pointer",
           }}
@@ -250,34 +251,34 @@ export function UploadPanel() {
           </div>
         )}
         {lastResult && (
-          <div className="text-[12.5px]" style={{ color: "var(--paper-verified, #2E6B4A)", fontFamily: "var(--font-body)" }}>
+          <div className="text-[12.5px]" style={{ color: "#2E6B4A", fontFamily: "var(--font-body)" }}>
             {lastResult}
           </div>
         )}
       </form>
 
       {/* Pending uploads status list */}
-      <div className="space-y-3 pt-6 border-t" style={{ borderColor: "var(--ink-divider, #D8CEC1)" }}>
+      <div className="space-y-3 pt-6 border-t" style={{ borderColor: "#C9BDA9" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Upload Status</div>
           <button
             type="button"
             onClick={loadPending}
             className="text-[11px] uppercase tracking-[0.12em] transition-opacity hover:opacity-70"
-            style={{ fontFamily: "var(--font-body)", color: "var(--ink-metadata, #8B8378)", background: "none", border: "none", cursor: "pointer" }}
+            style={{ fontFamily: "var(--font-body)", color: "#8B7355", background: "none", border: "none", cursor: "pointer" }}
           >
             {loadingPending ? "Refreshing…" : "↻ Refresh"}
           </button>
         </div>
 
         {pending.length === 0 ? (
-          <div className="text-[12.5px]" style={{ color: "var(--ink-metadata, #8B8378)", fontFamily: "var(--font-body)" }}>
+          <div className="text-[12.5px]" style={{ color: "#8B7355", fontFamily: "var(--font-body)" }}>
             No uploads yet.
           </div>
         ) : (
           <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 12.5 }}>
             <thead>
-              <tr style={{ color: "var(--paper-text-muted, #8B8378)", fontSize: 10 }}>
+              <tr style={{ color: "#8B7355", fontSize: 10 }}>
                 <td style={{ padding: "4px 0" }}>COMPANY</td>
                 <td style={{ padding: "4px 0" }}>PERIOD</td>
                 <td style={{ padding: "4px 0" }}>STATUS</td>
@@ -286,7 +287,7 @@ export function UploadPanel() {
             </thead>
             <tbody>
               {pending.map((row) => (
-                <tr key={row.id} style={{ borderTop: "var(--table-rule-single, 1px solid #D8CEC1)" }}>
+                <tr key={row.id} style={{ borderTop: "1px solid #C9BDA9", color: "#2A241E" }}>
                   <td style={{ padding: "6px 0" }}>{row.company}</td>
                   <td style={{ padding: "6px 0" }}>
                     {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
