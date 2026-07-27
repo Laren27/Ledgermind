@@ -305,7 +305,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         ) : (
           <div
             className="ledger-scroll overflow-y-auto rounded-sm"
-            style={{ height: 168, border: "1px solid rgba(184, 170, 145, 0.4)" }}
+            style={{ height: 110, border: "1px solid rgba(184, 170, 145, 0.4)" }}
           >
             <table
               className="w-full border-collapse"
