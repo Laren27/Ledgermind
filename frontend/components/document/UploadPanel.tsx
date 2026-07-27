@@ -95,12 +95,13 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
     }
   };
 
+  // Softened per design review: lighter border so inputs recede, paper stays hero.
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
     fontSize: 13.5,
     color: "#1A140E",
     background: "rgba(255, 255, 255, 0.4)",
-    border: "1px solid #C9BFA9",
+    border: "1px solid #D8D0C4",
     borderRadius: 3,
     padding: "7px 10px",
     width: "100%",
@@ -123,7 +124,14 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
   const hasMore = pending.length > INTAKE_PREVIEW_COUNT;
 
   return (
-    <div className="relative space-y-5 px-10 pt-8 pb-8" style={{ backgroundColor: "#DCCFB6" }}>
+    // NOTE: deliberately no background color here. An earlier pass added an
+    // opaque fallback as an overflow safety net, but since it covers the
+    // ENTIRE panel (not just any overflow past the photo), it was flattening
+    // the photographed paper's natural lighting/warmth — exactly what design
+    // review flagged. Registration History is now permanently capped at 3
+    // rows and the box is narrower, so real overflow risk is low; letting
+    // the photo show through fully is worth that small residual risk.
+    <div className="relative space-y-5 px-[78px] pt-10 pb-10">
       <ArchiveStamp status={lastStatus} />
 
       <div className="mb-1">
@@ -147,17 +155,20 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         >
           Register a new corporate filing into the LedgerMind archive.
         </p>
-        <div className="mt-3 border-b" style={{ borderColor: "#C9BFA9" }} />
+        <div className="mt-3 border-b" style={{ borderColor: "#D8D0C4" }} />
       </div>
 
+      {/* Archival annotation style: opaque beige, thin brown border, no shadow —
+          reads as a conservation note pasted onto the document rather than a
+          web-app alert card. */}
       <div
         className="px-4 py-2.5 text-[12px] leading-snug"
         style={{
           fontFamily: "var(--font-body)",
           color: "#2A221A",
-          background: "rgba(255, 255, 255, 0.45)",
-          border: "1px solid #C9BFA9",
-          borderRadius: 4,
+          backgroundColor: "#EFE6D3",
+          border: "1px solid #8C7A64",
+          borderRadius: 3,
         }}
       >
         Filings are stored immediately but require a local ingestion step, run by the developer, before becoming queryable.
@@ -309,15 +320,15 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
             <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ color: "#5C4D3C", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em" }}>
-                  <td style={{ padding: "6px 0", borderBottom: "1px solid #C9BFA9" }}>COMPANY</td>
-                  <td style={{ padding: "6px 0", borderBottom: "1px solid #C9BFA9" }}>PERIOD</td>
-                  <td style={{ padding: "6px 0", borderBottom: "1px solid #C9BFA9" }}>STATUS</td>
-                  <td style={{ padding: "6px 0", textAlign: "right", borderBottom: "1px solid #C9BFA9" }}>REGISTERED</td>
+                  <td style={{ padding: "6px 0", borderBottom: "1px solid #D8D0C4" }}>COMPANY</td>
+                  <td style={{ padding: "6px 0", borderBottom: "1px solid #D8D0C4" }}>PERIOD</td>
+                  <td style={{ padding: "6px 0", borderBottom: "1px solid #D8D0C4" }}>STATUS</td>
+                  <td style={{ padding: "6px 0", textAlign: "right", borderBottom: "1px solid #D8D0C4" }}>REGISTERED</td>
                 </tr>
               </thead>
               <tbody>
                 {historyPreview.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: "1px solid #D4C7B5", color: "#1A140E" }}>
+                  <tr key={row.id} style={{ borderBottom: "1px solid #E2DACB", color: "#1A140E" }}>
                     <td style={{ padding: "8px 0", fontWeight: 700 }}>{row.company}</td>
                     <td style={{ padding: "8px 0" }}>
                       {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
