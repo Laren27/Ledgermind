@@ -424,7 +424,7 @@ export default function Home() {
                 background: "linear-gradient(180deg, rgba(20,16,12,0.55) 0%, rgba(20,16,12,0.0) 100%)",
               }}
             />
-            <div className="relative z-10 py-14 px-16 max-w-2xl">
+            <div className="relative z-10 pt-14 pl-16 pr-16">
               <DocumentTitle color="#F5F0E6" dividerColor="rgba(245,240,230,0.25)">Archive Intake</DocumentTitle>
               <p
                 className="-mt-8 mb-10"
@@ -432,6 +432,15 @@ export default function Home() {
               >
                 Register a new corporate filing into the LedgerMind archive.
               </p>
+            </div>
+
+            {/* Positioned to sit on the photo's own blank-paper area, not floating separately.
+                Percentages are tuned to this specific background image — adjust top/left/width
+                if the paper doesn't land exactly on the photo's blank sheet. */}
+            <div
+              className="absolute"
+              style={{ top: "22%", left: "8%", width: "34%" }}
+            >
               <UploadPanel />
             </div>
           </div>
