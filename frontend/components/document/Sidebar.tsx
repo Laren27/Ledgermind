@@ -8,11 +8,13 @@ interface IndexedFiling {
   active?: boolean;
 }
 
+type SidebarView = "workbench" | "peer" | "audit" | "upload";
+
 interface SidebarProps {
   userRole: string;
   tenantId?: string;
-  activeView: "workbench" | "peer" | "audit";
-  onViewChange: (view: "workbench" | "peer" | "audit") => void;
+  activeView: SidebarView;
+  onViewChange: (view: SidebarView) => void;
   onSignOut: () => void;
   indexedFilings?: IndexedFiling[];
 }
@@ -25,9 +27,20 @@ export function Sidebar({
   onSignOut,
   indexedFilings = [],
 }: SidebarProps) {
+  const views: SidebarView[] =
+    userRole === "admin"
+      ? ["workbench", "peer", "audit", "upload"]
+      : ["workbench", "peer", "audit"];
+
+  const viewLabels: Record<SidebarView, string> = {
+    workbench: "Query Workbench",
+    peer: "Peer Comparison",
+    audit: "Audit Trail",
+    upload: "Upload Filing",
+  };
+
   return (
     <aside
-      // 💡 REDUCED WIDTH: w-[200px] (~10% narrower than before) to let paper own the screen
       className="flex w-[200px] flex-col justify-between p-5 select-none transition-all z-20 shrink-0"
       style={{
         background: "rgba(16, 13, 11, 0.97)",
@@ -64,9 +77,8 @@ export function Sidebar({
           >
             Archive Index
           </div>
-          {(["workbench", "peer", "audit"] as const).map((view) => {
+          {views.map((view) => {
             const isActive = activeView === view;
-            const label = view === "workbench" ? "Query Workbench" : view === "peer" ? "Peer Comparison" : "Audit Trail";
             return (
               <button
                 key={view}
@@ -87,7 +99,7 @@ export function Sidebar({
                   />
                 )}
                 <span className={isActive ? "font-medium tracking-wide text-[12.5px]" : "group-hover:text-[#ECEDEF] transition-colors text-[12.5px]"}>
-                  {label}
+                  {viewLabels[view]}
                 </span>
               </button>
             );
