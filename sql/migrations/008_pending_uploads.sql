@@ -25,3 +25,5 @@ ALTER TABLE pending_uploads ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON pending_uploads
     USING (tenant_id = current_setting('app.tenant_id')::uuid);
+
+GRANT SELECT, INSERT, UPDATE ON pending_uploads TO ledgermind_app;
