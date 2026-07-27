@@ -165,7 +165,7 @@ export function UploadPanel() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="space-y-6">
           <div>
             <label style={labelStyle}>Company</label>
             <input
@@ -188,7 +188,7 @@ export function UploadPanel() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="space-y-6">
           <div>
             <label style={labelStyle}>Fiscal Year</label>
             <input
@@ -211,7 +211,7 @@ export function UploadPanel() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="space-y-6">
           <div>
             <label style={labelStyle}>Document Type</label>
             <select
