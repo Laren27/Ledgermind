@@ -409,19 +409,24 @@ export default function Home() {
         />
 
         {activeView === "upload" ? (
-          <div className="flex-1 py-12 px-16 max-w-3xl">
-            <div
-              className="mb-10 pb-4 border-b"
-              style={{ borderColor: "var(--ink-divider, #D8CEC1)" }}
-            >
-              <h1 style={{ fontFamily: "var(--font-editorial, 'Fraunces', serif)", fontSize: 32, color: "var(--ink-primary, #2A241E)" }}>
-                Upload Filing
-              </h1>
-              <p style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "var(--ink-metadata, #8B8378)" }}>
-                Admin-only • Adds a new document to the corpus for review
+          <div
+            className="flex-1 relative"
+            style={{
+              backgroundImage: "url(/assets/environment/office-desk.png)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            <div className="relative z-10 py-14 px-16 max-w-2xl">
+              <DocumentTitle>Archive Intake</DocumentTitle>
+              <p
+                className="-mt-8 mb-10"
+                style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#D8CEC1", letterSpacing: "0.04em" }}
+              >
+                Register a new corporate filing into the LedgerMind archive.
               </p>
+              <UploadPanel />
             </div>
-            <UploadPanel />
           </div>
         ) : (
           <div className="flex-1 py-12">
