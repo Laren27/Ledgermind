@@ -121,7 +121,14 @@ export function UploadPanel() {
   };
 
   return (
-    <div className="space-y-10">
+    <div
+      className="space-y-10 p-10 rounded-sm"
+      style={{
+        background: "var(--paper-bg, #E6DFD3)",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
+        border: "1px solid rgba(0,0,0,0.06)",
+      }}
+    >
       {/* Honesty banner — always visible, not just after upload */}
       <div
         className="px-4 py-3 text-[12.5px] leading-relaxed"
