@@ -256,7 +256,7 @@ def _get_celery_task():
     )
     def ingest_document(
         self,
-        pdf_path: str,
+        storage_key: str,
         tenant_id: str,
         company: str,
         ticker: str,
@@ -269,11 +269,15 @@ def _get_celery_task():
         """
         Celery task: ingest a single PDF document end-to-end.
 
-        Usage (from FastAPI in Phase 5):
+        Takes a Supabase Storage key (not a local path) — the web process
+        and this worker do not reliably share a filesystem. See
+        _download_and_ingest.
+
+        Usage (from FastAPI, local dev with a worker running):
             from app.ingestion.pipeline import get_ingest_task
             task = get_ingest_task()
             task.delay(
-                pdf_path="/path/to/file.pdf",
+                storage_key="tenant-uuid/doc-uuid.pdf",
                 tenant_id="uuid",
                 company="ETERNAL",
                 ticker="ETERNAL",
@@ -284,13 +288,13 @@ def _get_celery_task():
             )
         """
         task_logger.info(
-            "Task started: ingest_document | pdf=%s | tenant=%s | company=%s",
-            pdf_path, tenant_id, company,
+            "Task started: ingest_document | storage_key=%s | tenant=%s | company=%s",
+            storage_key, tenant_id, company,
         )
 
         try:
-            return _run_ingestion(
-                pdf_path=pdf_path,
+            return _download_and_ingest(
+                storage_key=storage_key,
                 tenant_id=tenant_id,
                 company=company,
                 ticker=ticker,
@@ -339,6 +343,86 @@ def ingest_document_sync(
     """
     return _run_ingestion(
         pdf_path=pdf_path,
+        tenant_id=tenant_id,
+        company=company,
+        ticker=ticker,
+        fiscal_year=fiscal_year,
+        quarter=quarter,
+        doc_type=doc_type,
+        filing_date=filing_date,
+        version=version,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Storage-backed ingestion (used by the web upload endpoint)
+#
+# FastAPI (web) and whatever runs ingestion (Celery worker locally, or an
+# in-process BackgroundTask in production — see app/api/documents.py) do
+# not reliably share a filesystem. Files uploaded via the API are handed
+# off through Supabase Storage instead of a local path, so this wrapper
+# downloads the file first, then defers to the exact same _run_ingestion
+# used everywhere else in this module.
+# ---------------------------------------------------------------------------
+
+def _download_and_ingest(
+    storage_key: str,
+    tenant_id: str,
+    company: str,
+    ticker: str,
+    fiscal_year: str,
+    quarter: Optional[str],
+    doc_type: str,
+    filing_date: str,
+    version: str = "v1",
+) -> dict:
+    import tempfile
+    from .storage import download_file_from_storage
+
+    tmp_dir = tempfile.mkdtemp(prefix="ledgermind_ingest_")
+    local_path = os.path.join(tmp_dir, "document.pdf")
+
+    try:
+        download_file_from_storage(storage_key, local_path)
+        return _run_ingestion(
+            pdf_path=local_path,
+            tenant_id=tenant_id,
+            company=company,
+            ticker=ticker,
+            fiscal_year=fiscal_year,
+            quarter=quarter,
+            doc_type=doc_type,
+            filing_date=filing_date,
+            version=version,
+        )
+    finally:
+        try:
+            if os.path.exists(local_path):
+                os.remove(local_path)
+            os.rmdir(tmp_dir)
+        except OSError:
+            pass
+
+
+def ingest_from_storage_sync(
+    storage_key: str,
+    tenant_id: str,
+    company: str,
+    ticker: str,
+    fiscal_year: str,
+    quarter: Optional[str],
+    doc_type: str,
+    filing_date: str,
+    version: str = "v1",
+) -> dict:
+    """
+    Run storage-backed ingestion synchronously, no Celery required.
+    Used as a FastAPI BackgroundTask in environments with no dedicated
+    worker service deployed (e.g. production on Render's free tier,
+    which has no free Background Worker instance type).
+    """
+    return _download_and_ingest(
+        storage_key=storage_key,
         tenant_id=tenant_id,
         company=company,
         ticker=ticker,
