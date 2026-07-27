@@ -405,12 +405,18 @@ export default function Home() {
         />
 
         {activeView === "upload" ? (
-          <div className="flex-1 flex justify-center items-start py-10 px-6 h-full overflow-hidden" style={{ background: "#0d0a08" }}>
-            {/* Workspace container — photo NEVER scrolls, matches the composition exactly.
-                aspectRatio locked to the photo's real 1536x1024 dimensions so
-                background-size can be 100% 100% (no cropping/distortion from `cover`). */}
+          /* Same pattern as every other tab: flex-1 h-full overflow-y-auto is the
+             ONE scrollbar for this whole pane. Sidebar (above) is a flex sibling
+             outside this div entirely, so it never scrolls. */
+          <div className="flex-1 flex justify-center py-10 px-6 h-full overflow-y-auto" style={{ background: "#0d0a08" }}>
+            {/* Workspace container: photo + paper are both children of this ONE
+                element, positioned by percentage — so as this container scrolls
+                as a single unit (photo included), the paper can never drift from
+                the photo. aspectRatio locked to the photo's real 1536x1024
+                dimensions so background-size can be 100% 100% (no cropping from
+                `cover`). shrink-0 keeps it from being squashed by the flex parent. */}
             <div
-              className="relative w-full"
+              className="relative w-full self-start shrink-0"
               style={{
                 maxWidth: 1650,
                 aspectRatio: "1536 / 1024",
@@ -441,19 +447,19 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Paper: ONLY this box scrolls — photo stays completely still.
-                  top/left/width/height are percentages of THIS container, so they
-                  stay locked to the photo's blank sheet at every viewport width.
-                  ADJUST THESE FOUR VALUES to match your photo's paper exactly —
-                  see instructions below the code block. */}
+              {/* Paper: positioned by percentage of THIS container (measured from
+                  the photo's grid: top-left ~235,258 to bottom-right ~790,955 of
+                  1536x1024). Slight rotation matches the photo's own paper tilt.
+                  NO independent scroll here — the whole workspace above scrolls
+                  together as one unit, so the photo and paper never drift apart. */}
               <div
-                className="absolute z-10 overflow-y-auto"
+                className="absolute z-10"
                 style={{
                   top: "25.2%",
                   left: "15.3%",
                   width: "36.1%",
-                  height: "68.1%",
-                  paddingRight: 8,
+                  transform: "rotate(1.5deg)",
+                  transformOrigin: "top left",
                 }}
               >
                 <UploadPanel />
