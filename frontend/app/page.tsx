@@ -381,7 +381,7 @@ export default function Home() {
 
   return (
     <DocumentEnvironment surface="desk">
-      <div className="flex min-h-screen w-full">
+      <div className="flex h-screen w-full overflow-hidden">
         <Sidebar
           userRole={session?.role ?? ""}
           tenantId={session?.tenantId ?? ""}
@@ -405,16 +405,12 @@ export default function Home() {
         />
 
         {activeView === "upload" ? (
-          <div className="flex-1 flex justify-center py-10 px-6 overflow-y-auto" style={{ background: "#0d0a08" }}>
-            {/* Single workspace container: image + paper share ONE coordinate system.
+          <div className="flex-1 flex justify-center items-start py-10 px-6 h-full overflow-hidden" style={{ background: "#0d0a08" }}>
+            {/* Workspace container — photo NEVER scrolls, matches the composition exactly.
                 aspectRatio locked to the photo's real 1536x1024 dimensions so
-                background-size can be 100% 100% (no cropping/distortion from `cover`),
-                and the paper's percentage-based position never drifts from the photo
-                regardless of scroll position or viewport width — because both the
-                photo and the paper are positioned within this same container, and
-                the container itself scrolls with the page (no separate fixed layer). */}
+                background-size can be 100% 100% (no cropping/distortion from `cover`). */}
             <div
-              className="relative w-full self-start"
+              className="relative w-full"
               style={{
                 maxWidth: 1650,
                 aspectRatio: "1536 / 1024",
@@ -445,16 +441,19 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Paper: positioned as a percentage of the SAME container as the
-                  background image, so it stays glued to the photographed blank
-                  sheet at every viewport width. Tune these four percentages to
-                  match your specific photo's paper region exactly. */}
+              {/* Paper: ONLY this box scrolls — photo stays completely still.
+                  top/left/width/height are percentages of THIS container, so they
+                  stay locked to the photo's blank sheet at every viewport width.
+                  ADJUST THESE FOUR VALUES to match your photo's paper exactly —
+                  see instructions below the code block. */}
               <div
-                className="absolute z-10"
+                className="absolute z-10 overflow-y-auto"
                 style={{
-                  top: "18%",
-                  left: "13%",
-                  width: "31%",
+                  top: "17%",
+                  left: "12.5%",
+                  width: "29%",
+                  height: "80%",
+                  paddingRight: 8,
                 }}
               >
                 <UploadPanel />
@@ -462,7 +461,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 py-12">
+          <div className="flex-1 py-12 h-full overflow-y-auto">
             <DocumentPage
               docId={getDocId(ledgerCurrentPage)}
               pageNumber={ledgerCurrentPage}
