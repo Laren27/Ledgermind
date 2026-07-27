@@ -405,51 +405,60 @@ export default function Home() {
         />
 
         {activeView === "upload" ? (
-          /* Step 1: Outer desk locked to fullscreen (h-screen overflow-hidden). The photo never scrolls or moves! */
-          <div
-            className="flex-1 relative"
-            style={{
-              backgroundImage: "url(/assets/environment/office-desk.png)",
-              backgroundSize: "cover",
-              backgroundPosition: "center top",
-              backgroundAttachment: "fixed",
-              minHeight: "100vh",
-            }}
-          >
-            {/* Top Scrim ensures header legibility against the wooden filing boxes */}
+          <div className="flex-1 flex justify-center py-10 px-6 overflow-y-auto" style={{ background: "#0d0a08" }}>
+            {/* Single workspace container: image + paper share ONE coordinate system.
+                aspectRatio locked to the photo's real 1536x1024 dimensions so
+                background-size can be 100% 100% (no cropping/distortion from `cover`),
+                and the paper's percentage-based position never drifts from the photo
+                regardless of scroll position or viewport width — because both the
+                photo and the paper are positioned within this same container, and
+                the container itself scrolls with the page (no separate fixed layer). */}
             <div
-              className="absolute top-0 left-0 right-0 h-40 pointer-events-none z-[5]"
+              className="relative w-full self-start"
               style={{
-                background: "linear-gradient(180deg, rgba(20,16,12,0.75) 0%, rgba(20,16,12,0.0) 100%)",
-              }}
-            />
-
-            {/* Title safely anchored to the top-left desk wood outside the scrolling paper */}
-            <div className="relative z-10 pt-10 pl-14 pr-16 mb-6">
-              <DocumentTitle color="#F5F0E6" dividerColor="rgba(245,240,230,0.25)">Archive Intake</DocumentTitle>
-              <p
-                className="-mt-8 mb-2"
-                style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#E8DFCF", letterSpacing: "0.04em" }}
-              >
-                Register a new corporate filing into the LedgerMind archive.
-              </p>
-            </div>
-
-            {/* Step 2: The Paper Viewport Container!
-                Anchored directly over the manila folder paper in the photo.
-                overflow-y-auto is placed HERE so scrolling happens strictly inside the paper boundaries!
-                Text will NEVER slide up into the wooden trays or drift off the desk! */}
-            {/* Flows with normal page scroll — no inner scrollport.
-                Positioned to sit within the photo's paper region. */}
-            <div
-              className="relative z-10"
-              style={{
-                marginLeft: "13%",
-                width: "31%",
-                paddingBottom: 120,
+                maxWidth: 1650,
+                aspectRatio: "1536 / 1024",
+                backgroundImage: "url(/assets/environment/office-desk.png)",
+                backgroundSize: "100% 100%",
+                backgroundPosition: "top left",
+                borderRadius: 4,
+                boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
               }}
             >
-              <UploadPanel />
+              {/* Scrim for header legibility against the wooden filing boxes */}
+              <div
+                className="absolute top-0 left-0 right-0 pointer-events-none z-[5] rounded-t"
+                style={{
+                  height: "16%",
+                  background: "linear-gradient(180deg, rgba(20,16,12,0.75) 0%, rgba(20,16,12,0.0) 100%)",
+                }}
+              />
+
+              {/* Title anchored to top-left desk wood, outside the paper region */}
+              <div className="absolute z-10" style={{ top: "3%", left: "4%", right: "35%" }}>
+                <DocumentTitle color="#F5F0E6" dividerColor="rgba(245,240,230,0.25)">Archive Intake</DocumentTitle>
+                <p
+                  className="-mt-8"
+                  style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#E8DFCF", letterSpacing: "0.04em" }}
+                >
+                  Register a new corporate filing into the LedgerMind archive.
+                </p>
+              </div>
+
+              {/* Paper: positioned as a percentage of the SAME container as the
+                  background image, so it stays glued to the photographed blank
+                  sheet at every viewport width. Tune these four percentages to
+                  match your specific photo's paper region exactly. */}
+              <div
+                className="absolute z-10"
+                style={{
+                  top: "18%",
+                  left: "13%",
+                  width: "31%",
+                }}
+              >
+                <UploadPanel />
+              </div>
             </div>
           </div>
         ) : (
