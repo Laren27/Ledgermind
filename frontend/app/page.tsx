@@ -446,7 +446,7 @@ export default function Home() {
                 style={{
                   top: "14%",
                   left: "12%",
-                  width: "44%",
+                  width: "39%",
                   transform: "rotate(0deg)",
                   transformOrigin: "top left",
                 }}
