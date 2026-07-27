@@ -95,16 +95,17 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
     }
   };
 
-  // Scaled up ~8-10% per design review (paper has room now), border softened
-  // another step so inputs recede further into the paper.
+  // Reverted to the sizes that actually fit the photographed paper. The
+  // previous "~10% scale up" pushed content past the photo's bottom edge —
+  // border softened one more step per review, at no height cost.
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
-    fontSize: 15,
+    fontSize: 13.5,
     color: "#1A140E",
     background: "rgba(255, 255, 255, 0.4)",
     border: "1px solid rgba(184, 170, 145, 0.55)",
     borderRadius: 3,
-    padding: "9px 12px",
+    padding: "7px 10px",
     width: "100%",
     boxShadow: "none",
     colorScheme: "light",
@@ -112,13 +113,13 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
 
   const labelStyle: React.CSSProperties = {
     fontFamily: "var(--font-archival, monospace)",
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: 700,
     letterSpacing: "0.13em",
     textTransform: "uppercase",
     color: "#2A221A",
     display: "block",
-    marginBottom: 4,
+    marginBottom: 3,
   };
 
   const historyPreview = pending.slice(0, INTAKE_PREVIEW_COUNT);
@@ -128,16 +129,16 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
     // Deliberately no background color here — an opaque fallback previously
     // flattened the photographed paper's lighting. Registration History is
     // permanently capped at 3 rows, so real overflow risk stays low.
-    <div className="relative space-y-6 px-[78px] pt-16 pb-10">
+    <div className="relative space-y-5 px-[78px] pt-11 pb-9">
       <ArchiveStamp status={lastStatus} />
 
       <div className="mb-1">
         <h2
           style={{
             fontFamily: "var(--font-editorial, 'Fraunces', Georgia, serif)",
-            fontSize: 27,
+            fontSize: 25,
             color: "#1A140E",
-            marginBottom: 5,
+            marginBottom: 4,
           }}
         >
           Archive Intake
@@ -145,7 +146,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         <p
           style={{
             fontFamily: "var(--font-archival, monospace)",
-            fontSize: 12.5,
+            fontSize: 11,
             color: "#5C4D3C",
             letterSpacing: "0.03em",
           }}
@@ -158,7 +159,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
       {/* Archival annotation: darker-than-paper tone, thin low-contrast border,
           no shadow — reads as a conservation note pasted on, not a web card. */}
       <div
-        className="px-4 py-3 text-[13px] leading-snug"
+        className="px-4 py-2.5 text-[12.5px] leading-snug"
         style={{
           fontFamily: "var(--font-body)",
           color: "#2A221A",
@@ -170,14 +171,14 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         Filings are stored immediately but require a local ingestion step, run by the developer, before becoming queryable.
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label style={labelStyle}>PDF Document</label>
           <input
             type="file"
             accept="application/pdf"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="file:mr-3 file:px-4 file:py-2 file:rounded-[3px] file:border file:border-[#9C8C72] file:bg-[#D9CDB5] file:text-[13px] file:font-bold file:uppercase file:tracking-wide file:cursor-pointer file:font-mono hover:file:bg-[#CFC0A2]"
+            className="file:mr-3 file:px-3 file:py-1.5 file:rounded-[3px] file:border file:border-[#9C8C72] file:bg-[#D9CDB5] file:text-[#1A140E] file:text-xs file:font-bold file:uppercase file:tracking-wide file:cursor-pointer file:font-mono hover:file:bg-[#CFC0A2]"
             style={inputStyle}
           />
         </div>
@@ -262,13 +263,12 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
           </div>
         </div>
 
-        {/* Signature button: stronger tracking, ivory tone, subtle emboss —
-            inset highlight on top + inset shadow on bottom for a tactile,
-            pressed-paper feel rather than a flat web button. */}
+        {/* Signature button: emboss shadow kept (near-zero height cost) but
+            size reverted — the bigger version was part of what overflowed. */}
         <button
           type="submit"
           disabled={submitting || !file || !company || !ticker || !fiscalYear || !filingDate}
-          className="px-7 py-3 text-sm font-bold tracking-[0.28em] uppercase transition-all"
+          className="px-6 py-2.5 text-xs font-bold tracking-[0.22em] uppercase transition-all"
           style={{
             fontFamily: "var(--font-archival, monospace)",
             color: submitting ? "#8C8273" : "#1A140E",
@@ -286,28 +286,29 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         </button>
 
         {submitError && (
-          <div className="text-[13px] font-semibold" style={{ color: "#B0453A", fontFamily: "var(--font-body)" }}>
+          <div className="text-[12.5px] font-semibold" style={{ color: "#B0453A", fontFamily: "var(--font-body)" }}>
             {submitError}
           </div>
         )}
         {lastResult && (
-          <div className="text-[13px] font-semibold" style={{ color: "#1E5C3A", fontFamily: "var(--font-body)" }}>
+          <div className="text-[12.5px] font-semibold" style={{ color: "#1E5C3A", fontFamily: "var(--font-body)" }}>
             {lastResult}
           </div>
         )}
       </form>
 
       {/* Permanent fixed-size preview — always exactly the latest 3, never grows.
-          Full record lives in Upload History (CSS-paper page, unbounded).
-          More breathing room per design review (pt-8, space-y-4 vs previous
-          pt-5, space-y-3). */}
-      <div className="space-y-4 pt-8 border-t-2" style={{ borderColor: "#8C7A64" }}>
+          REAL FIX this round: table-layout fixed + explicit column widths via
+          colgroup. Previously columns had zero horizontal gutter between them
+          and only avoided colliding by accident of font size — any future
+          font bump would break it again. This makes the layout robust. */}
+      <div className="space-y-3 pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Registration History</div>
           <button
             type="button"
             onClick={onRefresh}
-            className="text-[11px] font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
+            className="text-[10.5px] font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
             style={{ fontFamily: "var(--font-body)", color: "#2A221A", background: "none", border: "none", cursor: "pointer" }}
           >
             {loadingPending ? "Refreshing…" : "↻ Refresh"}
@@ -315,38 +316,47 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         </div>
 
         {pending.length === 0 ? (
-          <div className="text-[13px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+          <div className="text-[12.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
             No filings registered yet.
           </div>
         ) : (
           <>
-            <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 13.5 }}>
+            <table
+              className="w-full border-collapse"
+              style={{ fontFamily: "var(--font-body)", fontSize: 12.5, tableLayout: "fixed" }}
+            >
+              <colgroup>
+                <col style={{ width: "26%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "34%" }} />
+                <col style={{ width: "22%" }} />
+              </colgroup>
               <thead>
-                <tr style={{ color: "#5C4D3C", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em" }}>
-                  <td style={{ padding: "7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
-                  <td style={{ padding: "7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
-                  <td style={{ padding: "7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
-                  <td style={{ padding: "7px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
+                <tr style={{ color: "#5C4D3C", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em" }}>
+                  <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
+                  <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
+                  <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
+                  <td style={{ padding: "6px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
                 </tr>
               </thead>
               <tbody>
                 {historyPreview.map((row) => (
                   <tr key={row.id} style={{ borderBottom: "1px solid #E2DACB", color: "#1A140E" }}>
-                    <td style={{ padding: "9px 0", fontWeight: 700 }}>{row.company}</td>
-                    <td style={{ padding: "9px 0" }}>
+                    <td style={{ padding: "8px 8px 8px 0", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
+                    <td style={{ padding: "8px 8px 8px 0" }}>
                       {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
                     </td>
-                    <td style={{ padding: "9px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
+                    <td style={{ padding: "8px 8px 8px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
                       {STATUS_LABEL[row.status]}
                     </td>
-                    <td style={{ padding: "9px 0", textAlign: "right", fontSize: 11.5, color: "#4A3D2C" }}>
+                    <td style={{ padding: "8px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
                       {new Date(row.created_at).toLocaleString()}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="text-[12px] pt-1" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+            <div className="text-[11.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
               {hasMore ? "Showing latest 3 registrations. " : ""}
               <button
                 type="button"
