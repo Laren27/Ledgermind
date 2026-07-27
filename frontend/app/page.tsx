@@ -425,10 +425,10 @@ export default function Home() {
               }}
             />
             <div className="relative z-10 py-14 px-16 max-w-2xl">
-              <DocumentTitle color="#F5F0E6">Archive Intake</DocumentTitle>
+              <DocumentTitle color="#F5F0E6" dividerColor="rgba(245,240,230,0.25)">Archive Intake</DocumentTitle>
               <p
                 className="-mt-8 mb-10"
-                style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#E8DFC f", letterSpacing: "0.04em" }}
+                style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#E8DFCF", letterSpacing: "0.04em" }}
               >
                 Register a new corporate filing into the LedgerMind archive.
               </p>
