@@ -25,10 +25,11 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
   failed: "#B0453A",
 };
 
-// Permanent design decision, not a temporary cap: Archive Intake is a
-// registration desk, not an archive browser. It always shows exactly the
-// latest 3 registrations — see Upload History for the full record.
-const INTAKE_PREVIEW_COUNT = 3;
+// REVISED from 3 to 2: this photo's photographed paper region genuinely
+// cannot hold 3 real history rows plus everything above it without
+// overflowing onto raw wood (verified 2026-07-28 with real test uploads —
+// earlier "3 rows fits" claim was only ever tested with 1 real row visible).
+const INTAKE_PREVIEW_COUNT = 2;
 
 interface UploadPanelProps {
   pending: PendingUpload[];
@@ -48,7 +49,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<string | null>(null);
   const [lastPendingId, setLastPendingId] = useState<string | null>(null);
 
   const lastStatus = lastPendingId
@@ -70,7 +70,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
 
     setSubmitting(true);
     setSubmitError(null);
-    setLastResult(null);
 
     try {
       const result = await uploadDocument({
@@ -82,9 +81,9 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         filingDate,
         quarter: quarter || undefined,
       });
-      setLastResult(
-        `Registered — "${file.name}" is pending ingestion (id: ${result.pending_id.slice(0, 8)}).`
-      );
+      // Confirmation is now the "RECEIVED" stamp + the new row appearing at
+      // the top of Registration History below — no separate text block,
+      // which was adding height at exactly the moment overflow was worst.
       setLastPendingId(result.pending_id);
       resetForm();
       onRefresh();
@@ -123,16 +122,10 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
   const hasMore = pending.length > INTAKE_PREVIEW_COUNT;
 
   return (
-    // Deliberately no background color here — an opaque fallback previously
-    // flattened the photographed paper's lighting. Registration History is
-    // permanently capped at 3 rows, so real overflow risk stays low.
     <div className="relative space-y-5 px-[78px] pt-11 pb-9">
       <ArchiveStamp status={lastStatus} />
 
       <div className="mb-1">
-        {/* Bold weight to match DocumentTitle's heavy serif treatment
-            (e.g. "Query Workbench") — size/spacing unchanged, weight only,
-            so this carries zero overflow risk. */}
         <h2
           style={{
             fontFamily: "var(--font-editorial, 'Fraunces', Georgia, serif)",
@@ -288,11 +281,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
             {submitError}
           </div>
         )}
-        {lastResult && (
-          <div className="text-[12.5px] font-semibold" style={{ color: "#1E5C3A", fontFamily: "var(--font-body)" }}>
-            {lastResult}
-          </div>
-        )}
       </form>
 
       <div className="space-y-3 pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
@@ -350,7 +338,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
               </tbody>
             </table>
             <div className="text-[11.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
-              {hasMore ? "Showing latest 3 registrations. " : ""}
+              {hasMore ? "Showing latest 2 registrations. " : ""}
               <button
                 type="button"
                 onClick={onViewHistory}
