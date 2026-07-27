@@ -1,3 +1,5 @@
+import * as XLSX from "xlsx";
+
 interface EntityComparisonRow {
   label: string;
   valueA: string | number;
@@ -9,6 +11,10 @@ interface EntityComparisonTableProps {
   entityA: string;
   entityB: string;
   rows: EntityComparisonRow[];
+}
+
+function buildFilename(entityA: string, entityB: string, ext: string) {
+  return `${entityA}_vs_${entityB}_comparison.${ext}`.replace(/\s+/g, "_");
 }
 
 function downloadCsv(entityA: string, entityB: string, rows: EntityComparisonRow[]) {
@@ -27,11 +33,23 @@ function downloadCsv(entityA: string, entityB: string, rows: EntityComparisonRow
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${entityA}_vs_${entityB}_comparison.csv`.replace(/\s+/g, "_");
+  link.download = buildFilename(entityA, entityB, "csv");
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+function downloadXlsx(entityA: string, entityB: string, rows: EntityComparisonRow[]) {
+  const sheetData = [
+    ["Metric", entityA, entityB],
+    ...rows.map((r) => [r.label, r.valueA, r.valueB]),
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Comparison");
+  XLSX.writeFile(workbook, buildFilename(entityA, entityB, "xlsx"));
 }
 
 export function EntityComparisonTable({ entityA, entityB, rows }: EntityComparisonTableProps) {
@@ -74,21 +92,38 @@ export function EntityComparisonTable({ entityA, entityB, rows }: EntityComparis
           ))}
         </tbody>
       </table>
-      <button
-        type="button"
-        onClick={() => downloadCsv(entityA, entityB, rows)}
-        className="text-[11px] uppercase tracking-[0.14em] font-medium transition-opacity hover:opacity-70"
-        style={{
-          fontFamily: "var(--font-body)",
-          color: "var(--paper-text-muted)",
-          background: "none",
-          border: "none",
-          padding: "6px 0 0 0",
-          cursor: "pointer",
-        }}
-      >
-        ↓ Export CSV
-      </button>
+      <div className="flex items-center gap-4" style={{ paddingTop: 6 }}>
+        <button
+          type="button"
+          onClick={() => downloadCsv(entityA, entityB, rows)}
+          className="text-[11px] uppercase tracking-[0.14em] font-medium transition-opacity hover:opacity-70"
+          style={{
+            fontFamily: "var(--font-body)",
+            color: "var(--paper-text-muted)",
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+          }}
+        >
+          ↓ Export CSV
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadXlsx(entityA, entityB, rows)}
+          className="text-[11px] uppercase tracking-[0.14em] font-medium transition-opacity hover:opacity-70"
+          style={{
+            fontFamily: "var(--font-body)",
+            color: "var(--paper-text-muted)",
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+          }}
+        >
+          ↓ Export XLSX
+        </button>
+      </div>
     </div>
   );
 }
