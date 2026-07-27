@@ -449,10 +449,10 @@ export default function Home() {
               <div
                 className="absolute z-10 overflow-y-auto"
                 style={{
-                  top: "17%",
-                  left: "12.5%",
-                  width: "29%",
-                  height: "80%",
+                  top: "25.2%",
+                  left: "15.3%",
+                  width: "36.1%",
+                  height: "68.1%",
                   paddingRight: 8,
                 }}
               >
