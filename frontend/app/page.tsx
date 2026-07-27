@@ -438,13 +438,15 @@ export default function Home() {
                 overflow-y-auto is placed HERE so scrolling happens strictly inside the paper boundaries!
                 Text will NEVER slide up into the wooden trays or drift off the desk! */}
             <div
-              className="absolute z-10 overflow-y-auto pr-6 pl-2 pb-24"
+              className="absolute z-10 overflow-y-auto"
               style={{
-                top: "18.5%",
-                left: "5.5%",
-                width: "43%",
-                bottom: "0%",
-                maxHeight: "81.5vh",
+                top: "20%",
+                left: "13%",
+                width: "31%",
+                height: "72vh",
+                paddingRight: 14,
+                paddingBottom: 40,
+                scrollbarWidth: "thin",
               }}
             >
               <UploadPanel />
