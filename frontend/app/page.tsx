@@ -417,11 +417,18 @@ export default function Home() {
               backgroundPosition: "center",
             }}
           >
+            {/* Scrim ensures header legibility regardless of what part of the photo sits underneath */}
+            <div
+              className="absolute top-0 left-0 right-0 h-64 pointer-events-none z-[5]"
+              style={{
+                background: "linear-gradient(180deg, rgba(20,16,12,0.55) 0%, rgba(20,16,12,0.0) 100%)",
+              }}
+            />
             <div className="relative z-10 py-14 px-16 max-w-2xl">
-              <DocumentTitle>Archive Intake</DocumentTitle>
+              <DocumentTitle color="#F5F0E6">Archive Intake</DocumentTitle>
               <p
                 className="-mt-8 mb-10"
-                style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#D8CEC1", letterSpacing: "0.04em" }}
+                style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#E8DFC f", letterSpacing: "0.04em" }}
               >
                 Register a new corporate filing into the LedgerMind archive.
               </p>
