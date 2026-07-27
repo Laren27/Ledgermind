@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getSession, logout } from "@/lib/auth";
-import { submitQuery, UnauthorizedError, type QueryResponse } from "@/lib/api";
+import { submitQuery, UnauthorizedError, fetchPendingUploads, type QueryResponse, type PendingUpload } from "@/lib/api";
 import LoginForm from "@/components/LoginForm";
 import { DocumentEnvironment } from "@/components/document/DocumentEnvironment";
 import { DocumentPage, type ShiftPhase } from "@/components/document/DocumentPage";
@@ -20,10 +20,15 @@ import { Sidebar } from "@/components/document/Sidebar";
 import { PageNavigator } from "@/components/document/PageNavigator";
 import { AuditLogTable } from "@/components/document/AuditLogTable";
 import { UploadPanel } from "@/components/document/UploadPanel";
+import { UploadHistoryTable } from "@/components/document/UploadHistoryTable";
 
 const PEER_ENTITIES = ["Eternal", "Paytm"]; // Titan excluded: no annual-aggregate revenue in corpus, growth_comparison always fails for it (known limitation)
 
-type ActiveView = "workbench" | "peer" | "audit" | "upload";
+// "upload-history" is intentionally NOT part of Sidebar's SidebarView type —
+// it's reached only via the in-page "View Full Upload History →" link inside
+// UploadPanel, never as a standalone sidebar entry (deliberate design choice:
+// it's a continuation of Intake, not a separate product area).
+type ActiveView = "workbench" | "peer" | "audit" | "upload" | "upload-history";
 
 function cleanProseText(text: string): string {
   return text
@@ -241,21 +246,55 @@ export default function Home() {
   const [shiftPhase, setShiftPhase] = useState<ShiftPhase>(null);
   const [pendingPageIndex, setPendingPageIndex] = useState<number | null>(null);
 
+  // Upload state lifted here (was previously local to UploadPanel) so both
+  // Archive Intake's capped preview and the new Upload History page read
+  // from the same fetch — no duplicate requests, no drift between the two.
+  const [pending, setPending] = useState<PendingUpload[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+
+  const loadPending = useCallback(async () => {
+    setLoadingPending(true);
+    try {
+      const rows = await fetchPendingUploads();
+      const sorted = [...rows].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setPending(sorted);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        setSession(null);
+      }
+      // otherwise silent — this list is a convenience view, not critical path
+    } finally {
+      setLoadingPending(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (session) {
+      loadPending();
+    }
+  }, [session, loadPending]);
+
   const currentPage = currentPageIndex > 0 && currentPageIndex <= pages.length ? pages[currentPageIndex - 1] : null;
   const answer = currentPage?.response ?? null;
   const totalPages = pages.length;
 
   const pageTitle = activeView === "audit"
     ? "Audit Trail"
+    : activeView === "upload-history"
+    ? "Upload History"
     : currentPage
     ? (currentPage.originView === "peer" ? "Peer Comparison" : "Query Workbench")
     : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
 
-  const ledgerTotalPages = activeView === "audit"
+  const isStaticView = activeView === "audit" || activeView === "upload-history";
+
+  const ledgerTotalPages = isStaticView
     ? totalPages
     : totalPages + 1;
 
-  const ledgerCurrentPage = activeView === "audit"
+  const ledgerCurrentPage = isStaticView
     ? totalPages
     : (currentPageIndex > 0 && currentPageIndex <= totalPages)
       ? currentPageIndex
@@ -326,6 +365,8 @@ export default function Home() {
     const targetAnswer = targetPage?.response ?? null;
     const targetTitle = activeView === "audit"
       ? "Audit Trail"
+      : activeView === "upload-history"
+      ? "Upload History"
       : targetPage
       ? (targetPage.originView === "peer" ? "Peer Comparison" : "Query Workbench")
       : (activeView === "peer" ? "Peer Comparison" : "Query Workbench");
@@ -345,7 +386,7 @@ export default function Home() {
 
           <DocumentTitle>{targetTitle}</DocumentTitle>
 
-          {activeView !== "audit" && (
+          {activeView !== "audit" && activeView !== "upload-history" && (
             <QueryDock
               key={`query-dock-${idx}-${targetAnswer?.request_id ?? "pending"}`}
               onSubmit={handleSubmit}
@@ -366,6 +407,13 @@ export default function Home() {
               }))}
               onJump={(n) => { setCurrentPageIndex(n); setActiveView("workbench"); }}
             />
+          ) : activeView === "upload-history" ? (
+            <UploadHistoryTable
+              uploads={pending}
+              loading={loadingPending}
+              onRefresh={loadPending}
+              onBack={() => setActiveView("upload")}
+            />
           ) : isLoading && idx === ledgerCurrentPage ? (
             <DocumentBodySkeleton />
           ) : (
@@ -385,7 +433,7 @@ export default function Home() {
         <Sidebar
           userRole={session?.role ?? ""}
           tenantId={session?.tenantId ?? ""}
-          activeView={activeView}
+          activeView={activeView === "upload-history" ? "upload" : activeView}
           onViewChange={(view) => {
             setActiveView(view);
             if (view !== "audit" && view !== "upload") setCurrentPageIndex(pages.length + 1);
@@ -436,11 +484,12 @@ export default function Home() {
                 }}
               />
 
-              {/* Paper: positioned by percentage of THIS container (measured from
-                  the photo's grid: top-left ~235,258 to bottom-right ~790,955 of
-                  1536x1024). Slight rotation matches the photo's own paper tilt.
-                  NO independent scroll here — the whole workspace above scrolls
-                  together as one unit, so the photo and paper never drift apart. */}
+              {/* Paper: positioned by percentage of THIS container (measured against
+                  the current desk photo). NO independent scroll here — the whole
+                  workspace above scrolls together as one unit, so the photo and
+                  paper never drift apart. Registration history inside UploadPanel
+                  is now permanently capped at 3 rows, so this box's height never
+                  needs to exceed the photographed paper's real bounds. */}
               <div
                 className="absolute z-10"
                 style={{
@@ -451,7 +500,12 @@ export default function Home() {
                   transformOrigin: "top left",
                 }}
               >
-                <UploadPanel />
+                <UploadPanel
+                  pending={pending}
+                  loadingPending={loadingPending}
+                  onRefresh={loadPending}
+                  onViewHistory={() => setActiveView("upload-history")}
+                />
               </div>
             </div>
           </div>
@@ -461,7 +515,13 @@ export default function Home() {
               docId={getDocId(ledgerCurrentPage)}
               pageNumber={ledgerCurrentPage}
               totalPages={ledgerTotalPages}
-              footerLabelOverride={activeView === "audit" ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED` : undefined}
+              footerLabelOverride={
+                activeView === "audit"
+                  ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED`
+                  : activeView === "upload-history"
+                  ? `${pending.length} ${pending.length === 1 ? "UPLOAD" : "UPLOADS"} LOGGED`
+                  : undefined
+              }
               confidential
               isLoading={isLoading}
               shiftPhase={shiftPhase}
@@ -473,7 +533,7 @@ export default function Home() {
               {renderSheetContent(ledgerCurrentPage)}
             </DocumentPage>
 
-            {activeView !== "audit" && (
+            {activeView !== "audit" && activeView !== "upload-history" && (
               <PageNavigator
                 current={ledgerCurrentPage}
                 total={ledgerTotalPages}
