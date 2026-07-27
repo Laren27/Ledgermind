@@ -405,35 +405,37 @@ export default function Home() {
         />
 
         {activeView === "upload" ? (
+          /* Upgraded: Added overflow-y-auto max-h-screen so the right pane scrolls naturally while sidebar stays fixed! */
           <div
-            className="flex-1 relative min-h-screen"
+            className="flex-1 relative min-h-screen overflow-y-auto max-h-screen"
             style={{
               backgroundImage: "url(/assets/environment/office-desk.png)",
               backgroundSize: "cover",
               backgroundPosition: "center",
+              backgroundAttachment: "fixed",
             }}
           >
             {/* Scrim ensures header legibility regardless of what part of the photo sits underneath */}
             <div
-              className="absolute top-0 left-0 right-0 h-64 pointer-events-none z-[5]"
+              className="absolute top-0 left-0 right-0 h-48 pointer-events-none z-[5]"
               style={{
-                background: "linear-gradient(180deg, rgba(20,16,12,0.55) 0%, rgba(20,16,12,0.0) 100%)",
+                background: "linear-gradient(180deg, rgba(20,16,12,0.65) 0%, rgba(20,16,12,0.0) 100%)",
               }}
             />
             <div className="relative z-10 pt-14 pl-16 pr-16">
               <DocumentTitle color="#F5F0E6" dividerColor="rgba(245,240,230,0.25)">Archive Intake</DocumentTitle>
               <p
-                className="-mt-8 mb-10"
+                className="-mt-8 mb-6"
                 style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#E8DFCF", letterSpacing: "0.04em" }}
               >
                 Register a new corporate filing into the LedgerMind archive.
               </p>
             </div>
 
-            {/* Attached directly to the blank paper area of the background photo without floating card styles */}
+            {/* Upgraded: Normal document flow (relative mt-6 pb-32) enables full bottom scrolling! */}
             <div
-              className="absolute"
-              style={{ top: "22%", left: "8%", width: "34%" }}
+              className="relative z-10 mt-6 pb-32"
+              style={{ marginLeft: "8%", width: "35%" }}
             >
               <UploadPanel />
             </div>
