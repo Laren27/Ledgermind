@@ -238,7 +238,6 @@ export default function Home() {
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeView, setActiveView] = useState<ActiveView>("workbench");
 
-  // 1. Add state (Animation lifecycle)
   const [shiftPhase, setShiftPhase] = useState<ShiftPhase>(null);
   const [pendingPageIndex, setPendingPageIndex] = useState<number | null>(null);
 
@@ -262,7 +261,6 @@ export default function Home() {
       ? currentPageIndex
       : ledgerTotalPages;
 
-  // 2. Add the orchestrator (Coordinates exit/entry vectors)
   function handleNavigate(targetPage: number) {
     if (shiftPhase !== null || targetPage === currentPageIndex) return;
     const dir = targetPage > currentPageIndex ? "next" : "prev";
@@ -317,14 +315,12 @@ export default function Home() {
     }
   }
 
-  // 💡 Helper: Calculates dynamic Document ID for any page index
   function getDocId(idx: number) {
     const targetPage = idx > 0 && idx <= pages.length ? pages[idx - 1] : null;
     const targetAnswer = targetPage?.response ?? null;
     return targetAnswer ? `LM-WP-${targetAnswer.request_id.slice(0, 6).toUpperCase()}` : "LM-WP-PENDING";
   }
 
-  // 💡 Helper: Renders exact DOM content tree for any page index (Active or Underneath)
   function renderSheetContent(idx: number) {
     const targetPage = idx > 0 && idx <= pages.length ? pages[idx - 1] : null;
     const targetAnswer = targetPage?.response ?? null;
@@ -410,7 +406,7 @@ export default function Home() {
 
         {activeView === "upload" ? (
           <div
-            className="flex-1 relative"
+            className="flex-1 relative min-h-screen"
             style={{
               backgroundImage: "url(/assets/environment/office-desk.png)",
               backgroundSize: "cover",
@@ -434,9 +430,7 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Positioned to sit on the photo's own blank-paper area, not floating separately.
-                Percentages are tuned to this specific background image — adjust top/left/width
-                if the paper doesn't land exactly on the photo's blank sheet. */}
+            {/* Attached directly to the blank paper area of the background photo without floating card styles */}
             <div
               className="absolute"
               style={{ top: "22%", left: "8%", width: "34%" }}
@@ -446,7 +440,6 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex-1 py-12">
-            {/* 4. Update DocumentPage usage — wire shiftPhase, callback, and pre-loaded Underneath Content */}
             <DocumentPage
               docId={getDocId(ledgerCurrentPage)}
               pageNumber={ledgerCurrentPage}
