@@ -129,15 +129,8 @@ export function UploadPanel() {
   };
 
   return (
-    <div
-      className="relative space-y-10 p-10 rounded-sm"
-      style={{
-        background: "#F7F1E7",
-        boxShadow: "0 14px 50px rgba(0,0,0,0.4)",
-        border: "1px solid rgba(0,0,0,0.08)",
-        transform: "rotate(1.2deg)",
-      }}
-    >
+    <div className="relative space-y-8">
+      {/* Outer background, shadow, border, and rotation stripped to attach cleanly to background photo */}
       <ArchiveStamp status={lastStatus} />
 
       {/* Honesty banner — always visible, not just after upload */}
@@ -153,7 +146,7 @@ export function UploadPanel() {
       >
         Uploaded filings are stored immediately but are <strong>not queryable right away</strong>.
         Ingestion runs as a local, developer-triggered step — a filing becomes queryable only
-        after that step completes, which may take a few minutes and requires the developer's
+        after that step completes, which may take a few minutes and requires the developer&apos;s
         machine to be on and running the ingestion script.
       </div>
 
