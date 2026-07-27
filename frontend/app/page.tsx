@@ -19,8 +19,11 @@ import { QueryDock } from "@/components/document/QueryDock";
 import { Sidebar } from "@/components/document/Sidebar";
 import { PageNavigator } from "@/components/document/PageNavigator";
 import { AuditLogTable } from "@/components/document/AuditLogTable";
+import { UploadPanel } from "@/components/document/UploadPanel";
 
 const PEER_ENTITIES = ["Eternal", "Paytm"]; // Titan excluded: no annual-aggregate revenue in corpus, growth_comparison always fails for it (known limitation)
+
+type ActiveView = "workbench" | "peer" | "audit" | "upload";
 
 function cleanProseText(text: string): string {
   return text
@@ -233,7 +236,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [revisions, setRevisions] = useState<Record<string, number>>({});
-  const [activeView, setActiveView] = useState<"workbench" | "peer" | "audit">("workbench");
+  const [activeView, setActiveView] = useState<ActiveView>("workbench");
 
   // 1. Add state (Animation lifecycle)
   const [shiftPhase, setShiftPhase] = useState<ShiftPhase>(null);
@@ -389,7 +392,7 @@ export default function Home() {
           activeView={activeView}
           onViewChange={(view) => {
             setActiveView(view);
-            if (view !== "audit") setCurrentPageIndex(pages.length + 1);
+            if (view !== "audit" && view !== "upload") setCurrentPageIndex(pages.length + 1);
           }}
           onSignOut={() => {
             logout();
@@ -405,33 +408,50 @@ export default function Home() {
           ]}
         />
 
-        <div className="flex-1 py-12">
-          {/* 4. Update DocumentPage usage — wire shiftPhase, callback, and pre-loaded Underneath Content */}
-          <DocumentPage
-            docId={getDocId(ledgerCurrentPage)}
-            pageNumber={ledgerCurrentPage}
-            totalPages={ledgerTotalPages}
-            footerLabelOverride={activeView === "audit" ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED` : undefined}
-            confidential
-            isLoading={isLoading}
-            shiftPhase={shiftPhase}
-            onSheetTransitionEnd={handleSheetTransitionEnd}
-            underneathContent={pendingPageIndex !== null ? renderSheetContent(pendingPageIndex) : undefined}
-            underneathPageNumber={pendingPageIndex !== null ? pendingPageIndex : undefined}
-            underneathDocId={pendingPageIndex !== null ? getDocId(pendingPageIndex) : undefined}
-          >
-            {renderSheetContent(ledgerCurrentPage)}
-          </DocumentPage>
+        {activeView === "upload" ? (
+          <div className="flex-1 py-12 px-16 max-w-3xl">
+            <div
+              className="mb-10 pb-4 border-b"
+              style={{ borderColor: "var(--ink-divider, #D8CEC1)" }}
+            >
+              <h1 style={{ fontFamily: "var(--font-editorial, 'Fraunces', serif)", fontSize: 32, color: "var(--ink-primary, #2A241E)" }}>
+                Upload Filing
+              </h1>
+              <p style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "var(--ink-metadata, #8B8378)" }}>
+                Admin-only • Adds a new document to the corpus for review
+              </p>
+            </div>
+            <UploadPanel />
+          </div>
+        ) : (
+          <div className="flex-1 py-12">
+            {/* 4. Update DocumentPage usage — wire shiftPhase, callback, and pre-loaded Underneath Content */}
+            <DocumentPage
+              docId={getDocId(ledgerCurrentPage)}
+              pageNumber={ledgerCurrentPage}
+              totalPages={ledgerTotalPages}
+              footerLabelOverride={activeView === "audit" ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED` : undefined}
+              confidential
+              isLoading={isLoading}
+              shiftPhase={shiftPhase}
+              onSheetTransitionEnd={handleSheetTransitionEnd}
+              underneathContent={pendingPageIndex !== null ? renderSheetContent(pendingPageIndex) : undefined}
+              underneathPageNumber={pendingPageIndex !== null ? pendingPageIndex : undefined}
+              underneathDocId={pendingPageIndex !== null ? getDocId(pendingPageIndex) : undefined}
+            >
+              {renderSheetContent(ledgerCurrentPage)}
+            </DocumentPage>
 
-          {activeView !== "audit" && (
-            <PageNavigator
-              current={ledgerCurrentPage}
-              total={ledgerTotalPages}
-              onNavigate={handleNavigate}
-              disabled={shiftPhase !== null}
-            />
-          )}
-        </div>
+            {activeView !== "audit" && (
+              <PageNavigator
+                current={ledgerCurrentPage}
+                total={ledgerTotalPages}
+                onNavigate={handleNavigate}
+                disabled={shiftPhase !== null}
+              />
+            )}
+          </div>
+        )}
       </div>
     </DocumentEnvironment>
   );
