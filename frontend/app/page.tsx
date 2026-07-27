@@ -445,7 +445,7 @@ export default function Home() {
                 className="absolute z-10"
                 style={{
                   top: "14%",
-                  left: "12%",
+                  left: "13%",
                   width: "39%",
                   transform: "rotate(0deg)",
                   transformOrigin: "top left",
