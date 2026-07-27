@@ -408,7 +408,7 @@ export default function Home() {
           /* Same pattern as every other tab: flex-1 h-full overflow-y-auto is the
              ONE scrollbar for this whole pane. Sidebar (above) is a flex sibling
              outside this div entirely, so it never scrolls. */
-          <div className="flex-1 flex justify-center py-10 px-6 h-full overflow-y-auto" style={{ background: "#0d0a08" }}>
+          <div className="flex-1 flex justify-center py-10 px-6 h-full overflow-y-auto" style={{ background: "#1a120b" }}>
             {/* Workspace container: photo + paper are both children of this ONE
                 element, positioned by percentage — so as this container scrolls
                 as a single unit (photo included), the paper can never drift from
@@ -435,17 +435,6 @@ export default function Home() {
                   background: "linear-gradient(180deg, rgba(20,16,12,0.75) 0%, rgba(20,16,12,0.0) 100%)",
                 }}
               />
-
-              {/* Title anchored to top-left desk wood, outside the paper region */}
-              <div className="absolute z-10" style={{ top: "3%", left: "4%", right: "35%" }}>
-                <DocumentTitle color="#F5F0E6" dividerColor="rgba(245,240,230,0.25)">Archive Intake</DocumentTitle>
-                <p
-                  className="-mt-8"
-                  style={{ fontFamily: "var(--font-archival, monospace)", fontSize: 12, color: "#E8DFCF", letterSpacing: "0.04em" }}
-                >
-                  Register a new corporate filing into the LedgerMind archive.
-                </p>
-              </div>
 
               {/* Paper: positioned by percentage of THIS container (measured from
                   the photo's grid: top-left ~235,258 to bottom-right ~790,955 of
