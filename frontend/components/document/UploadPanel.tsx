@@ -6,6 +6,7 @@ import {
   fetchPendingUploads,
   type PendingUpload,
 } from "@/lib/api";
+import { ArchiveStamp } from "./ArchiveStamp";
 
 const DOC_TYPES = [
   { value: "annual_report", label: "Annual Report" },
@@ -40,6 +41,7 @@ export function UploadPanel() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
+  const [lastPendingId, setLastPendingId] = useState<string | null>(null);
 
   const [pending, setPending] = useState<PendingUpload[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
@@ -59,6 +61,10 @@ export function UploadPanel() {
   useEffect(() => {
     loadPending();
   }, [loadPending]);
+
+  const lastStatus = lastPendingId
+    ? pending.find((p) => p.id === lastPendingId)?.status ?? "pending"
+    : null;
 
   const resetForm = () => {
     setFile(null);
@@ -88,8 +94,9 @@ export function UploadPanel() {
         quarter: quarter || undefined,
       });
       setLastResult(
-        `Stored — "${file.name}" is pending ingestion (id: ${result.pending_id.slice(0, 8)}).`
+        `Registered — "${file.name}" is pending ingestion (id: ${result.pending_id.slice(0, 8)}).`
       );
+      setLastPendingId(result.pending_id);
       resetForm();
       loadPending();
     } catch (err) {
@@ -123,13 +130,16 @@ export function UploadPanel() {
 
   return (
     <div
-      className="space-y-10 p-10 rounded-sm"
+      className="relative space-y-10 p-10 rounded-sm"
       style={{
-        background: "#E6DFD3",
-        boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
+        background: "#F7F1E7",
+        boxShadow: "0 14px 50px rgba(0,0,0,0.4)",
         border: "1px solid rgba(0,0,0,0.08)",
+        transform: "rotate(1.2deg)",
       }}
     >
+      <ArchiveStamp status={lastStatus} />
+
       {/* Honesty banner — always visible, not just after upload */}
       <div
         className="px-4 py-3 text-[12.5px] leading-relaxed"
@@ -148,9 +158,9 @@ export function UploadPanel() {
       </div>
 
       {/* Upload form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label style={labelStyle}>PDF File</label>
+          <label style={labelStyle}>PDF Document</label>
           <input
             type="file"
             accept="application/pdf"
@@ -159,7 +169,7 @@ export function UploadPanel() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div>
             <label style={labelStyle}>Company</label>
             <input
@@ -182,7 +192,7 @@ export function UploadPanel() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div>
             <label style={labelStyle}>Fiscal Year</label>
             <input
@@ -205,7 +215,7 @@ export function UploadPanel() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div>
             <label style={labelStyle}>Document Type</label>
             <select
@@ -232,17 +242,20 @@ export function UploadPanel() {
         <button
           type="submit"
           disabled={submitting || !file || !company || !ticker || !fiscalYear || !filingDate}
-          className="px-4 py-2 text-xs font-semibold tracking-[0.16em] uppercase transition-all"
+          className="px-5 py-2.5 text-xs font-semibold tracking-[0.18em] uppercase transition-all"
           style={{
             fontFamily: "var(--font-archival, monospace)",
             color: submitting ? "#B7AEA3" : "#2A241E",
-            background: "#D8CEB8",
+            background: "#DCD0B4",
             border: "1px solid #B9AB8E",
-            borderRadius: 4,
+            borderRadius: 3,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.15)",
             cursor: submitting ? "default" : "pointer",
           }}
+          onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
         >
-          {submitting ? "Uploading…" : "Execute Upload →"}
+          {submitting ? "Registering…" : "Register Filing →"}
         </button>
 
         {submitError && (
@@ -257,10 +270,10 @@ export function UploadPanel() {
         )}
       </form>
 
-      {/* Pending uploads status list */}
+      {/* Pending uploads status list — real data, matches ArchiveStamp values */}
       <div className="space-y-3 pt-6 border-t" style={{ borderColor: "#C9BDA9" }}>
         <div className="flex items-center justify-between">
-          <div style={labelStyle}>Upload Status</div>
+          <div style={labelStyle}>Registration History</div>
           <button
             type="button"
             onClick={loadPending}
@@ -273,7 +286,7 @@ export function UploadPanel() {
 
         {pending.length === 0 ? (
           <div className="text-[12.5px]" style={{ color: "#8B7355", fontFamily: "var(--font-body)" }}>
-            No uploads yet.
+            No filings registered yet.
           </div>
         ) : (
           <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 12.5 }}>
@@ -282,7 +295,7 @@ export function UploadPanel() {
                 <td style={{ padding: "4px 0" }}>COMPANY</td>
                 <td style={{ padding: "4px 0" }}>PERIOD</td>
                 <td style={{ padding: "4px 0" }}>STATUS</td>
-                <td style={{ padding: "4px 0", textAlign: "right" }}>UPLOADED</td>
+                <td style={{ padding: "4px 0", textAlign: "right" }}>REGISTERED</td>
               </tr>
             </thead>
             <tbody>
