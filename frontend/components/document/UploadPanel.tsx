@@ -28,7 +28,7 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
 interface UploadPanelProps {
   pending: PendingUpload[];
   loadingPending: boolean;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
   onViewHistory: () => void;
 }
 
@@ -77,9 +77,13 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         filingDate,
         quarter: quarter || undefined,
       });
+      // Await this fully before clearing "submitting" — previously fired
+      // without awaiting, so the UI could report success and show the
+      // stamp before the new row had actually landed in `pending`,
+      // producing a brief stale-list flash until the fetch caught up.
+      await onRefresh();
       setLastPendingId(result.pending_id);
       resetForm();
-      onRefresh();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -277,12 +281,10 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         )}
       </form>
 
-      {/* No cap, no slicing — every row renders, but confined to a fixed
-          max-height scroll region with a sticky header. This is the real
-          fix: the SECTION'S height is now constant regardless of how many
-          uploads exist, so the paper can never overflow from data growth.
-          "View Full Upload History" is now a permanent, always-visible link
-          (previously conditional on hasMore — removed along with the cap). */}
+      {/* Fixed HEIGHT (not maxHeight) whenever there's data — the box is
+          exactly 168px tall from the very first paint, never dependent on
+          measuring content first. Custom scrollbar colors via styled-jsx:
+          muted brown thumb, cream track, matching the paper palette. */}
       <div className="space-y-3 pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Registration History</div>
@@ -302,8 +304,8 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
           </div>
         ) : (
           <div
-            className="overflow-y-auto rounded-sm"
-            style={{ maxHeight: 168, border: "1px solid rgba(184, 170, 145, 0.4)" }}
+            className="ledger-scroll overflow-y-auto rounded-sm"
+            style={{ height: 168, border: "1px solid rgba(184, 170, 145, 0.4)" }}
           >
             <table
               className="w-full border-collapse"
@@ -364,6 +366,27 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
           </button>
         </div>
       </div>
+
+      <style jsx>{`
+        .ledger-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #8c7a64 #efe6d3;
+        }
+        .ledger-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+        .ledger-scroll::-webkit-scrollbar-track {
+          background: #efe6d3;
+        }
+        .ledger-scroll::-webkit-scrollbar-thumb {
+          background-color: #8c7a64;
+          border-radius: 4px;
+          border: 2px solid #efe6d3;
+        }
+        .ledger-scroll::-webkit-scrollbar-thumb:hover {
+          background-color: #6f6050;
+        }
+      `}</style>
     </div>
   );
 }
