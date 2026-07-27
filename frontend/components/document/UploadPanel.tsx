@@ -133,8 +133,35 @@ export function UploadPanel() {
   };
 
   return (
-    <div className="relative space-y-8">
+    <div className="relative space-y-8 px-10 pt-14 pb-10">
       <ArchiveStamp status={lastStatus} />
+
+      {/* Title lives INSIDE the paper now (with real top margin), not floating
+          over the photo separately — this is what the paper's own generous
+          blank header margin was designed to hold. */}
+      <div className="mb-2">
+        <h2
+          style={{
+            fontFamily: "var(--font-editorial, 'Fraunces', Georgia, serif)",
+            fontSize: 26,
+            color: "#1A140E",
+            marginBottom: 6,
+          }}
+        >
+          Archive Intake
+        </h2>
+        <p
+          style={{
+            fontFamily: "var(--font-archival, monospace)",
+            fontSize: 11.5,
+            color: "#5C4D3C",
+            letterSpacing: "0.03em",
+          }}
+        >
+          Register a new corporate filing into the LedgerMind archive.
+        </p>
+        <div className="mt-4 border-b" style={{ borderColor: "#A89880" }} />
+      </div>
 
       {/* Honesty banner — crisp dark text over structured translucent parchment box */}
       <div
