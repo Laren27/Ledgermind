@@ -32,7 +32,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 
 from app.auth.dependencies import require_role
-from app.db.session import db_transaction
+from app.db.session import db_transaction, get_connection
 from app.ingestion.gate import GateDecision, check_is_financial_filing
 from app.ingestion.pdf_text import extract_first_n_pages_text
 from app.ingestion.storage import upload_file_to_storage
@@ -133,4 +133,56 @@ async def upload_document(
         "status": "pending",
         "gate_score": gate_result.score,
         "message": "File stored. Run process_pending_uploads.py to ingest.",
+    }
+
+
+_SQL_FETCH_PENDING_FOR_TENANT = """
+SELECT id, storage_key, company, ticker, fiscal_year, quarter,
+       doc_type, filing_date, version, status, error_message,
+       created_at, updated_at
+FROM pending_uploads
+ORDER BY created_at DESC
+LIMIT 50
+"""
+
+
+@router.get("/pending")
+async def list_pending_uploads(
+    user: dict = Depends(require_role("admin")),
+):
+    """
+    Admin-only. Lists this tenant's pending_uploads rows so the frontend
+    can show real ingestion status (pending/processing/done/failed)
+    instead of a static "check back later" message.
+    """
+    tenant_id = user["tenant_id"]
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SET app.tenant_id = %s", (tenant_id,))
+            cur.execute(_SQL_FETCH_PENDING_FOR_TENANT)
+            cols = [desc[0] for desc in cur.description]
+            rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+    return {
+        "pending_uploads": [
+            {
+                "id": str(r["id"]),
+                "storage_key": r["storage_key"],
+                "company": r["company"],
+                "ticker": r["ticker"],
+                "fiscal_year": r["fiscal_year"],
+                "quarter": r["quarter"],
+                "doc_type": r["doc_type"],
+                "filing_date": r["filing_date"],
+                "version": r["version"],
+                "status": r["status"],
+                "error_message": r["error_message"],
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+                "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None,
+            }
+            for r in rows
+        ]
     }
