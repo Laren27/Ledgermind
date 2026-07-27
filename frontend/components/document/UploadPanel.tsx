@@ -25,7 +25,7 @@ const STATUS_LABEL: Record<PendingUpload["status"], string> = {
 const STATUS_COLOR: Record<PendingUpload["status"], string> = {
   pending: "#8B7355",
   processing: "#B58A3C",
-  done: "#2E6B4A",
+  done: "#1E5C3A",
   failed: "#B0453A",
 };
 
@@ -106,41 +106,44 @@ export function UploadPanel() {
     }
   };
 
+  // Upgraded to semi-transparent parchment fill with crisp archival border for sharp contrast
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
     fontSize: 14,
-    color: "#2A241E",
-    background: "#F2ECE1",
-    border: "1px solid #C9BDA9",
+    color: "#1A1612",
+    background: "rgba(255, 255, 255, 0.65)",
+    border: "1px solid #B5A695",
     borderRadius: 4,
-    padding: "8px 10px",
+    padding: "9px 12px",
     width: "100%",
+    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.05)",
     colorScheme: "light",
   };
 
+  // Darkened label font to deep ink (#3D3124) with bold weight to pop against shaded folder
   const labelStyle: React.CSSProperties = {
     fontFamily: "var(--font-archival, monospace)",
-    fontSize: 10.5,
+    fontSize: 11,
+    fontWeight: 600,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
-    color: "#8B7355",
+    color: "#3D3124",
     display: "block",
-    marginBottom: 4,
+    marginBottom: 6,
   };
 
   return (
     <div className="relative space-y-8">
-      {/* Outer background, shadow, border, and rotation stripped to attach cleanly to background photo */}
       <ArchiveStamp status={lastStatus} />
 
-      {/* Honesty banner — always visible, not just after upload */}
+      {/* Honesty banner — crisp dark text over brightened semi-transparent background */}
       <div
-        className="px-4 py-3 text-[12.5px] leading-relaxed"
+        className="px-4 py-3.5 text-[12.5px] leading-relaxed shadow-sm"
         style={{
           fontFamily: "var(--font-body)",
-          color: "#4A4238",
-          background: "rgba(181, 138, 60, 0.12)",
-          border: "1px solid rgba(181, 138, 60, 0.35)",
+          color: "#2A2218",
+          background: "rgba(255, 255, 255, 0.55)",
+          border: "1px solid #B8A690",
           borderRadius: 4,
         }}
       >
@@ -235,78 +238,77 @@ export function UploadPanel() {
         <button
           type="submit"
           disabled={submitting || !file || !company || !ticker || !fiscalYear || !filingDate}
-          className="px-5 py-2.5 text-xs font-semibold tracking-[0.18em] uppercase transition-all"
+          className="px-6 py-3 text-xs font-bold tracking-[0.2em] uppercase transition-all shadow-sm"
           style={{
             fontFamily: "var(--font-archival, monospace)",
-            color: submitting ? "#B7AEA3" : "#2A241E",
-            background: "#DCD0B4",
-            border: "1px solid #B9AB8E",
+            color: submitting ? "#8C8273" : "#1A1612",
+            background: "#D4C5A9",
+            border: "1px solid #A8987C",
             borderRadius: 3,
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.15)",
             cursor: submitting ? "default" : "pointer",
           }}
-          onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.transform = "translateY(-1px)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
         >
           {submitting ? "Registering…" : "Register Filing →"}
         </button>
 
         {submitError && (
-          <div className="text-[12.5px]" style={{ color: "#B0453A", fontFamily: "var(--font-body)" }}>
+          <div className="text-[13px] font-semibold" style={{ color: "#B0453A", fontFamily: "var(--font-body)" }}>
             {submitError}
           </div>
         )}
         {lastResult && (
-          <div className="text-[12.5px]" style={{ color: "#2E6B4A", fontFamily: "var(--font-body)" }}>
+          <div className="text-[13px] font-semibold" style={{ color: "#1E5C3A", fontFamily: "var(--font-body)" }}>
             {lastResult}
           </div>
         )}
       </form>
 
-      {/* Pending uploads status list — real data, matches ArchiveStamp values */}
-      <div className="space-y-3 pt-6 border-t" style={{ borderColor: "#C9BDA9" }}>
+      {/* Registration history with sharpened divider line (#B5A695) and darkened table fonts */}
+      <div className="space-y-4 pt-8 border-t" style={{ borderColor: "#B5A695" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Registration History</div>
           <button
             type="button"
             onClick={loadPending}
-            className="text-[11px] uppercase tracking-[0.12em] transition-opacity hover:opacity-70"
-            style={{ fontFamily: "var(--font-body)", color: "#8B7355", background: "none", border: "none", cursor: "pointer" }}
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
+            style={{ fontFamily: "var(--font-body)", color: "#3D3124", background: "none", border: "none", cursor: "pointer" }}
           >
             {loadingPending ? "Refreshing…" : "↻ Refresh"}
           </button>
         </div>
 
         {pending.length === 0 ? (
-          <div className="text-[12.5px]" style={{ color: "#8B7355", fontFamily: "var(--font-body)" }}>
+          <div className="text-[13px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
             No filings registered yet.
           </div>
         ) : (
-          <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 12.5 }}>
+          <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 13 }}>
             <thead>
-              <tr style={{ color: "#8B7355", fontSize: 10 }}>
-                <td style={{ padding: "4px 0" }}>COMPANY</td>
-                <td style={{ padding: "4px 0" }}>PERIOD</td>
-                <td style={{ padding: "4px 0" }}>STATUS</td>
-                <td style={{ padding: "4px 0", textAlign: "right" }}>REGISTERED</td>
+              <tr style={{ color: "#4A3D2C", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em" }}>
+                <td style={{ padding: "6px 0" }}>COMPANY</td>
+                <td style={{ padding: "6px 0" }}>PERIOD</td>
+                <td style={{ padding: "6px 0" }}>STATUS</td>
+                <td style={{ padding: "6px 0", textAlign: "right" }}>REGISTERED</td>
               </tr>
             </thead>
             <tbody>
               {pending.map((row) => (
-                <tr key={row.id} style={{ borderTop: "1px solid #C9BDA9", color: "#2A241E" }}>
-                  <td style={{ padding: "6px 0" }}>{row.company}</td>
-                  <td style={{ padding: "6px 0" }}>
+                <tr key={row.id} style={{ borderTop: "1px solid #C8B9A6", color: "#1A1612" }}>
+                  <td style={{ padding: "8px 0", fontWeight: 600 }}>{row.company}</td>
+                  <td style={{ padding: "8px 0" }}>
                     {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
                   </td>
-                  <td style={{ padding: "6px 0", color: STATUS_COLOR[row.status], fontWeight: 600 }}>
+                  <td style={{ padding: "8px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
                     {STATUS_LABEL[row.status]}
                     {row.status === "failed" && row.error_message && (
-                      <div style={{ fontWeight: 400, fontSize: 11, opacity: 0.8 }}>
+                      <div style={{ fontWeight: 400, fontSize: 11.5, opacity: 0.85, color: "#B0453A" }}>
                         {row.error_message.slice(0, 120)}
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: "6px 0", textAlign: "right", fontSize: 11, opacity: 0.75 }}>
+                  <td style={{ padding: "8px 0", textAlign: "right", fontSize: 11.5, color: "#4A3D2C" }}>
                     {new Date(row.created_at).toLocaleString()}
                   </td>
                 </tr>
