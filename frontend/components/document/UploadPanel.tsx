@@ -25,11 +25,6 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
   failed: "#B0453A",
 };
 
-// This photo's photographed paper region cannot hold 3 real history rows
-// plus everything above it without overflowing onto raw wood (verified
-// 2026-07-28 with real test uploads).
-const INTAKE_PREVIEW_COUNT = 2;
-
 interface UploadPanelProps {
   pending: PendingUpload[];
   loadingPending: boolean;
@@ -57,7 +52,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
 
   const resetForm = () => {
     setFile(null);
-    setFileInputKey((k) => k + 1); // forces the file input to remount, clearing its native display
+    setFileInputKey((k) => k + 1);
     setCompany("");
     setTicker("");
     setFiscalYear("");
@@ -116,9 +111,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
     marginBottom: 3,
   };
 
-  const historyPreview = pending.slice(0, INTAKE_PREVIEW_COUNT);
-  const hasMore = pending.length > INTAKE_PREVIEW_COUNT;
-
   return (
     <div className="relative space-y-5 px-[78px] pt-11 pb-9">
       <ArchiveStamp status={lastStatus} />
@@ -171,10 +163,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
             accept="application/pdf"
             onChange={(e) => {
               setFile(e.target.files?.[0] ?? null);
-              // Starting a new file selection means the user is beginning a
-              // new registration attempt — the previous submission's
-              // confirmation stamp is no longer relevant and would be
-              // misleading if left showing.
               setLastPendingId(null);
             }}
             className="file:mr-3 file:px-3 file:py-1.5 file:rounded-[3px] file:border file:border-[#9C8C72] file:bg-[#D9CDB5] file:text-[#1A140E] file:text-xs file:font-bold file:uppercase file:tracking-wide file:cursor-pointer file:font-mono hover:file:bg-[#CFC0A2]"
@@ -289,6 +277,12 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         )}
       </form>
 
+      {/* No cap, no slicing — every row renders, but confined to a fixed
+          max-height scroll region with a sticky header. This is the real
+          fix: the SECTION'S height is now constant regardless of how many
+          uploads exist, so the paper can never overflow from data growth.
+          "View Full Upload History" is now a permanent, always-visible link
+          (previously conditional on hasMore — removed along with the cap). */}
       <div className="space-y-3 pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Registration History</div>
@@ -307,7 +301,10 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
             No filings registered yet.
           </div>
         ) : (
-          <>
+          <div
+            className="overflow-y-auto rounded-sm"
+            style={{ maxHeight: 168, border: "1px solid rgba(184, 170, 145, 0.4)" }}
+          >
             <table
               className="w-full border-collapse"
               style={{ fontFamily: "var(--font-body)", fontSize: 12.5, tableLayout: "fixed" }}
@@ -319,43 +316,53 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
                 <col style={{ width: "22%" }} />
               </colgroup>
               <thead>
-                <tr style={{ color: "#5C4D3C", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em" }}>
-                  <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
+                <tr
+                  style={{
+                    color: "#5C4D3C",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    position: "sticky",
+                    top: 0,
+                    background: "rgba(239, 231, 212, 0.97)",
+                  }}
+                >
+                  <td style={{ padding: "6px 8px 6px 8px", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
                   <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
                   <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
-                  <td style={{ padding: "6px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
+                  <td style={{ padding: "6px 8px 6px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
                 </tr>
               </thead>
               <tbody>
-                {historyPreview.map((row) => (
+                {pending.map((row) => (
                   <tr key={row.id} style={{ borderBottom: "1px solid #E2DACB", color: "#1A140E" }}>
-                    <td style={{ padding: "8px 8px 8px 0", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
+                    <td style={{ padding: "8px 8px 8px 8px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
                     <td style={{ padding: "8px 8px 8px 0" }}>
                       {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
                     </td>
                     <td style={{ padding: "8px 8px 8px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
                       {STATUS_LABEL[row.status]}
                     </td>
-                    <td style={{ padding: "8px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
+                    <td style={{ padding: "8px 8px 8px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
                       {new Date(row.created_at).toLocaleString()}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="text-[11.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
-              {hasMore ? "Showing latest 2 registrations. " : ""}
-              <button
-                type="button"
-                onClick={onViewHistory}
-                className="font-bold underline transition-opacity hover:opacity-70"
-                style={{ color: "#2A221A", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-              >
-                View Full Upload History →
-              </button>
-            </div>
-          </>
+          </div>
         )}
+
+        <div className="text-[11.5px] pt-1" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+          <button
+            type="button"
+            onClick={onViewHistory}
+            className="font-bold underline transition-opacity hover:opacity-70"
+            style={{ color: "#2A221A", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          >
+            View Full Upload History →
+          </button>
+        </div>
       </div>
     </div>
   );
