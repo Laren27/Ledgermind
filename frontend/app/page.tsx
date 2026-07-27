@@ -407,11 +407,13 @@ export default function Home() {
         {activeView === "upload" ? (
           /* Step 1: Outer desk locked to fullscreen (h-screen overflow-hidden). The photo never scrolls or moves! */
           <div
-            className="flex-1 relative h-screen overflow-hidden"
+            className="flex-1 relative"
             style={{
               backgroundImage: "url(/assets/environment/office-desk.png)",
               backgroundSize: "cover",
-              backgroundPosition: "center",
+              backgroundPosition: "center top",
+              backgroundAttachment: "fixed",
+              minHeight: "100vh",
             }}
           >
             {/* Top Scrim ensures header legibility against the wooden filing boxes */}
@@ -423,7 +425,7 @@ export default function Home() {
             />
 
             {/* Title safely anchored to the top-left desk wood outside the scrolling paper */}
-            <div className="relative z-10 pt-10 pl-14 pr-16">
+            <div className="relative z-10 pt-10 pl-14 pr-16 mb-6">
               <DocumentTitle color="#F5F0E6" dividerColor="rgba(245,240,230,0.25)">Archive Intake</DocumentTitle>
               <p
                 className="-mt-8 mb-2"
@@ -437,16 +439,14 @@ export default function Home() {
                 Anchored directly over the manila folder paper in the photo.
                 overflow-y-auto is placed HERE so scrolling happens strictly inside the paper boundaries!
                 Text will NEVER slide up into the wooden trays or drift off the desk! */}
+            {/* Flows with normal page scroll — no inner scrollport.
+                Positioned to sit within the photo's paper region. */}
             <div
-              className="absolute z-10 overflow-y-auto"
+              className="relative z-10"
               style={{
-                top: "20%",
-                left: "13%",
+                marginLeft: "13%",
                 width: "31%",
-                height: "72vh",
-                paddingRight: 14,
-                paddingBottom: 40,
-                scrollbarWidth: "thin",
+                paddingBottom: 120,
               }}
             >
               <UploadPanel />
