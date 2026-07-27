@@ -106,28 +106,28 @@ export function UploadPanel() {
     }
   };
 
-  // Upgraded to semi-transparent parchment fill with crisp archival border for sharp contrast
+  // Sharpened: Translucent parchment fill so inputs blend into paper, crisp archival border (#A89880)
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
     fontSize: 14,
-    color: "#1A1612",
-    background: "rgba(255, 255, 255, 0.65)",
-    border: "1px solid #B5A695",
-    borderRadius: 4,
+    color: "#1A140E",
+    background: "rgba(255, 255, 255, 0.5)",
+    border: "1px solid #A89880",
+    borderRadius: 3,
     padding: "9px 12px",
     width: "100%",
-    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.05)",
+    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.06)",
     colorScheme: "light",
   };
 
-  // Darkened label font to deep ink (#3D3124) with bold weight to pop against shaded folder
+  // Darkened: Deep archival ink (#2A221A) with bold weight to pop legibly against folder shadows
   const labelStyle: React.CSSProperties = {
     fontFamily: "var(--font-archival, monospace)",
     fontSize: 11,
-    fontWeight: 600,
-    letterSpacing: "0.14em",
+    fontWeight: 700,
+    letterSpacing: "0.15em",
     textTransform: "uppercase",
-    color: "#3D3124",
+    color: "#2A221A",
     display: "block",
     marginBottom: 6,
   };
@@ -136,14 +136,14 @@ export function UploadPanel() {
     <div className="relative space-y-8">
       <ArchiveStamp status={lastStatus} />
 
-      {/* Honesty banner — crisp dark text over brightened semi-transparent background */}
+      {/* Honesty banner — crisp dark text over structured translucent parchment box */}
       <div
         className="px-4 py-3.5 text-[12.5px] leading-relaxed shadow-sm"
         style={{
           fontFamily: "var(--font-body)",
-          color: "#2A2218",
-          background: "rgba(255, 255, 255, 0.55)",
-          border: "1px solid #B8A690",
+          color: "#2A221A",
+          background: "rgba(255, 255, 255, 0.6)",
+          border: "1px solid #A89880",
           borderRadius: 4,
         }}
       >
@@ -241,9 +241,9 @@ export function UploadPanel() {
           className="px-6 py-3 text-xs font-bold tracking-[0.2em] uppercase transition-all shadow-sm"
           style={{
             fontFamily: "var(--font-archival, monospace)",
-            color: submitting ? "#8C8273" : "#1A1612",
+            color: submitting ? "#8C8273" : "#1A140E",
             background: "#D4C5A9",
-            border: "1px solid #A8987C",
+            border: "1px solid #9C8C72",
             borderRadius: 3,
             cursor: submitting ? "default" : "pointer",
           }}
@@ -265,15 +265,15 @@ export function UploadPanel() {
         )}
       </form>
 
-      {/* Registration history with sharpened divider line (#B5A695) and darkened table fonts */}
-      <div className="space-y-4 pt-8 border-t" style={{ borderColor: "#B5A695" }}>
+      {/* Registration history: Sharpened 2px top divider (#8C7A64) and rich ink typography */}
+      <div className="space-y-4 pt-8 border-t-2" style={{ borderColor: "#8C7A64" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Registration History</div>
           <button
             type="button"
             onClick={loadPending}
-            className="text-[11px] font-semibold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
-            style={{ fontFamily: "var(--font-body)", color: "#3D3124", background: "none", border: "none", cursor: "pointer" }}
+            className="text-[11px] font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
+            style={{ fontFamily: "var(--font-body)", color: "#2A221A", background: "none", border: "none", cursor: "pointer" }}
           >
             {loadingPending ? "Refreshing…" : "↻ Refresh"}
           </button>
@@ -286,21 +286,21 @@ export function UploadPanel() {
         ) : (
           <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 13 }}>
             <thead>
-              <tr style={{ color: "#4A3D2C", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em" }}>
-                <td style={{ padding: "6px 0" }}>COMPANY</td>
-                <td style={{ padding: "6px 0" }}>PERIOD</td>
-                <td style={{ padding: "6px 0" }}>STATUS</td>
-                <td style={{ padding: "6px 0", textAlign: "right" }}>REGISTERED</td>
+              <tr style={{ color: "#5C4D3C", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em" }}>
+                <td style={{ padding: "8px 0", borderBottom: "1px solid #A89880" }}>COMPANY</td>
+                <td style={{ padding: "8px 0", borderBottom: "1px solid #A89880" }}>PERIOD</td>
+                <td style={{ padding: "8px 0", borderBottom: "1px solid #A89880" }}>STATUS</td>
+                <td style={{ padding: "8px 0", textAlign: "right", borderBottom: "1px solid #A89880" }}>REGISTERED</td>
               </tr>
             </thead>
             <tbody>
               {pending.map((row) => (
-                <tr key={row.id} style={{ borderTop: "1px solid #C8B9A6", color: "#1A1612" }}>
-                  <td style={{ padding: "8px 0", fontWeight: 600 }}>{row.company}</td>
-                  <td style={{ padding: "8px 0" }}>
+                <tr key={row.id} style={{ borderBottom: "1px solid #D4C7B5", color: "#1A140E" }}>
+                  <td style={{ padding: "10px 0", fontWeight: 700 }}>{row.company}</td>
+                  <td style={{ padding: "10px 0" }}>
                     {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
                   </td>
-                  <td style={{ padding: "8px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
+                  <td style={{ padding: "10px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
                     {STATUS_LABEL[row.status]}
                     {row.status === "failed" && row.error_message && (
                       <div style={{ fontWeight: 400, fontSize: 11.5, opacity: 0.85, color: "#B0453A" }}>
@@ -308,7 +308,7 @@ export function UploadPanel() {
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: "8px 0", textAlign: "right", fontSize: 11.5, color: "#4A3D2C" }}>
+                  <td style={{ padding: "10px 0", textAlign: "right", fontSize: 11.5, color: "#4A3D2C" }}>
                     {new Date(row.created_at).toLocaleString()}
                   </td>
                 </tr>
