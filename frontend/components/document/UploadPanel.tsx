@@ -1,11 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import {
-  uploadDocument,
-  fetchPendingUploads,
-  type PendingUpload,
-} from "@/lib/api";
+import { useState } from "react";
+import { uploadDocument, type PendingUpload } from "@/lib/api";
 import { ArchiveStamp } from "./ArchiveStamp";
 
 const DOC_TYPES = [
@@ -29,9 +25,19 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
   failed: "#B0453A",
 };
 
-const HISTORY_PREVIEW_COUNT = 4;
+// Permanent design decision, not a temporary cap: Archive Intake is a
+// registration desk, not an archive browser. It always shows exactly the
+// latest 3 registrations — see Upload History for the full record.
+const INTAKE_PREVIEW_COUNT = 3;
 
-export function UploadPanel() {
+interface UploadPanelProps {
+  pending: PendingUpload[];
+  loadingPending: boolean;
+  onRefresh: () => void;
+  onViewHistory: () => void;
+}
+
+export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory }: UploadPanelProps) {
   const [file, setFile] = useState<File | null>(null);
   const [company, setCompany] = useState("");
   const [ticker, setTicker] = useState("");
@@ -44,25 +50,6 @@ export function UploadPanel() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [lastPendingId, setLastPendingId] = useState<string | null>(null);
-
-  const [pending, setPending] = useState<PendingUpload[]>([]);
-  const [loadingPending, setLoadingPending] = useState(false);
-
-  const loadPending = useCallback(async () => {
-    setLoadingPending(true);
-    try {
-      const rows = await fetchPendingUploads();
-      setPending(rows);
-    } catch {
-      // silent — this list is a convenience view, not critical path
-    } finally {
-      setLoadingPending(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadPending();
-  }, [loadPending]);
 
   const lastStatus = lastPendingId
     ? pending.find((p) => p.id === lastPendingId)?.status ?? "pending"
@@ -100,7 +87,7 @@ export function UploadPanel() {
       );
       setLastPendingId(result.pending_id);
       resetForm();
-      loadPending();
+      onRefresh();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -108,8 +95,6 @@ export function UploadPanel() {
     }
   };
 
-  // Softened further: lighter border, no inset shadow, lower-contrast so the
-  // paper (not the inputs) stays visually dominant per design review notes.
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
     fontSize: 13.5,
@@ -134,11 +119,11 @@ export function UploadPanel() {
     marginBottom: 3,
   };
 
-  const historyPreview = pending.slice(0, HISTORY_PREVIEW_COUNT);
-  const hiddenCount = pending.length - historyPreview.length;
+  const historyPreview = pending.slice(0, INTAKE_PREVIEW_COUNT);
+  const hasMore = pending.length > INTAKE_PREVIEW_COUNT;
 
   return (
-    <div className="relative space-y-5 px-10 pt-8 pb-8">
+    <div className="relative space-y-5 px-10 pt-8 pb-8" style={{ backgroundColor: "#DCCFB6" }}>
       <ArchiveStamp status={lastStatus} />
 
       <div className="mb-1">
@@ -165,8 +150,6 @@ export function UploadPanel() {
         <div className="mt-3 border-b" style={{ borderColor: "#C9BFA9" }} />
       </div>
 
-      {/* Notice — trimmed to one line; full explanation still lives in the
-          status labels below (Pending/Processing/Indexed), so nothing is lost. */}
       <div
         className="px-4 py-2.5 text-[12px] leading-snug"
         style={{
@@ -302,14 +285,14 @@ export function UploadPanel() {
         )}
       </form>
 
-      {/* Registration history: capped preview, not an unbounded growing table —
-          Audit Trail is the honest full record; this is just a quick glance. */}
+      {/* Permanent fixed-size preview — always exactly the latest 3, never grows.
+          Full record lives in Upload History (CSS-paper page, unbounded). */}
       <div className="space-y-3 pt-5 border-t-2" style={{ borderColor: "#8C7A64" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Registration History</div>
           <button
             type="button"
-            onClick={loadPending}
+            onClick={onRefresh}
             className="text-[10.5px] font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
             style={{ fontFamily: "var(--font-body)", color: "#2A221A", background: "none", border: "none", cursor: "pointer" }}
           >
@@ -341,11 +324,6 @@ export function UploadPanel() {
                     </td>
                     <td style={{ padding: "8px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
                       {STATUS_LABEL[row.status]}
-                      {row.status === "failed" && row.error_message && (
-                        <div style={{ fontWeight: 400, fontSize: 11, opacity: 0.85, color: "#B0453A" }}>
-                          {row.error_message.slice(0, 120)}
-                        </div>
-                      )}
                     </td>
                     <td style={{ padding: "8px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
                       {new Date(row.created_at).toLocaleString()}
@@ -354,11 +332,17 @@ export function UploadPanel() {
                 ))}
               </tbody>
             </table>
-            {hiddenCount > 0 && (
-              <div className="text-[11.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
-                +{hiddenCount} earlier {hiddenCount === 1 ? "filing" : "filings"} — see Audit Trail for the full record.
-              </div>
-            )}
+            <div className="text-[11.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+              {hasMore ? "Showing latest 3 registrations. " : ""}
+              <button
+                type="button"
+                onClick={onViewHistory}
+                className="font-bold underline transition-opacity hover:opacity-70"
+                style={{ color: "#2A221A", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              >
+                View Full Upload History →
+              </button>
+            </div>
           </>
         )}
       </div>
