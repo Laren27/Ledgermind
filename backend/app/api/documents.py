@@ -32,7 +32,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 
 from app.auth.dependencies import require_role
-from app.db.session import db_transaction, get_connection
+from app.db.session import db_transaction
 from app.ingestion.gate import GateDecision, check_is_financial_filing
 from app.ingestion.pdf_text import extract_first_n_pages_text
 from app.ingestion.storage import upload_file_to_storage
@@ -156,15 +156,11 @@ async def list_pending_uploads(
     instead of a static "check back later" message.
     """
     tenant_id = user["tenant_id"]
-    conn = get_connection()
-    try:
+    with db_transaction(tenant_id) as conn:
         with conn.cursor() as cur:
-            cur.execute("SET app.tenant_id = %s", (tenant_id,))
             cur.execute(_SQL_FETCH_PENDING_FOR_TENANT)
             cols = [desc[0] for desc in cur.description]
             rows = [dict(zip(cols, row)) for row in cur.fetchall()]
-    finally:
-        conn.close()
 
     return {
         "pending_uploads": [
