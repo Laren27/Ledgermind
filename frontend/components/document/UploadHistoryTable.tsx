@@ -69,7 +69,7 @@ export function UploadHistoryTable({
         </button>
       </div>
 
-      <div className="mb-5 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3">
         <input
           type="text"
           value={search}
@@ -102,60 +102,79 @@ export function UploadHistoryTable({
         </select>
       </div>
 
-      <table className="w-full border-collapse text-left font-mono" style={{ fontSize: "12px" }}>
-        <thead>
-          <tr className="border-b text-[10.5px] uppercase tracking-[0.16em]" style={{ borderColor: "var(--ink-divider, rgba(215, 206, 195, 0.55))", color: "var(--ink-metadata, #8B8378)" }}>
-            <th className="py-3 pr-4 font-semibold">Company</th>
-            <th className="py-3 pr-4 font-semibold">Period</th>
-            <th className="py-3 pr-4 font-semibold">Type</th>
-            <th className="py-3 pr-6 font-semibold">Status</th>
-            <th className="py-3 pr-4 font-semibold text-right">Registered</th>
-            <th className="py-3 text-right font-semibold">Last Updated</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="py-12 text-center font-mono text-xs italic" style={{ color: "var(--ink-passive, #B7AEA3)" }}>
-                {uploads.length === 0 ? "No filings registered yet." : "No uploads match this filter."}
-              </td>
+      {/* Scoped internal scroll: the table region has a bounded max-height with
+          its own scrollbar, and the header row stays pinned (sticky) while
+          scrolling. Search/filter/title above stay visible without needing to
+          scroll the whole document page — unbounded DATA doesn't require an
+          unbounded physical page. */}
+      <div
+        className="overflow-y-auto rounded-sm"
+        style={{ maxHeight: 480, border: "1px solid var(--ink-divider, rgba(215, 206, 195, 0.55))" }}
+      >
+        <table className="w-full border-collapse text-left font-mono" style={{ fontSize: "12px" }}>
+          <thead>
+            <tr
+              className="text-[10.5px] uppercase tracking-[0.16em]"
+              style={{
+                color: "var(--ink-metadata, #8B8378)",
+                position: "sticky",
+                top: 0,
+                background: "var(--theme-surface-paper, #E7DED0)",
+                boxShadow: "0 1px 0 var(--ink-divider, rgba(215, 206, 195, 0.55))",
+              }}
+            >
+              <th className="py-3 px-4 font-semibold">Company</th>
+              <th className="py-3 px-4 font-semibold">Period</th>
+              <th className="py-3 px-4 font-semibold">Type</th>
+              <th className="py-3 px-6 font-semibold">Status</th>
+              <th className="py-3 px-4 font-semibold text-right">Registered</th>
+              <th className="py-3 px-4 font-semibold text-right">Last Updated</th>
             </tr>
-          ) : (
-            filtered.map((row) => (
-              <tr
-                key={row.id}
-                className="border-b"
-                style={{ borderColor: "var(--ink-divider, rgba(215, 206, 195, 0.55))", color: "var(--ink-primary, #2A241E)" }}
-              >
-                <td className="py-3.5 pr-4 font-sans font-semibold text-[13px]">{row.company}</td>
-                <td className="py-3.5 pr-4 font-sans text-[13px]">
-                  {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
-                </td>
-                <td className="py-3.5 pr-4 uppercase tracking-wider text-[11px]" style={{ color: "var(--ink-secondary, #5F574D)" }}>
-                  {row.doc_type.replace(/_/g, " ")}
-                </td>
-                <td className="py-3.5 pr-6" style={{ color: STATUS_COLOR[row.status], fontWeight: 600 }}>
-                  {STATUS_LABEL[row.status]}
-                  {row.status === "failed" && row.error_message && (
-                    <div
-                      className="font-sans normal-case tracking-normal mt-0.5"
-                      style={{ fontWeight: 400, fontSize: 11, opacity: 0.85, color: "#B0453A" }}
-                    >
-                      {row.error_message.slice(0, 160)}
-                    </div>
-                  )}
-                </td>
-                <td className="py-3.5 pr-4 text-right tabular-nums" style={{ color: "var(--ink-secondary, #5F574D)" }}>
-                  {new Date(row.created_at).toLocaleString()}
-                </td>
-                <td className="py-3.5 text-right tabular-nums" style={{ color: "var(--ink-secondary, #5F574D)" }}>
-                  {new Date(row.updated_at).toLocaleString()}
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center font-mono text-xs italic" style={{ color: "var(--ink-passive, #B7AEA3)" }}>
+                  {uploads.length === 0 ? "No filings registered yet." : "No uploads match this filter."}
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              filtered.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-b"
+                  style={{ borderColor: "var(--ink-divider, rgba(215, 206, 195, 0.55))", color: "var(--ink-primary, #2A241E)" }}
+                >
+                  <td className="py-3.5 px-4 font-sans font-semibold text-[13px]">{row.company}</td>
+                  <td className="py-3.5 px-4 font-sans text-[13px]">
+                    {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
+                  </td>
+                  <td className="py-3.5 px-4 uppercase tracking-wider text-[11px]" style={{ color: "var(--ink-secondary, #5F574D)" }}>
+                    {row.doc_type.replace(/_/g, " ")}
+                  </td>
+                  <td className="py-3.5 px-6" style={{ color: STATUS_COLOR[row.status], fontWeight: 600 }}>
+                    {STATUS_LABEL[row.status]}
+                    {row.status === "failed" && row.error_message && (
+                      <div
+                        className="font-sans normal-case tracking-normal mt-0.5"
+                        style={{ fontWeight: 400, fontSize: 11, opacity: 0.85, color: "#B0453A" }}
+                      >
+                        {row.error_message.slice(0, 160)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-3.5 px-4 text-right tabular-nums" style={{ color: "var(--ink-secondary, #5F574D)" }}>
+                    {new Date(row.created_at).toLocaleString()}
+                  </td>
+                  <td className="py-3.5 px-4 text-right tabular-nums" style={{ color: "var(--ink-secondary, #5F574D)" }}>
+                    {new Date(row.updated_at).toLocaleString()}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
