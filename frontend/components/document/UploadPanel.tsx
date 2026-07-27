@@ -29,6 +29,8 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
   failed: "#B0453A",
 };
 
+const HISTORY_PREVIEW_COUNT = 4;
+
 export function UploadPanel() {
   const [file, setFile] = useState<File | null>(null);
   const [company, setCompany] = useState("");
@@ -106,46 +108,46 @@ export function UploadPanel() {
     }
   };
 
-  // Sharpened: Translucent parchment fill so inputs blend into paper, crisp archival border (#A89880)
+  // Softened further: lighter border, no inset shadow, lower-contrast so the
+  // paper (not the inputs) stays visually dominant per design review notes.
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
-    fontSize: 14,
+    fontSize: 13.5,
     color: "#1A140E",
-    background: "rgba(255, 255, 255, 0.5)",
-    border: "1px solid #A89880",
+    background: "rgba(255, 255, 255, 0.4)",
+    border: "1px solid #C9BFA9",
     borderRadius: 3,
-    padding: "9px 12px",
+    padding: "7px 10px",
     width: "100%",
-    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.06)",
+    boxShadow: "none",
     colorScheme: "light",
   };
 
-  // Darkened: Deep archival ink (#2A221A) with bold weight to pop legibly against folder shadows
   const labelStyle: React.CSSProperties = {
     fontFamily: "var(--font-archival, monospace)",
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: 700,
-    letterSpacing: "0.15em",
+    letterSpacing: "0.13em",
     textTransform: "uppercase",
     color: "#2A221A",
     display: "block",
-    marginBottom: 6,
+    marginBottom: 3,
   };
 
+  const historyPreview = pending.slice(0, HISTORY_PREVIEW_COUNT);
+  const hiddenCount = pending.length - historyPreview.length;
+
   return (
-    <div className="relative space-y-8 px-10 pt-14 pb-10">
+    <div className="relative space-y-5 px-10 pt-8 pb-8">
       <ArchiveStamp status={lastStatus} />
 
-      {/* Title lives INSIDE the paper now (with real top margin), not floating
-          over the photo separately — this is what the paper's own generous
-          blank header margin was designed to hold. */}
-      <div className="mb-2">
+      <div className="mb-1">
         <h2
           style={{
             fontFamily: "var(--font-editorial, 'Fraunces', Georgia, serif)",
-            fontSize: 26,
+            fontSize: 24,
             color: "#1A140E",
-            marginBottom: 6,
+            marginBottom: 4,
           }}
         >
           Archive Intake
@@ -153,35 +155,32 @@ export function UploadPanel() {
         <p
           style={{
             fontFamily: "var(--font-archival, monospace)",
-            fontSize: 11.5,
+            fontSize: 11,
             color: "#5C4D3C",
             letterSpacing: "0.03em",
           }}
         >
           Register a new corporate filing into the LedgerMind archive.
         </p>
-        <div className="mt-4 border-b" style={{ borderColor: "#A89880" }} />
+        <div className="mt-3 border-b" style={{ borderColor: "#C9BFA9" }} />
       </div>
 
-      {/* Honesty banner — crisp dark text over structured translucent parchment box */}
+      {/* Notice — trimmed to one line; full explanation still lives in the
+          status labels below (Pending/Processing/Indexed), so nothing is lost. */}
       <div
-        className="px-4 py-3.5 text-[12.5px] leading-relaxed shadow-sm"
+        className="px-4 py-2.5 text-[12px] leading-snug"
         style={{
           fontFamily: "var(--font-body)",
           color: "#2A221A",
-          background: "rgba(255, 255, 255, 0.6)",
-          border: "1px solid #A89880",
+          background: "rgba(255, 255, 255, 0.45)",
+          border: "1px solid #C9BFA9",
           borderRadius: 4,
         }}
       >
-        Uploaded filings are stored immediately but are <strong>not queryable right away</strong>.
-        Ingestion runs as a local, developer-triggered step — a filing becomes queryable only
-        after that step completes, which may take a few minutes and requires the developer&apos;s
-        machine to be on and running the ingestion script.
+        Filings are stored immediately but require a local ingestion step, run by the developer, before becoming queryable.
       </div>
 
-      {/* Upload form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label style={labelStyle}>PDF Document</label>
           <input
@@ -192,7 +191,7 @@ export function UploadPanel() {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label style={labelStyle}>Company</label>
             <input
@@ -200,6 +199,7 @@ export function UploadPanel() {
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="e.g. ETERNAL"
+              className="placeholder:opacity-50"
               style={inputStyle}
             />
           </div>
@@ -210,12 +210,13 @@ export function UploadPanel() {
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
               placeholder="e.g. ETERNAL"
+              className="placeholder:opacity-50"
               style={inputStyle}
             />
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label style={labelStyle}>Fiscal Year</label>
             <input
@@ -223,6 +224,7 @@ export function UploadPanel() {
               value={fiscalYear}
               onChange={(e) => setFiscalYear(e.target.value)}
               placeholder="e.g. FY27"
+              className="placeholder:opacity-50"
               style={inputStyle}
             />
           </div>
@@ -232,13 +234,14 @@ export function UploadPanel() {
               type="text"
               value={quarter}
               onChange={(e) => setQuarter(e.target.value)}
-              placeholder="e.g. Q1 — leave blank for annual"
+              placeholder="e.g. Q1 — blank for annual"
+              className="placeholder:opacity-50"
               style={inputStyle}
             />
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label style={labelStyle}>Document Type</label>
             <select
@@ -265,7 +268,7 @@ export function UploadPanel() {
         <button
           type="submit"
           disabled={submitting || !file || !company || !ticker || !fiscalYear || !filingDate}
-          className="px-6 py-3 text-xs font-bold tracking-[0.2em] uppercase transition-all shadow-sm"
+          className="px-6 py-2.5 text-xs font-bold tracking-[0.2em] uppercase transition-all shadow-sm"
           style={{
             fontFamily: "var(--font-archival, monospace)",
             color: submitting ? "#8C8273" : "#1A140E",
@@ -281,25 +284,26 @@ export function UploadPanel() {
         </button>
 
         {submitError && (
-          <div className="text-[13px] font-semibold" style={{ color: "#B0453A", fontFamily: "var(--font-body)" }}>
+          <div className="text-[12.5px] font-semibold" style={{ color: "#B0453A", fontFamily: "var(--font-body)" }}>
             {submitError}
           </div>
         )}
         {lastResult && (
-          <div className="text-[13px] font-semibold" style={{ color: "#1E5C3A", fontFamily: "var(--font-body)" }}>
+          <div className="text-[12.5px] font-semibold" style={{ color: "#1E5C3A", fontFamily: "var(--font-body)" }}>
             {lastResult}
           </div>
         )}
       </form>
 
-      {/* Registration history: Sharpened 2px top divider (#8C7A64) and rich ink typography */}
-      <div className="space-y-4 pt-8 border-t-2" style={{ borderColor: "#8C7A64" }}>
+      {/* Registration history: capped preview, not an unbounded growing table —
+          Audit Trail is the honest full record; this is just a quick glance. */}
+      <div className="space-y-3 pt-5 border-t-2" style={{ borderColor: "#8C7A64" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Registration History</div>
           <button
             type="button"
             onClick={loadPending}
-            className="text-[11px] font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
+            className="text-[10.5px] font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
             style={{ fontFamily: "var(--font-body)", color: "#2A221A", background: "none", border: "none", cursor: "pointer" }}
           >
             {loadingPending ? "Refreshing…" : "↻ Refresh"}
@@ -307,41 +311,48 @@ export function UploadPanel() {
         </div>
 
         {pending.length === 0 ? (
-          <div className="text-[13px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+          <div className="text-[12.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
             No filings registered yet.
           </div>
         ) : (
-          <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 13 }}>
-            <thead>
-              <tr style={{ color: "#5C4D3C", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em" }}>
-                <td style={{ padding: "8px 0", borderBottom: "1px solid #A89880" }}>COMPANY</td>
-                <td style={{ padding: "8px 0", borderBottom: "1px solid #A89880" }}>PERIOD</td>
-                <td style={{ padding: "8px 0", borderBottom: "1px solid #A89880" }}>STATUS</td>
-                <td style={{ padding: "8px 0", textAlign: "right", borderBottom: "1px solid #A89880" }}>REGISTERED</td>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map((row) => (
-                <tr key={row.id} style={{ borderBottom: "1px solid #D4C7B5", color: "#1A140E" }}>
-                  <td style={{ padding: "10px 0", fontWeight: 700 }}>{row.company}</td>
-                  <td style={{ padding: "10px 0" }}>
-                    {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
-                  </td>
-                  <td style={{ padding: "10px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
-                    {STATUS_LABEL[row.status]}
-                    {row.status === "failed" && row.error_message && (
-                      <div style={{ fontWeight: 400, fontSize: 11.5, opacity: 0.85, color: "#B0453A" }}>
-                        {row.error_message.slice(0, 120)}
-                      </div>
-                    )}
-                  </td>
-                  <td style={{ padding: "10px 0", textAlign: "right", fontSize: 11.5, color: "#4A3D2C" }}>
-                    {new Date(row.created_at).toLocaleString()}
-                  </td>
+          <>
+            <table className="w-full border-collapse" style={{ fontFamily: "var(--font-body)", fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ color: "#5C4D3C", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em" }}>
+                  <td style={{ padding: "6px 0", borderBottom: "1px solid #C9BFA9" }}>COMPANY</td>
+                  <td style={{ padding: "6px 0", borderBottom: "1px solid #C9BFA9" }}>PERIOD</td>
+                  <td style={{ padding: "6px 0", borderBottom: "1px solid #C9BFA9" }}>STATUS</td>
+                  <td style={{ padding: "6px 0", textAlign: "right", borderBottom: "1px solid #C9BFA9" }}>REGISTERED</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {historyPreview.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: "1px solid #D4C7B5", color: "#1A140E" }}>
+                    <td style={{ padding: "8px 0", fontWeight: 700 }}>{row.company}</td>
+                    <td style={{ padding: "8px 0" }}>
+                      {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
+                    </td>
+                    <td style={{ padding: "8px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
+                      {STATUS_LABEL[row.status]}
+                      {row.status === "failed" && row.error_message && (
+                        <div style={{ fontWeight: 400, fontSize: 11, opacity: 0.85, color: "#B0453A" }}>
+                          {row.error_message.slice(0, 120)}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "8px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
+                      {new Date(row.created_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {hiddenCount > 0 && (
+              <div className="text-[11.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+                +{hiddenCount} earlier {hiddenCount === 1 ? "filing" : "filings"} — see Audit Trail for the full record.
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
