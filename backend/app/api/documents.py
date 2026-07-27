@@ -32,7 +32,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 
 from app.auth.dependencies import require_role
-from app.db.session import get_connection
+from app.db.session import db_transaction
 from app.ingestion.gate import GateDecision, check_is_financial_filing
 from app.ingestion.pdf_text import extract_first_n_pages_text
 from app.ingestion.storage import upload_file_to_storage
@@ -116,19 +116,14 @@ async def upload_document(
         temp_path.unlink(missing_ok=True)
 
     # --- Record as pending — NOT auto-triggered (see module docstring) ---
-    conn = get_connection()
-    try:
+    with db_transaction(tenant_id) as conn:
         with conn.cursor() as cur:
-            cur.execute("SET app.tenant_id = %s", (tenant_id,))
             cur.execute(
                 _SQL_INSERT_PENDING,
                 (tenant_id, storage_key, company, ticker, fiscal_year,
                  quarter, doc_type, filing_date, version),
             )
             pending_id = cur.fetchone()[0]
-        conn.commit()
-    finally:
-        conn.close()
 
     logger.info("Recorded pending upload doc_id=%s pending_id=%s", doc_id, pending_id)
 
