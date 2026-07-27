@@ -444,10 +444,10 @@ export default function Home() {
               <div
                 className="absolute z-10"
                 style={{
-                  top: "25.2%",
-                  left: "15.3%",
-                  width: "36.1%",
-                  transform: "rotate(1.5deg)",
+                  top: "14%",
+                  left: "12%",
+                  width: "44%",
+                  transform: "rotate(0deg)",
                   transformOrigin: "top left",
                 }}
               >
