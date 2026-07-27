@@ -95,9 +95,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
     }
   };
 
-  // Reverted to the sizes that actually fit the photographed paper. The
-  // previous "~10% scale up" pushed content past the photo's bottom edge —
-  // border softened one more step per review, at no height cost.
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
     fontSize: 13.5,
@@ -133,10 +130,15 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
       <ArchiveStamp status={lastStatus} />
 
       <div className="mb-1">
+        {/* Bold weight to match DocumentTitle's heavy serif treatment
+            (e.g. "Query Workbench") — size/spacing unchanged, weight only,
+            so this carries zero overflow risk. */}
         <h2
           style={{
             fontFamily: "var(--font-editorial, 'Fraunces', Georgia, serif)",
             fontSize: 25,
+            fontWeight: 700,
+            letterSpacing: "-0.01em",
             color: "#1A140E",
             marginBottom: 4,
           }}
@@ -156,8 +158,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         <div className="mt-3 border-b" style={{ borderColor: "rgba(184, 170, 145, 0.55)" }} />
       </div>
 
-      {/* Archival annotation: darker-than-paper tone, thin low-contrast border,
-          no shadow — reads as a conservation note pasted on, not a web card. */}
       <div
         className="px-4 py-2.5 text-[12.5px] leading-snug"
         style={{
@@ -263,8 +263,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
           </div>
         </div>
 
-        {/* Signature button: emboss shadow kept (near-zero height cost) but
-            size reverted — the bigger version was part of what overflowed. */}
         <button
           type="submit"
           disabled={submitting || !file || !company || !ticker || !fiscalYear || !filingDate}
@@ -297,11 +295,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         )}
       </form>
 
-      {/* Permanent fixed-size preview — always exactly the latest 3, never grows.
-          REAL FIX this round: table-layout fixed + explicit column widths via
-          colgroup. Previously columns had zero horizontal gutter between them
-          and only avoided colliding by accident of font size — any future
-          font bump would break it again. This makes the layout robust. */}
       <div className="space-y-3 pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
         <div className="flex items-center justify-between">
           <div style={labelStyle}>Registration History</div>
