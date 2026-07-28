@@ -25,10 +25,18 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
   failed: "#B0453A",
 };
 
-// This is a PREVIEW, not a mini-table: always the 3 most recent, full record
-// lives on Upload History. The scroll box beneath is a silent safety net,
-// not the primary UX — see the ~152px height comment below for why.
 const INTAKE_PREVIEW_COUNT = 3;
+
+// Total footprint of the Recent Registrations section, hard-clamped.
+// This is a REDUNDANT safety measure on top of the inner scroll box's own
+// height — previously the "View Full History" link's position could drift
+// depending on table content/wrapping even though the box itself had a
+// fixed height. Wrapping everything (label + box + link) in one container
+// with this exact height + overflow:hidden makes that structurally
+// impossible: the section's footprint is now a single fixed number,
+// period, regardless of row count or text wrapping.
+const SECTION_HEIGHT = 224;
+const BOX_HEIGHT = 152;
 
 interface UploadPanelProps {
   pending: PendingUpload[];
@@ -286,16 +294,17 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         )}
       </form>
 
-      {/* "Recent Registrations" preview — always the 3 most recent. The
-          scroll box below is a SILENT SAFETY NET (scrollbar hidden), not the
-          primary UX: in the normal case (short single-line rows) it never
-          visibly needs to scroll. Height kept conservative (152px, sized for
-          the common case) rather than the worst-case all-rows-wrapped height
-          (~190-200px) — deliberate tradeoff to stay within this photo's
-          proven-safe footprint rather than risk reopening the overflow bug
-          this session spent most of its time closing. */}
-      <div className="space-y-3 pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
-        <div className="flex items-center justify-between">
+      {/* HARD CLAMP: entire section (label + box + link) is pinned to
+          SECTION_HEIGHT with overflow:hidden — this is what guarantees
+          "View Full Upload History" never moves, regardless of row count
+          or text wrapping inside the table. The inner scroll box still has
+          its own overflow-y:auto for actual scrolling; this outer clamp is
+          a second, independent guarantee on top of it. */}
+      <div
+        className="pt-6 border-t-2 overflow-hidden"
+        style={{ borderColor: "#8C7A64", height: SECTION_HEIGHT }}
+      >
+        <div className="flex items-center justify-between mb-3">
           <div style={labelStyle}>Recent Registrations</div>
           <button
             type="button"
@@ -327,7 +336,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         ) : (
           <div
             className="ledger-scroll overflow-y-auto rounded-sm"
-            style={{ height: 152, border: "1px solid rgba(184, 170, 145, 0.4)" }}
+            style={{ height: BOX_HEIGHT, border: "1px solid rgba(184, 170, 145, 0.4)" }}
           >
             <table
               className="w-full border-collapse"
@@ -377,22 +386,19 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
           </div>
         )}
 
-        <div className="text-[11.5px] pt-1" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+        <div className="text-[11.5px] pt-2" style={{ color: "#4A3D2C", fontFamily: "var(--font-body)" }}>
           {hasMore && `Showing ${INTAKE_PREVIEW_COUNT} of ${totalCount} registrations. `}
           <button
             type="button"
             onClick={onViewHistory}
-            className="group font-bold transition-colors"
+            className="group font-bold underline transition-colors"
             style={{
-              color: "#5C4D3C",
+              color: "#2A221A",
               background: "none",
               border: "none",
               cursor: "pointer",
               padding: 0,
-              textDecoration: "none",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.textDecoration = "underline"; e.currentTarget.style.color = "#2A221A"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.textDecoration = "none"; e.currentTarget.style.color = "#5C4D3C"; }}
           >
             View Full Upload History <span style={{ display: "inline-block", transition: "transform 0.15s" }} className="group-hover:translate-x-0.5">→</span>
           </button>
