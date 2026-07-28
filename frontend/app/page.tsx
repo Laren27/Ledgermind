@@ -44,13 +44,25 @@ function cleanBlockReason(reason: string): string {
 }
 
 function buildCitationItems(data: QueryResponse) {
-  return (data.citations ?? []).map((c, i) => ({
-    index: i + 1,
-    label: `${c.company} ${c.fiscal_year} (${c.financial_type})`,
-    page: c.page_number,
-    relevance: c.reranker_score,
-    id: `cite-${c.chunk_id}`,
-  }));
+  return (data.citations ?? []).map((c, i) => {
+    // financial_type is UNKNOWN for every non-FINANCIAL_STATEMENT chunk by
+    // design (see section_classifier.py) — risk disclosures and MD&A are not
+    // scoped to standalone or consolidated. Rendering "(unknown)" reads as a
+    // classification failure when it is a correct N/A, so the tag is omitted
+    // entirely. Its presence then genuinely means "these are that entity's
+    // numbers," rather than being noise on every citation.
+    const ft = c.financial_type;
+    const hasFinancialType = !!ft && ft.toLowerCase() !== "unknown";
+    return {
+      index: i + 1,
+      label: hasFinancialType
+        ? `${c.company} ${c.fiscal_year} (${ft})`
+        : `${c.company} ${c.fiscal_year}`,
+      page: c.page_number,
+      relevance: c.reranker_score,
+      id: `cite-${c.chunk_id}`,
+    };
+  });
 }
 
 function composeDocumentBody(data: QueryResponse) {
