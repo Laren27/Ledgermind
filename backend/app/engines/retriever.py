@@ -295,6 +295,37 @@ def hybrid_search(
 # Core: rerank
 # ---------------------------------------------------------------------------
 
+# Chunk types representing narrative/qualitative content — the intended
+# audience for Path 1 (semantic) retrieval. FINANCIAL_STATEMENT and TABLE
+# chunks are demoted below these even when the reranker scores them higher.
+#
+# Root cause (2026-07-29 investigation, RRF_POOL diagnostic log): a
+# FINANCIAL_STATEMENT chunk entered the RRF pool at rank 16/20 for a risk-
+# factors query, and Cohere promoted it to rank 1 (0.9334) — ahead of eight
+# genuinely on-topic MANAGEMENT_DISCUSSION chunks scoring 0.56-0.89. Path 2
+# (quant_engine/DSL→SQL) already owns table data; a statement chunk winning
+# top rank on the semantic path is never the outcome that path is for.
+# Nothing in this codebase calls rerank() wanting statement chunks promoted
+# — cross_engine_node reuses semantic_engine_node directly for its
+# qualitative half and gets its quantitative side from quant_engine's SQL
+# independently — so this ordering is applied unconditionally, not gated
+# behind a route/intent flag.
+STATEMENT_CHUNK_TYPES = {"FINANCIAL_STATEMENT", "TABLE"}
+
+
+def _prefer_narrative(chunks: List[ChunkResult], top_k: int) -> List[ChunkResult]:
+    """
+    Stable partition: narrative chunks first, statement/table chunks last,
+    each group keeping its original (reranker-sorted) relative order. No
+    score is modified — this only changes which candidates make the final
+    cut, so reranker_score in the citation payload still reflects the
+    reranker's real judgment, not a synthetic penalty.
+    """
+    narrative = [c for c in chunks if c["chunk_type"] not in STATEMENT_CHUNK_TYPES]
+    statement = [c for c in chunks if c["chunk_type"] in STATEMENT_CHUNK_TYPES]
+    return (narrative + statement)[:top_k]
+
+
 def rerank(
     query: str,
     chunks: List[ChunkResult],
@@ -305,6 +336,10 @@ def rerank(
     
     1. If COHERE_API_KEY is configured, uses Cohere Rerank API (0 MB RAM).
     2. Otherwise, falls back to local fastembed CrossEncoder ONNX model.
+
+    Both branches score the FULL candidate pool (not just top_k) before
+    applying _prefer_narrative and slicing to top_k — narrowing to top_k
+    before reordering would discard exactly the chunks that need promoting.
     """
     if not chunks:
         return chunks
@@ -316,11 +351,15 @@ def rerank(
         logger.debug("Reranking %d chunks via Cohere API (rerank-english-v3.0)", len(chunks))
         try:
             doc_texts = [chunk["text"] for chunk in chunks]
+            # top_n=len(doc_texts): request Cohere's FULL relevance ordering.
+            # Cohere scores every document regardless of top_n — truncating
+            # early would silently drop the narrative chunks this function
+            # needs to see in order to promote them past a statement chunk.
             response = cohere_client.rerank(
                 model="rerank-english-v3.0",
                 query=query,
                 documents=doc_texts,
-                top_n=top_k,
+                top_n=len(doc_texts),
             )
             
             scored_chunks: List[ChunkResult] = []
@@ -330,14 +369,17 @@ def rerank(
                 updated["reranker_score"] = float(hit.relevance_score)
                 updated["reranker_backend"] = "cohere"
                 scored_chunks.append(ChunkResult(**updated))
-                
+
+            scored_chunks = _prefer_narrative(scored_chunks, top_k)
+
             # Calibration logging removed 2026-07-27 — see semantic_engine.py threshold comment for findings
 
             if scored_chunks:
                 logger.info(
-                    "Cohere Cloud reranking complete | top_score=%.4f | bottom_score=%.4f",
+                    "Cohere Cloud reranking complete | top_score=%.4f | bottom_score=%.4f | top_type=%s",
                     scored_chunks[0]["reranker_score"],
                     scored_chunks[-1]["reranker_score"],
+                    scored_chunks[0]["chunk_type"],
                 )
             return scored_chunks
         except Exception as e:
@@ -358,13 +400,14 @@ def rerank(
         scored_chunks.append(ChunkResult(**updated))
 
     scored_chunks.sort(key=lambda c: c["reranker_score"], reverse=True)
-    top_chunks = scored_chunks[:top_k]
+    top_chunks = _prefer_narrative(scored_chunks, top_k)
 
     if top_chunks:
         logger.info(
-            "Local reranking complete | top_score=%.4f | bottom_score=%.4f",
+            "Local reranking complete | top_score=%.4f | bottom_score=%.4f | top_type=%s",
             top_chunks[0]["reranker_score"],
             top_chunks[-1]["reranker_score"],
+            top_chunks[0]["chunk_type"],
         )
 
     return top_chunks
