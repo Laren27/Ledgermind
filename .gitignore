@@ -13,3 +13,8 @@ build/
 dist/
 .env*.local
 *.log
+
+# Session artifacts — eval output and vendored CLI binaries
+golden_dataset/eval_results_*.json
+backend/render-cli/
+backend/render.zip
