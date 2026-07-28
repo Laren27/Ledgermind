@@ -93,6 +93,11 @@ class QueryState(TypedDict):
     citations: List[Citation]
 
     # ── Path 2 (quant_engine) output ──────────────────────────────────────
+    # True when the query named no reporting period and quant_engine
+    # substituted the latest period present in the corpus. The figure is
+    # still SQL-verified; what is unverified is that it is the period the
+    # user meant — so it must be disclosed, not hidden behind a tick.
+    period_assumed: bool
     dsl_object: Optional[DSLObject]
     dsl_valid: bool
     dsl_attempts: int
@@ -158,6 +163,7 @@ def make_initial_state(
         retrieved_chunks=[],
         citations=[],
 
+        period_assumed=False,
         dsl_object=None,
         dsl_valid=False,
         dsl_attempts=0,
