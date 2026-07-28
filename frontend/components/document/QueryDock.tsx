@@ -13,7 +13,7 @@ interface QueryDockProps {
 const INDEX_TABS = [
   "What was Eternal's revenue growth in FY26?",
   "What is Paytm's PAT for FY26?",
-  "What were Titan's key risk factors in Q1FY26?",
+  "What was Titan's revenue in Q1FY26?",
   "Summarize Eternal's management commentary on profitability",
 ];
 
