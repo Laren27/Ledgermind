@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user
+from app.api.response_shaping import role_filtered_response
 from app.engines.graph import get_graph
 from app.engines.state import make_initial_state
 
@@ -38,9 +39,14 @@ async def execute_query(
         # Call get_graph() to retrieve the compiled LangGraph singleton
         graph = get_graph()
         final_state = await graph.ainvoke(initial_state)
-        return final_state
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Pipeline execution failed: {str(e)}",
         )
+
+    # Field-level RBAC. The graph always runs in full and audit_log always
+    # receives the complete record -- only the HTTP response is filtered.
+    # This also drops retrieved_chunks (full chunk text) from every response,
+    # which the raw-state return was previously shipping to the browser.
+    return role_filtered_response(final_state, current_user["role"])
