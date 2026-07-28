@@ -11,7 +11,10 @@ track api/query.py's QueryResponse model exactly.
 
 _KNOWN_ROLES = frozenset({"viewer", "analyst", "admin"})
 
-_VIEWER_CITATION_FIELDS = {"doc_id", "page_number", "company", "fiscal_year", "financial_type"}
+# chunk_id is included deliberately: it carries no information (opaque UUID)
+# but the frontend needs it as a stable DOM anchor id to tie inline
+# superscripts to their numbered footnotes. Scores stay stripped.
+_VIEWER_CITATION_FIELDS = {"chunk_id", "doc_id", "page_number", "company", "fiscal_year", "financial_type"}
 
 
 def _strip_citation_scores(citations: list[dict]) -> list[dict]:
