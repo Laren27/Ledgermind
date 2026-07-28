@@ -25,6 +25,11 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
   failed: "#B0453A",
 };
 
+// This is a PREVIEW, not a mini-table: always the 3 most recent, full record
+// lives on Upload History. The scroll box beneath is a silent safety net,
+// not the primary UX — see the ~152px height comment below for why.
+const INTAKE_PREVIEW_COUNT = 3;
+
 interface UploadPanelProps {
   pending: PendingUpload[];
   loadingPending: boolean;
@@ -77,10 +82,6 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         filingDate,
         quarter: quarter || undefined,
       });
-      // Await this fully before clearing "submitting" — previously fired
-      // without awaiting, so the UI could report success and show the
-      // stamp before the new row had actually landed in `pending`,
-      // producing a brief stale-list flash until the fetch caught up.
       await onRefresh();
       setLastPendingId(result.pending_id);
       resetForm();
@@ -114,6 +115,10 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
     display: "block",
     marginBottom: 3,
   };
+
+  const preview = pending.slice(0, INTAKE_PREVIEW_COUNT);
+  const totalCount = pending.length;
+  const hasMore = totalCount > INTAKE_PREVIEW_COUNT;
 
   return (
     <div className="relative space-y-5 px-[78px] pt-11 pb-9">
@@ -281,18 +286,35 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         )}
       </form>
 
-      {/* Fixed HEIGHT (not maxHeight) whenever there's data — the box is
-          exactly 168px tall from the very first paint, never dependent on
-          measuring content first. Custom scrollbar colors via styled-jsx:
-          muted brown thumb, cream track, matching the paper palette. */}
+      {/* "Recent Registrations" preview — always the 3 most recent. The
+          scroll box below is a SILENT SAFETY NET (scrollbar hidden), not the
+          primary UX: in the normal case (short single-line rows) it never
+          visibly needs to scroll. Height kept conservative (152px, sized for
+          the common case) rather than the worst-case all-rows-wrapped height
+          (~190-200px) — deliberate tradeoff to stay within this photo's
+          proven-safe footprint rather than risk reopening the overflow bug
+          this session spent most of its time closing. */}
       <div className="space-y-3 pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
         <div className="flex items-center justify-between">
-          <div style={labelStyle}>Registration History</div>
+          <div style={labelStyle}>Recent Registrations</div>
           <button
             type="button"
             onClick={onRefresh}
-            className="text-[10.5px] font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
-            style={{ fontFamily: "var(--font-body)", color: "#2A221A", background: "none", border: "none", cursor: "pointer" }}
+            style={{
+              fontFamily: "var(--font-archival, monospace)",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "#2A221A",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              opacity: 0.85,
+              transition: "opacity 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
           >
             {loadingPending ? "Refreshing…" : "↻ Refresh"}
           </button>
@@ -305,7 +327,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         ) : (
           <div
             className="ledger-scroll overflow-y-auto rounded-sm"
-            style={{ height: 110, border: "1px solid rgba(184, 170, 145, 0.4)" }}
+            style={{ height: 152, border: "1px solid rgba(184, 170, 145, 0.4)" }}
           >
             <table
               className="w-full border-collapse"
@@ -329,23 +351,23 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
                     background: "rgba(239, 231, 212, 0.97)",
                   }}
                 >
-                  <td style={{ padding: "6px 8px 6px 8px", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
-                  <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
-                  <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
-                  <td style={{ padding: "6px 8px 6px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
+                  <td style={{ padding: "7px 8px 7px 8px", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
+                  <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
+                  <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
+                  <td style={{ padding: "7px 8px 7px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
                 </tr>
               </thead>
               <tbody>
-                {pending.map((row) => (
+                {preview.map((row) => (
                   <tr key={row.id} style={{ borderBottom: "1px solid #E2DACB", color: "#1A140E" }}>
-                    <td style={{ padding: "8px 8px 8px 8px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
-                    <td style={{ padding: "8px 8px 8px 0" }}>
+                    <td style={{ padding: "9px 8px 9px 8px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
+                    <td style={{ padding: "9px 8px 9px 0" }}>
                       {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
                     </td>
-                    <td style={{ padding: "8px 8px 8px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
+                    <td style={{ padding: "9px 8px 9px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
                       {STATUS_LABEL[row.status]}
                     </td>
-                    <td style={{ padding: "8px 8px 8px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
+                    <td style={{ padding: "9px 8px 9px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
                       {new Date(row.created_at).toLocaleString()}
                     </td>
                   </tr>
@@ -356,35 +378,34 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         )}
 
         <div className="text-[11.5px] pt-1" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+          {hasMore && `Showing ${INTAKE_PREVIEW_COUNT} of ${totalCount} registrations. `}
           <button
             type="button"
             onClick={onViewHistory}
-            className="font-bold underline transition-opacity hover:opacity-70"
-            style={{ color: "#2A221A", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            className="group font-bold transition-colors"
+            style={{
+              color: "#5C4D3C",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              textDecoration: "none",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.textDecoration = "underline"; e.currentTarget.style.color = "#2A221A"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.textDecoration = "none"; e.currentTarget.style.color = "#5C4D3C"; }}
           >
-            View Full Upload History →
+            View Full Upload History <span style={{ display: "inline-block", transition: "transform 0.15s" }} className="group-hover:translate-x-0.5">→</span>
           </button>
         </div>
       </div>
 
       <style jsx>{`
         .ledger-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: #8c7a64 #efe6d3;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
         }
         .ledger-scroll::-webkit-scrollbar {
-          width: 8px;
-        }
-        .ledger-scroll::-webkit-scrollbar-track {
-          background: #efe6d3;
-        }
-        .ledger-scroll::-webkit-scrollbar-thumb {
-          background-color: #8c7a64;
-          border-radius: 4px;
-          border: 2px solid #efe6d3;
-        }
-        .ledger-scroll::-webkit-scrollbar-thumb:hover {
-          background-color: #6f6050;
+          display: none;
         }
       `}</style>
     </div>
