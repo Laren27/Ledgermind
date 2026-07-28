@@ -9,6 +9,8 @@ Operates on the QueryResponse.model_dump() dict, so field names here must
 track api/query.py's QueryResponse model exactly.
 """
 
+_KNOWN_ROLES = frozenset({"viewer", "analyst", "admin"})
+
 _VIEWER_CITATION_FIELDS = {"doc_id", "page_number", "company", "fiscal_year", "financial_type"}
 
 
@@ -41,7 +43,11 @@ def role_filtered_response(response: dict, role: str) -> dict:
         "error": response.get("error"),
     }
 
-    if role == "viewer":
+    # Fail closed. Any role that isn't explicitly recognised -- a typo, a null,
+    # a future role added to the DB but not here -- gets the most restrictive
+    # payload, never the least. Without this the function falls through every
+    # `if` and returns the full admin response to unknown roles.
+    if role not in _KNOWN_ROLES or role == "viewer":
         return base
 
     # analyst and admin both get the full machinery
