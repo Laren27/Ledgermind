@@ -65,7 +65,7 @@ function buildCitationItems(data: QueryResponse) {
 function composeDocumentBody(data: QueryResponse) {
   if (data.is_blocked) {
     return (
-      <>
+      <div style={{ maxWidth: "74ch", margin: 0 }}>
         <MetricCallout label="Not Permitted" value="Policy Block" status="refused" />
         <AnalysisSection
           paragraphs={[{
@@ -73,7 +73,7 @@ function composeDocumentBody(data: QueryResponse) {
             citations: [],
           }]}
         />
-      </>
+      </div>
     );
   }
 
@@ -83,7 +83,7 @@ function composeDocumentBody(data: QueryResponse) {
       ? cleanProseText(data.response_text)
       : "This could not be resolved from the indexed corpus.";
     return (
-      <>
+      <div style={{ maxWidth: "74ch", margin: 0 }}>
         <MetricCallout label={data.error.replace(/_/g, " ")} value="—" status="refused" />
         <CitationSummary count={errorCitations.length} />
         <AnalysisSection
@@ -93,7 +93,7 @@ function composeDocumentBody(data: QueryResponse) {
           }]}
         />
         <EvidenceList items={errorCitations} />
-      </>
+      </div>
     );
   }
 
@@ -213,7 +213,7 @@ function composeDocumentBody(data: QueryResponse) {
   }
 
   return (
-    <>
+    <div style={{ maxWidth: "74ch", margin: 0 }}>
       <CitationSummary count={citationItems.length} />
       <AnalysisSection
         paragraphs={[{
@@ -222,7 +222,7 @@ function composeDocumentBody(data: QueryResponse) {
         }]}
       />
       <EvidenceList items={citationItems} />
-    </>
+    </div>
   );
 }
 
