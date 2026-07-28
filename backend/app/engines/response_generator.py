@@ -254,6 +254,23 @@ def _format_quant_response(state: QueryState) -> str:
 # Semantic response — generative, citation-grounded
 # ---------------------------------------------------------------------------
 
+def _period_assumption_note(state: QueryState) -> str:
+    """
+    Disclosure for a substituted period. Shared by the quantitative and cross
+    paths so the two can never drift — this project has repeatedly been bitten
+    by the same rule living in two places.
+    """
+    if not state.get("period_assumed"):
+        return ""
+    dsl = state.get("dsl_object")
+    if not dsl:
+        return ""
+    return (
+        f"\n\nNo reporting period was specified in the question — this figure is "
+        f"for {dsl['fiscal_year']}, the most recent period available in the corpus."
+    )
+
+
 def _format_chunks_for_prompt(chunks: List[ChunkResult]) -> str:
     """Format retrieved chunks into a numbered context block for Gemini."""
     blocks = []
@@ -369,7 +386,7 @@ def response_generator_node(state: QueryState) -> QueryState:
 
     qualitative_text_for_refusal_check = None
     if path == "quantitative":
-        body = _format_quant_response(state)
+        body = _format_quant_response(state) + _period_assumption_note(state)
         state["response_text"] = body  # no citations block — SQL is the source of truth
 
 
@@ -388,7 +405,7 @@ def response_generator_node(state: QueryState) -> QueryState:
         )
         quant_body = ""
         if state.get("sql_verified") and state.get("sql_result"):
-            quant_body = "\n\n" + _format_quant_response(state)
+            quant_body = "\n\n" + _format_quant_response(state) + _period_assumption_note(state)
 
         state["response_text"] = qual_body + quant_body + citations_block + contradiction_block
         qualitative_text_for_refusal_check = qual_body
