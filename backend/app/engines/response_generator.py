@@ -119,6 +119,24 @@ Reproduce specific proper nouns, legal entity names, and numeric figures exactly
 
 
 # ---------------------------------------------------------------------------
+# Money formatting
+# ---------------------------------------------------------------------------
+
+def _fmt_money(value) -> str:
+    """
+    Render a currency figure the way a filing does: no trailing ".0" on whole
+    numbers, two decimals only when the fraction is real. The frontend's
+    LedgerTable renders the same figures via toLocaleString() (no decimals),
+    so a hardcoded .1f here made one page show "54,364" and "54,364.0" for
+    the same value. Single formatter so the convention lives in one place.
+    """
+    v = float(value)
+    if abs(v - round(v)) < 0.005:
+        return f"{v:,.0f}"
+    return f"{v:,.2f}"
+
+
+# ---------------------------------------------------------------------------
 # Quantitative response — templated, deterministic
 # ---------------------------------------------------------------------------
 
@@ -149,7 +167,7 @@ def _format_quant_response(state: QueryState) -> str:
 
         return (
             f"{entity}'s {financial_type} {metric_label} for {period_label} "
-            f"was ₹{float(value):,.1f} {unit_label}."
+            f"was ₹{_fmt_money(float(value))} {unit_label}."
         )
 
     # yoy_growth
@@ -168,8 +186,8 @@ def _format_quant_response(state: QueryState) -> str:
 
         return (
             f"{entity}'s {financial_type} {metric} {direction} {yoy_text} year-over-year, "
-            f"from ₹{prior_val:,.1f} {unit_label} in {prior_fy} to "
-            f"₹{current_val:,.1f} {unit_label} in {current_fy}."
+            f"from ₹{_fmt_money(prior_val)} {unit_label} in {prior_fy} to "
+            f"₹{_fmt_money(current_val)} {unit_label} in {current_fy}."
         )
 
     # growth_comparison
@@ -185,9 +203,9 @@ def _format_quant_response(state: QueryState) -> str:
 
         return (
             f"In {fy}, {ea}'s {metric.lower()} grew {ea_pct:+.2f}% year-over-year "
-            f"(₹{row['a_prior_value']:,.1f} {unit_label} → ₹{row['a_current_value']:,.1f} {unit_label}), "
+            f"(₹{_fmt_money(row['a_prior_value'])} {unit_label} → ₹{_fmt_money(row['a_current_value'])} {unit_label}), "
             f"while {eb}'s grew {eb_pct:+.2f}% "
-            f"(₹{row['b_prior_value']:,.1f} {unit_label} → ₹{row['b_current_value']:,.1f} {unit_label}). "
+            f"(₹{_fmt_money(row['b_prior_value'])} {unit_label} → ₹{_fmt_money(row['b_current_value'])} {unit_label}). "
             f"{faster} grew faster."
         )
 
@@ -210,8 +228,8 @@ def _format_quant_response(state: QueryState) -> str:
         comparison_text = f"{pct_magnitude:.1f}% higher" if pct_magnitude is not None else "different"
 
         return (
-            f"{e1}'s {metric} was ₹{v1:,.1f} {unit_label}, compared to "
-            f"{e2}'s ₹{v2:,.1f} {unit_label} — {higher} reported {comparison_text} {metric.lower()}."
+            f"{e1}'s {metric} was ₹{_fmt_money(v1)} {unit_label}, compared to "
+            f"{e2}'s ₹{_fmt_money(v2)} {unit_label} — {higher} reported {comparison_text} {metric.lower()}."
         )
 
     # cagr
@@ -225,8 +243,8 @@ def _format_quant_response(state: QueryState) -> str:
 
         return (
             f"{entity}'s {metric} grew at a CAGR of {cagr_pct:.2f}% from "
-            f"{start_fy} to {end_fy} (₹{row['start_value']:,.1f} {unit_label} → "
-            f"₹{row['end_value']:,.1f} {unit_label})."
+            f"{start_fy} to {end_fy} (₹{_fmt_money(row['start_value'])} {unit_label} → "
+            f"₹{_fmt_money(row['end_value'])} {unit_label})."
         )
 
     return "Verified data was retrieved but could not be formatted into a response."
@@ -313,7 +331,7 @@ def _format_contradiction_block(contradictions: List[ContradictionFlag]) -> str:
             lines.append(
                 f"  • Qualitative source claims a figure differing by {c['delta_pct']:+.1f}% "
                 f"from the verified {c['quantitative_metric']} value of "
-                f"₹{c['quantitative_value']:,.1f} Cr. (severity: {c['severity']})"
+                f"₹{_fmt_money(c['quantitative_value'])} Cr. (severity: {c['severity']})"
             )
         elif c["type"] == "direction":
             direction_word = "positive" if c["quantitative_value"] > 0 else "negative"
