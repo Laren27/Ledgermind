@@ -2,7 +2,9 @@ interface EvidenceItem {
   index: number;
   label: string;
   page: number;
-  relevance: number;
+  // Analyst+ only -- role_filtered_response strips reranker_score for
+  // viewers, so this component must render without it.
+  relevance?: number | null;
   id: string;
 }
 
@@ -13,7 +15,8 @@ export function EvidenceList({ items }: { items: EvidenceItem[] }) {
       {items.map((item) => (
         <div key={item.id} id={item.id}>
           <sup style={{ color: "var(--paper-accent)" }}>{item.index}</sup>{" "}
-          {item.label} — p.{item.page}, relevance {item.relevance.toFixed(2)}
+          {item.label} — p.{item.page}
+          {item.relevance != null && `, relevance ${item.relevance.toFixed(2)}`}
         </div>
       ))}
     </div>
