@@ -125,6 +125,11 @@ def _build_dsl_system_prompt() -> str:
     - "revenue" / "revenue from operations" → "revenue"
     - You MUST use the exact metric key string from the AVAILABLE list above.
     - If the user asks for a metric not in either list, pick the closest available match.
+    - If a query describes a metric CHANGING over time using direction words
+      (declined, fell, dropped, decreased, grew, rose, increased, improved,
+      worsened) you MUST use operation="yoy_growth", even when no year is named.
+      A question about whether something "declined" asks about change between
+      two periods — point_in_time returns a single value and cannot answer it.
     - If a query names TWO fiscal years for the SAME company (e.g. "in FY25 and FY26",
       "from FY25 to FY26", "FY25 vs FY26"), you MUST use operation="yoy_growth" with
       fiscal_year set to the LATER year. Do NOT use operation="point_in_time" —
@@ -291,6 +296,62 @@ def _generate_dsl(
         f"Last error: {last_error}" if last_error else
         f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts."
     )
+
+
+# ---------------------------------------------------------------------------
+# Period-assumption guard
+# ---------------------------------------------------------------------------
+# GeminiDSLResponse requires fiscal_year, so Gemini ALWAYS emits one — even
+# when the query names no period at all, in which case the value is invented.
+# Confirmed live 2026-07-29: "does management commentary align with its PAT
+# decline?" produced fiscal_year="FY25" out of nothing and returned a
+# sql_verified figure for a period nobody asked about.
+#
+# Overriding on state["fiscal_year"] is None ALONE would be unsafe: if
+# entity_resolver misses a year that Gemini correctly read from the query
+# text, that would replace a right answer with a wrong one. So the override
+# additionally requires that no period token appears in the raw query —
+# only then is Gemini's value provably invented rather than extracted.
+
+_PERIOD_TOKEN_RE = re.compile(
+    r"\bFY\s?\d{2,4}\b"                      # FY26, FY 26, FY2026
+    r"|\b20\d{2}\b"                           # 2026
+    r"|\bQ[1-4]\b"                             # Q1..Q4
+    r"|\bfiscal\s+(?:year\s+)?\d{2,4}\b",    # fiscal year 2026
+    re.IGNORECASE,
+)
+
+
+def _query_names_period(query: str) -> bool:
+    """True if the raw query text explicitly names a fiscal period."""
+    return bool(_PERIOD_TOKEN_RE.search(query or ""))
+
+
+def _latest_fiscal_year(
+    entity: str, metric: str, financial_type: str, tenant_id: str,
+) -> Optional[str]:
+    """
+    Latest fiscal_year actually present in the corpus for this entity/metric.
+
+    Derived, never hardcoded — writing "default to FY26" into the prompt is
+    the same class of multi-tenant time bomb as the old available_in_corpus
+    flag, and would silently go stale the day FY27 lands.
+
+    NOTE: fiscal_year is TEXT, so MAX() is lexical. Correct for FY23..FY99;
+    would break at FY100. Acceptable for the next 74 years.
+    """
+    sql = """
+        SELECT MAX(fiscal_year) AS latest
+        FROM financials
+        WHERE tenant_id = %s AND company = %s AND metric = %s
+          AND financial_type = %s AND is_latest = TRUE
+    """
+    try:
+        rows = _execute_sql(sql, (tenant_id, entity, metric, financial_type), tenant_id)
+    except Exception as e:
+        logger.error("Latest-fiscal-year lookup failed: %s", e)
+        return None
+    return rows[0]["latest"] if rows and rows[0].get("latest") else None
 
 
 # ---------------------------------------------------------------------------
@@ -536,6 +597,22 @@ def quant_engine_node(state: QueryState) -> QueryState:
             f"Error: {dsl_error}"
         )
         return state
+
+    # ── Period-assumption guard (see _query_names_period above) ───────────
+    if state.get("fiscal_year") is None and not _query_names_period(query):
+        latest = _latest_fiscal_year(
+            dsl["entity"], dsl["metric"], dsl["financial_type"], tenant_id,
+        )
+        if latest:
+            if latest != dsl["fiscal_year"]:
+                logger.info(
+                    "No period in query — overriding invented fiscal_year %s with "
+                    "corpus latest %s for %s/%s",
+                    dsl["fiscal_year"], latest, dsl["entity"], dsl["metric"],
+                )
+                dsl["fiscal_year"] = latest
+                dsl["period"] = latest
+            state["period_assumed"] = True
 
     state["dsl_object"] = dsl
     state["dsl_valid"]  = True
