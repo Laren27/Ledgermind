@@ -26,16 +26,8 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
 };
 
 const INTAKE_PREVIEW_COUNT = 3;
-
-// Fixed-height clamp for JUST the label+box+link content — deliberately
-// NOT including any padding/margin utility class, since mixing a height
-// clamp with padding-on-the-same-element was exactly the bug last round
-// (pt-6 silently ate into the 224px budget, clipping the link). The
-// divider line + spacing-above now live on a SEPARATE outer wrapper that
-// has no height constraint, so this number only ever has to account for
-// what's actually inside it.
 const BOX_HEIGHT = 152;
-const CLAMP_HEIGHT = 216; // label row (~25) + BOX_HEIGHT (152) + link row (~22) + buffer
+const CLAMP_HEIGHT = 216;
 
 interface UploadPanelProps {
   pending: PendingUpload[];
@@ -99,6 +91,9 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
     }
   };
 
+  // height added explicitly: native <input type="date"> and <select> have
+  // different intrinsic content-driven heights across browsers even with
+  // identical padding — an explicit height forces them to match exactly.
   const inputStyle: React.CSSProperties = {
     fontFamily: "var(--font-ui, sans-serif)",
     fontSize: 13.5,
@@ -106,21 +101,23 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
     background: "rgba(255, 255, 255, 0.4)",
     border: "1px solid rgba(184, 170, 145, 0.55)",
     borderRadius: 3,
-    padding: "7px 10px",
+    padding: "0 10px",
+    height: 34,
     width: "100%",
     boxShadow: "none",
     colorScheme: "light",
+    boxSizing: "border-box",
   };
 
   const labelStyle: React.CSSProperties = {
     fontFamily: "var(--font-archival, monospace)",
-    fontSize: 10.5,
+    fontSize: 11.5,
     fontWeight: 700,
-    letterSpacing: "0.13em",
+    letterSpacing: "0.12em",
     textTransform: "uppercase",
     color: "#2A221A",
     display: "block",
-    marginBottom: 3,
+    marginBottom: 4,
   };
 
   const preview = pending.slice(0, INTAKE_PREVIEW_COUNT);
@@ -128,10 +125,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
   const hasMore = totalCount > INTAKE_PREVIEW_COUNT;
 
   return (
-    // Symmetric top/bottom panel padding (48px each) — the taller paper
-    // photo gives real headroom now, so header and footer margins can
-    // match instead of top being noticeably more generous than bottom.
-    <div className="relative space-y-5 px-[78px] pt-12 pb-12">
+    <div className="relative space-y-5 px-[78px] pt-10 pb-16">
       <ArchiveStamp status={lastStatus} />
 
       <div className="mb-1">
@@ -185,7 +179,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
               setLastPendingId(null);
             }}
             className="file:mr-3 file:px-3 file:py-1.5 file:rounded-[3px] file:border file:border-[#9C8C72] file:bg-[#D9CDB5] file:text-[#1A140E] file:text-xs file:font-bold file:uppercase file:tracking-wide file:cursor-pointer file:font-mono hover:file:bg-[#CFC0A2]"
-            style={inputStyle}
+            style={{ ...inputStyle, height: "auto", padding: "7px 10px" }}
           />
         </div>
 
@@ -197,7 +191,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="e.g. ETERNAL"
-              className="placeholder:opacity-50"
+              className="placeholder:opacity-50 placeholder:text-[11px]"
               style={inputStyle}
             />
           </div>
@@ -208,7 +202,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
               placeholder="e.g. ETERNAL"
-              className="placeholder:opacity-50"
+              className="placeholder:opacity-50 placeholder:text-[11px]"
               style={inputStyle}
             />
           </div>
@@ -222,7 +216,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
               value={fiscalYear}
               onChange={(e) => setFiscalYear(e.target.value)}
               placeholder="e.g. FY27"
-              className="placeholder:opacity-50"
+              className="placeholder:opacity-50 placeholder:text-[11px]"
               style={inputStyle}
             />
           </div>
@@ -233,7 +227,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
               value={quarter}
               onChange={(e) => setQuarter(e.target.value)}
               placeholder="e.g. Q1 — blank for annual"
-              className="placeholder:opacity-50"
+              className="placeholder:opacity-50 placeholder:text-[11px]"
               style={inputStyle}
             />
           </div>
@@ -296,15 +290,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         )}
       </form>
 
-      {/* Outer wrapper: divider line + margin-top only, NO height
-          constraint. The bug last round was clamping height on the SAME
-          element that also had padding (pt-6) — the padding silently ate
-          into the clamped budget. Keeping the divider/spacing here and the
-          hard clamp on a separate inner div below fixes that permanently. */}
       <div className="pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
-        {/* Inner clamp: ONLY label+box+link live here, height is exactly
-            sized to them with a small buffer — nothing else competes for
-            this budget. */}
         <div className="overflow-hidden" style={{ height: CLAMP_HEIGHT }}>
           <div className="flex items-center justify-between mb-3">
             <div style={labelStyle}>Recent Registrations</div>
