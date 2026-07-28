@@ -125,7 +125,7 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
   const hasMore = totalCount > INTAKE_PREVIEW_COUNT;
 
   return (
-    <div className="relative space-y-5 px-[78px] pt-10 pb-16">
+    <div className="relative space-y-5 px-[78px] pt-8 pb-20">
       <ArchiveStamp status={lastStatus} />
 
       <div className="mb-1">
