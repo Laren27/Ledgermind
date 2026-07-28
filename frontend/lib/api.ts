@@ -48,10 +48,10 @@ export interface QueryResponse {
   financial_type: string;
 
   response_text: string | null;
-  confidence_score: number;
+  confidence_score?: number;
   confidence_tier: "high" | "medium" | "low";
-  crag_triggered: boolean;
-  crag_count: number;
+  crag_triggered?: boolean;
+  crag_count?: number;
 
   citations: CitationResponse[];
   contradictions: ContradictionResponse[];
@@ -59,14 +59,14 @@ export interface QueryResponse {
   dsl_object?: Record<string, unknown> | null;
   sql_query?: string | null;
   sql_result?: Record<string, unknown>[] | null;
-  sql_verified: boolean;
+  sql_verified?: boolean;
 
   error: string | null;
-  error_node: string | null;
+  error_node?: string | null;
 
-  latency_ms: number;
-  tokens_used: number;
-  cache_hit: boolean;
+  latency_ms?: number;
+  tokens_used?: number;
+  cache_hit?: boolean;
 }
 
 export interface UploadDocumentParams {
