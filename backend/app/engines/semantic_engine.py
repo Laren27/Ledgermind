@@ -22,7 +22,13 @@ typically scores -3 to -8 even on strong matches. Thresholds reflect this.
 import logging
 from typing import List, Optional, Tuple
 
-from app.engines.retriever import retrieve_and_rerank
+from app.engines.retriever import (
+    COHERE_HIGH_CONFIDENCE_THRESHOLD,
+    COHERE_MEDIUM_CONFIDENCE_THRESHOLD,
+    LOCAL_HIGH_CONFIDENCE_THRESHOLD,
+    LOCAL_MEDIUM_CONFIDENCE_THRESHOLD,
+    retrieve_and_rerank,
+)
 from app.engines.state import ChunkResult, Citation, QueryState
 
 logger = logging.getLogger(__name__)
@@ -34,8 +40,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # Local ONNX CrossEncoder (ms-marco-MiniLM-L-6-v2) — raw logit scale, roughly -12 to +2
-LOCAL_HIGH_CONFIDENCE_THRESHOLD   = -4.5
-LOCAL_MEDIUM_CONFIDENCE_THRESHOLD = -7.5
+# LOCAL_HIGH_CONFIDENCE_THRESHOLD — moved to retriever.py (single definition), imported above
+# LOCAL_MEDIUM_CONFIDENCE_THRESHOLD — moved to retriever.py (single definition), imported above
 
 # Cohere Rerank API (rerank-english-v3.0) — relevance_score scale, 0.0 to 1.0
 # CALIBRATED 2026-07-27: validated against real production scores logged across
@@ -45,8 +51,8 @@ LOCAL_MEDIUM_CONFIDENCE_THRESHOLD = -7.5
 # run fell between 0.15-0.5 or below 0.15, so the MEDIUM/LOW boundary itself
 # remains unstressed by real data — revisit if a future query's tier looks wrong
 # given its logged score. 0.5/0.15 held up against everything checked; keeping.
-COHERE_HIGH_CONFIDENCE_THRESHOLD   = 0.5
-COHERE_MEDIUM_CONFIDENCE_THRESHOLD = 0.15
+# COHERE_HIGH_CONFIDENCE_THRESHOLD — moved to retriever.py (single definition), imported above
+# COHERE_MEDIUM_CONFIDENCE_THRESHOLD — moved to retriever.py (single definition), imported above
 # Below the relevant MEDIUM threshold → LOW → refuse
 
 # Bug history: prior to this fix, a single fixed threshold pair (-4.5 / -7.5,

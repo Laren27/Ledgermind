@@ -293,18 +293,59 @@ def hybrid_search(
 # behind a route/intent flag.
 STATEMENT_CHUNK_TYPES = {"FINANCIAL_STATEMENT", "TABLE"}
 
+# Reranker confidence thresholds. Defined HERE, not in semantic_engine.py,
+# because retriever.py cannot import from semantic_engine.py — that module
+# already imports retrieve_and_rerank from here, so the reverse is circular.
+# semantic_engine.py imports these. ONE definition; this project has been
+# bitten before by the same constant living in several places.
+# Calibrated 2026-07-27 against real production scores across all 83 golden
+# questions — see semantic_engine.py's _score_confidence for the full note.
+LOCAL_HIGH_CONFIDENCE_THRESHOLD   = -4.5
+LOCAL_MEDIUM_CONFIDENCE_THRESHOLD = -7.5
+COHERE_HIGH_CONFIDENCE_THRESHOLD   = 0.5
+COHERE_MEDIUM_CONFIDENCE_THRESHOLD = 0.15
+
 
 def _prefer_narrative(chunks: List[ChunkResult], top_k: int) -> List[ChunkResult]:
     """
-    Stable partition: narrative chunks first, statement/table chunks last,
-    each group keeping its original (reranker-sorted) relative order. No
-    score is modified — this only changes which candidates make the final
-    cut, so reranker_score in the citation payload still reflects the
-    reranker's real judgment, not a synthetic penalty.
+    Promote RELEVANT narrative chunks ahead of statement/table chunks.
+
+    The promotion is gated on a score floor (the MEDIUM confidence threshold
+    for whichever backend scored these chunks). Without that gate this
+    function was a de facto FILTER, not a partition: real pools carry 15+
+    narrative chunks, so any five of them — including ones scoring 0.02 —
+    permanently excluded every statement chunk from the top-k. Confirmed
+    live 2026-07-29 on "what line items does ETERNAL report in its
+    consolidated balance sheet", which returned five narrative citations
+    (top 0.66, bottom 0.02) and no balance sheet at all.
+
+    With the floor: a genuinely relevant narrative chunk still outranks a
+    statement chunk the reranker over-scored (the original bug — a rank-16
+    balance sheet beating eight on-topic chunks at 0.89). Sub-threshold
+    narrative chunks fall back to pure reranker order and no longer
+    leapfrog anything.
+
+    No score is modified — this only decides which candidates survive.
     """
-    narrative = [c for c in chunks if c["chunk_type"] not in STATEMENT_CHUNK_TYPES]
-    statement = [c for c in chunks if c["chunk_type"] in STATEMENT_CHUNK_TYPES]
-    return (narrative + statement)[:top_k]
+    if not chunks:
+        return chunks
+
+    backend = chunks[0].get("reranker_backend", "local")
+    floor = (
+        COHERE_MEDIUM_CONFIDENCE_THRESHOLD if backend == "cohere"
+        else LOCAL_MEDIUM_CONFIDENCE_THRESHOLD
+    )
+
+    promoted: List[ChunkResult] = []
+    remainder: List[ChunkResult] = []
+    for c in chunks:
+        is_narrative = c["chunk_type"] not in STATEMENT_CHUNK_TYPES
+        if is_narrative and c["reranker_score"] >= floor:
+            promoted.append(c)
+        else:
+            remainder.append(c)
+
+    return (promoted + remainder)[:top_k]
 
 
 def rerank(
