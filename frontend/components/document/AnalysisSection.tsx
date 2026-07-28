@@ -16,8 +16,6 @@ export function AnalysisSection({ paragraphs }: AnalysisSectionProps) {
         color: "var(--paper-text)",
         textAlign: "justify",
         textJustify: "inter-word",
-        maxWidth: "74ch",
-        margin: "0 auto",
       }}
     >
       {paragraphs.map((p, i) => (
