@@ -5,9 +5,29 @@ interface AnalysisSectionProps {
 
 export function AnalysisSection({ paragraphs }: AnalysisSectionProps) {
   return (
-    <div className="mb-5" style={{ fontFamily: "var(--font-body)", fontSize: 15.5, lineHeight: 1.75, color: "var(--paper-text)" }}>
+    <div
+      className="mb-5"
+      style={{
+        fontFamily: "var(--font-body)",
+        fontSize: "17px",
+        lineHeight: 1.82,
+        fontWeight: 400,
+        letterSpacing: "-0.01em",
+        color: "var(--paper-text)",
+        textAlign: "justify",
+        textJustify: "inter-word",
+        maxWidth: "74ch",
+        margin: "0 auto",
+      }}
+    >
       {paragraphs.map((p, i) => (
-        <p key={i} className="mb-3">
+        <p
+          key={i}
+          style={{
+            marginBottom: "0.85rem",
+            textIndent: "1.2rem",
+          }}
+        >
           {p.text}
           {p.citations.map((c) => (
             <sup key={c.index} style={{ color: "var(--paper-accent)", marginLeft: 1 }}>
