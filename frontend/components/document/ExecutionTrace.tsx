@@ -32,6 +32,17 @@ const SLOTS: Slot[] = [
 
 const ENGINE_NODES = new Set(["semantic_engine", "quant_engine", "cross_engine"]);
 
+// The router's own detail already names the path it chose, so the engine slot
+// can be labelled the moment ROUTER completes -- before the engine itself has
+// reported. Without this the slot reads "RESOLVING ROUTE" while the line above
+// it plainly says QUANTITATIVE, which shows uncertainty the backend has
+// already dispelled. Keys match the router's uppercased `path` value.
+const PATH_LABELS: Record<string, string> = {
+  QUANTITATIVE: "DSL \u2192 SQL",
+  SEMANTIC: "SEMANTIC RETRIEVAL",
+  CROSS: "CROSS-EXAMINATION",
+};
+
 function slotKeyFor(node: string): string {
   return ENGINE_NODES.has(node) ? "__engine__" : node;
 }
@@ -115,9 +126,11 @@ export function ExecutionTrace({
           const skipped = !done && auditDone;
           const active = !done && !skipped && i === lastDoneIndex + 1;
 
+          const routedPath = byKey.get("router")?.detail;
           const label =
             event?.label ??
             slot.label ??
+            (routedPath ? PATH_LABELS[routedPath] ?? routedPath : null) ??
             (active ? "RESOLVING ROUTE" : "ENGINE");
 
           return (
