@@ -7,7 +7,9 @@ export interface AuditLogEntry {
   query: string;
   path: string | null;
   confidenceTier: string;
-  latencyMs: number;
+  // Admin-only field. Absent for viewer/analyst per role_filtered_response,
+  // so this must render as "not available", never as a bare unit.
+  latencyMs?: number | null;
   isSuccess: boolean;
 }
 
@@ -74,7 +76,7 @@ export function AuditLogTable({ entries, onJump }: { entries: AuditLogEntry[]; o
                     {e.confidenceTier}
                   </td>
                   <td className="py-3.5 text-right tabular-nums font-medium" style={{ color: "var(--ink-secondary, #5F574D)" }}>
-                    {e.latencyMs}ms
+                    {e.latencyMs != null ? `${e.latencyMs}ms` : "—"}
                   </td>
                 </tr>
               );
