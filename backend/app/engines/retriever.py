@@ -247,25 +247,6 @@ def hybrid_search(
     points = result.points
     logger.info("hybrid_search returned %d points", len(points))
 
-    # TEMPORARY DIAGNOSTIC (added 2026-07-29) — remove once the citation-ranking
-    # question is closed. rerank() returns only Cohere's top-5, so the other 15
-    # candidates are invisible: we cannot tell whether Cohere passed over a
-    # better RISK_DISCLOSURE chunk or whether the pool genuinely had nothing
-    # better. This prints the full RRF-ordered pool so that is answerable from
-    # real output instead of inferred.
-    logger.info(
-        "RRF_POOL | %s",
-        " | ".join(
-            "%d:%s p%s rrf=%.4f" % (
-                i,
-                (pt.payload or {}).get("chunk_type", "?"),
-                (pt.payload or {}).get("page_number", "?"),
-                pt.score,
-            )
-            for i, pt in enumerate(points, 1)
-        ),
-    )
-
     chunks: List[ChunkResult] = []
     for point in points:
         payload = point.payload or {}
