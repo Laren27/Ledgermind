@@ -27,7 +27,7 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
 
 const INTAKE_PREVIEW_COUNT = 3;
 const BOX_HEIGHT = 152;
-const CLAMP_HEIGHT = 232;
+const CLAMP_HEIGHT = 216;
 
 interface UploadPanelProps {
   pending: PendingUpload[];
@@ -125,271 +125,281 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
   const hasMore = totalCount > INTAKE_PREVIEW_COUNT;
 
   return (
-    <div className="relative space-y-5 px-[78px] pt-8 pb-20">
+    /* space-y-5 deliberately does NOT live on this root element.
+       ArchiveStamp is absolutely positioned (zero visual footprint) but
+       conditionally present in the DOM — when it renders, it becomes child #1
+       and Tailwind's space-y-* shifts its margin-top onto the heading instead,
+       silently growing the whole panel by 20px and pushing content past the
+       photographed paper's bottom edge. Keeping the stamp OUTSIDE the spaced
+       wrapper means its presence can never affect flow layout.
+       Same lesson class as: never mix a fixed height with padding on one element. */
+    <div className="relative px-[78px] pt-8 pb-20">
       <ArchiveStamp status={lastStatus} />
 
-      <div className="mb-1">
-        <h2
-          style={{
-            fontFamily: "var(--font-editorial, 'Fraunces', Georgia, serif)",
-            fontSize: 25,
-            fontWeight: 700,
-            letterSpacing: "-0.01em",
-            color: "#1A140E",
-            marginBottom: 4,
-          }}
-        >
-          Archive Intake
-        </h2>
-        <p
-          style={{
-            fontFamily: "var(--font-archival, monospace)",
-            fontSize: 11,
-            color: "#5C4D3C",
-            letterSpacing: "0.03em",
-          }}
-        >
-          Register a new corporate filing into the LedgerMind archive.
-        </p>
-        <div className="mt-3 border-b" style={{ borderColor: "rgba(184, 170, 145, 0.55)" }} />
-      </div>
-
-      <div
-        className="px-4 py-2.5 text-[12.5px] leading-snug"
-        style={{
-          fontFamily: "var(--font-body)",
-          color: "#2A221A",
-          backgroundColor: "#E6DABE",
-          border: "1px solid rgba(140, 122, 100, 0.45)",
-          borderRadius: 3,
-        }}
-      >
-        Filings are stored immediately but require a local ingestion step, run by the developer, before becoming queryable.
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label style={labelStyle}>PDF Document</label>
-          <input
-            key={fileInputKey}
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
-              setLastPendingId(null);
+      <div className="space-y-5">
+        <div className="mb-1">
+          <h2
+            style={{
+              fontFamily: "var(--font-editorial, 'Fraunces', Georgia, serif)",
+              fontSize: 25,
+              fontWeight: 700,
+              letterSpacing: "-0.01em",
+              color: "#1A140E",
+              marginBottom: 4,
             }}
-            className="file:mr-3 file:px-3 file:py-1.5 file:rounded-[3px] file:border file:border-[#9C8C72] file:bg-[#D9CDB5] file:text-[#1A140E] file:text-xs file:font-bold file:uppercase file:tracking-wide file:cursor-pointer file:font-mono hover:file:bg-[#CFC0A2]"
-            style={{ ...inputStyle, height: "auto", padding: "7px 10px" }}
-          />
+          >
+            Archive Intake
+          </h2>
+          <p
+            style={{
+              fontFamily: "var(--font-archival, monospace)",
+              fontSize: 11,
+              color: "#5C4D3C",
+              letterSpacing: "0.03em",
+            }}
+          >
+            Register a new corporate filing into the LedgerMind archive.
+          </p>
+          <div className="mt-3 border-b" style={{ borderColor: "rgba(184, 170, 145, 0.55)" }} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label style={labelStyle}>Company</label>
-            <input
-              type="text"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="e.g. ETERNAL"
-              className="placeholder:opacity-50 placeholder:text-[11px]"
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Ticker</label>
-            <input
-              type="text"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              placeholder="e.g. ETERNAL"
-              className="placeholder:opacity-50 placeholder:text-[11px]"
-              style={inputStyle}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label style={labelStyle}>Fiscal Year</label>
-            <input
-              type="text"
-              value={fiscalYear}
-              onChange={(e) => setFiscalYear(e.target.value)}
-              placeholder="e.g. FY27"
-              className="placeholder:opacity-50 placeholder:text-[11px]"
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Quarter (optional)</label>
-            <input
-              type="text"
-              value={quarter}
-              onChange={(e) => setQuarter(e.target.value)}
-              placeholder="e.g. Q1 — blank for annual"
-              className="placeholder:opacity-50 placeholder:text-[11px]"
-              style={inputStyle}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label style={labelStyle}>Document Type</label>
-            <select
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              style={inputStyle}
-            >
-              {DOC_TYPES.map((dt) => (
-                <option
-                  key={dt.value}
-                  value={dt.value}
-                  style={{ backgroundColor: "#EDE4D3", color: "#1A140E" }}
-                >
-                  {dt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Filing Date</label>
-            <input
-              type="date"
-              value={filingDate}
-              onChange={(e) => setFilingDate(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={submitting || !file || !company || !ticker || !fiscalYear || !filingDate}
-          className="px-6 py-2.5 text-xs font-bold tracking-[0.22em] uppercase transition-all"
+        <div
+          className="px-4 py-2.5 text-[12.5px] leading-snug"
           style={{
-            fontFamily: "var(--font-archival, monospace)",
-            color: submitting ? "#8C8273" : "#1A140E",
-            background: "#E3D5B8",
-            border: "1px solid #9C8C72",
+            fontFamily: "var(--font-body)",
+            color: "#2A221A",
+            backgroundColor: "#E6DABE",
+            border: "1px solid rgba(140, 122, 100, 0.45)",
             borderRadius: 3,
-            cursor: submitting ? "default" : "pointer",
-            boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 2px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.15)",
           }}
-          onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.transform = "translateY(-1px)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
         >
-          {submitting ? "Registering…" : "Register Filing →"}
-        </button>
+          Filings are stored immediately but require a local ingestion step, run by the developer, before becoming queryable.
+        </div>
 
-        {submitError && (
-          <div className="text-[12.5px] font-semibold" style={{ color: "#B0453A", fontFamily: "var(--font-body)" }}>
-            {submitError}
-          </div>
-        )}
-      </form>
-
-      <div className="pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
-        <div className="overflow-hidden" style={{ height: CLAMP_HEIGHT }}>
-          <div className="flex items-center justify-between mb-3">
-            <div style={labelStyle}>Recent Registrations</div>
-            <button
-              type="button"
-              onClick={onRefresh}
-              style={{
-                fontFamily: "var(--font-archival, monospace)",
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: "#2A221A",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                opacity: 0.85,
-                transition: "opacity 0.15s",
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label style={labelStyle}>PDF Document</label>
+            <input
+              key={fileInputKey}
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setLastPendingId(null);
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-            >
-              {loadingPending ? "Refreshing…" : "↻ Refresh"}
-            </button>
+              className="file:mr-3 file:px-3 file:py-1.5 file:rounded-[3px] file:border file:border-[#9C8C72] file:bg-[#D9CDB5] file:text-[#1A140E] file:text-xs file:font-bold file:uppercase file:tracking-wide file:cursor-pointer file:font-mono hover:file:bg-[#CFC0A2]"
+              style={{ ...inputStyle, height: "auto", padding: "7px 10px" }}
+            />
           </div>
 
-          {pending.length === 0 ? (
-            <div className="text-[12.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
-              No filings registered yet.
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label style={labelStyle}>Company</label>
+              <input
+                type="text"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="e.g. ETERNAL"
+                className="placeholder:opacity-50 placeholder:text-[11px]"
+                style={inputStyle}
+              />
             </div>
-          ) : (
-            <div
-              className="ledger-scroll overflow-y-auto rounded-sm"
-              style={{ height: BOX_HEIGHT, border: "1px solid rgba(184, 170, 145, 0.4)" }}
-            >
-              <table
-                className="w-full border-collapse"
-                style={{ fontFamily: "var(--font-body)", fontSize: 12.5, tableLayout: "fixed" }}
+            <div>
+              <label style={labelStyle}>Ticker</label>
+              <input
+                type="text"
+                value={ticker}
+                onChange={(e) => setTicker(e.target.value)}
+                placeholder="e.g. ETERNAL"
+                className="placeholder:opacity-50 placeholder:text-[11px]"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label style={labelStyle}>Fiscal Year</label>
+              <input
+                type="text"
+                value={fiscalYear}
+                onChange={(e) => setFiscalYear(e.target.value)}
+                placeholder="e.g. FY27"
+                className="placeholder:opacity-50 placeholder:text-[11px]"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Quarter (optional)</label>
+              <input
+                type="text"
+                value={quarter}
+                onChange={(e) => setQuarter(e.target.value)}
+                placeholder="e.g. Q1 — blank for annual"
+                className="placeholder:opacity-50 placeholder:text-[11px]"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label style={labelStyle}>Document Type</label>
+              <select
+                value={docType}
+                onChange={(e) => setDocType(e.target.value)}
+                style={inputStyle}
               >
-                <colgroup>
-                  <col style={{ width: "26%" }} />
-                  <col style={{ width: "18%" }} />
-                  <col style={{ width: "34%" }} />
-                  <col style={{ width: "22%" }} />
-                </colgroup>
-                <thead>
-                  <tr
-                    style={{
-                      color: "#5C4D3C",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      letterSpacing: "0.1em",
-                      position: "sticky",
-                      top: 0,
-                      background: "rgba(239, 231, 212, 0.97)",
-                    }}
+                {DOC_TYPES.map((dt) => (
+                  <option
+                    key={dt.value}
+                    value={dt.value}
+                    style={{ backgroundColor: "#EDE4D3", color: "#1A140E" }}
                   >
-                    <td style={{ padding: "7px 8px 7px 8px", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
-                    <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
-                    <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
-                    <td style={{ padding: "7px 8px 7px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.map((row) => (
-                    <tr key={row.id} style={{ borderBottom: "1px solid #E2DACB", color: "#1A140E" }}>
-                      <td style={{ padding: "9px 8px 9px 8px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
-                      <td style={{ padding: "9px 8px 9px 0" }}>
-                        {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
-                      </td>
-                      <td style={{ padding: "9px 8px 9px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
-                        {STATUS_LABEL[row.status]}
-                      </td>
-                      <td style={{ padding: "9px 8px 9px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
-                        {new Date(row.created_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    {dt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Filing Date</label>
+              <input
+                type="date"
+                value={filingDate}
+                onChange={(e) => setFilingDate(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting || !file || !company || !ticker || !fiscalYear || !filingDate}
+            className="px-6 py-2.5 text-xs font-bold tracking-[0.22em] uppercase transition-all"
+            style={{
+              fontFamily: "var(--font-archival, monospace)",
+              color: submitting ? "#8C8273" : "#1A140E",
+              background: "#E3D5B8",
+              border: "1px solid #9C8C72",
+              borderRadius: 3,
+              cursor: submitting ? "default" : "pointer",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 2px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.15)",
+            }}
+            onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
+          >
+            {submitting ? "Registering…" : "Register Filing →"}
+          </button>
+
+          {submitError && (
+            <div className="text-[12.5px] font-semibold" style={{ color: "#B0453A", fontFamily: "var(--font-body)" }}>
+              {submitError}
             </div>
           )}
+        </form>
 
-          <div className="text-[11.5px] pt-2" style={{ color: "#4A3D2C", fontFamily: "var(--font-body)" }}>
-            {hasMore && `Showing ${INTAKE_PREVIEW_COUNT} of ${totalCount} registrations. `}
-            <button
-              type="button"
-              onClick={onViewHistory}
-              className="group font-bold underline transition-colors"
-              style={{
-                color: "#2A221A",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              View Full Upload History <span style={{ display: "inline-block", transition: "transform 0.15s" }} className="group-hover:translate-x-0.5">→</span>
-            </button>
+        <div className="pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
+          <div className="overflow-hidden" style={{ height: CLAMP_HEIGHT }}>
+            <div className="flex items-center justify-between mb-3">
+              <div style={labelStyle}>Recent Registrations</div>
+              <button
+                type="button"
+                onClick={onRefresh}
+                style={{
+                  fontFamily: "var(--font-archival, monospace)",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: "#2A221A",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  opacity: 0.85,
+                  transition: "opacity 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+              >
+                {loadingPending ? "Refreshing…" : "↻ Refresh"}
+              </button>
+            </div>
+
+            {pending.length === 0 ? (
+              <div className="text-[12.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+                No filings registered yet.
+              </div>
+            ) : (
+              <div
+                className="ledger-scroll overflow-y-auto rounded-sm"
+                style={{ height: BOX_HEIGHT, border: "1px solid rgba(184, 170, 145, 0.4)" }}
+              >
+                <table
+                  className="w-full border-collapse"
+                  style={{ fontFamily: "var(--font-body)", fontSize: 12.5, tableLayout: "fixed" }}
+                >
+                  <colgroup>
+                    <col style={{ width: "26%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "34%" }} />
+                    <col style={{ width: "22%" }} />
+                  </colgroup>
+                  <thead>
+                    <tr
+                      style={{
+                        color: "#5C4D3C",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        position: "sticky",
+                        top: 0,
+                        background: "rgba(239, 231, 212, 0.97)",
+                      }}
+                    >
+                      <td style={{ padding: "7px 8px 7px 8px", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
+                      <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
+                      <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
+                      <td style={{ padding: "7px 8px 7px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map((row) => (
+                      <tr key={row.id} style={{ borderBottom: "1px solid #E2DACB", color: "#1A140E" }}>
+                        <td style={{ padding: "9px 8px 9px 8px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
+                        <td style={{ padding: "9px 8px 9px 0" }}>
+                          {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
+                        </td>
+                        <td style={{ padding: "9px 8px 9px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
+                          {STATUS_LABEL[row.status]}
+                        </td>
+                        <td style={{ padding: "9px 8px 9px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
+                          {new Date(row.created_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="text-[11.5px] pt-2" style={{ color: "#4A3D2C", fontFamily: "var(--font-body)" }}>
+              {hasMore && `Showing ${INTAKE_PREVIEW_COUNT} of ${totalCount} registrations. `}
+              <button
+                type="button"
+                onClick={onViewHistory}
+                className="group font-bold underline transition-colors"
+                style={{
+                  color: "#2A221A",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                View Full Upload History <span style={{ display: "inline-block", transition: "transform 0.15s" }} className="group-hover:translate-x-0.5">→</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
