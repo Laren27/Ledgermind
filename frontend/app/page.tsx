@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getSession, logout } from "@/lib/auth";
-import { submitQuery, UnauthorizedError, fetchPendingUploads, type QueryResponse, type PendingUpload } from "@/lib/api";
+import { submitQueryStreaming, UnauthorizedError, fetchPendingUploads, type QueryResponse, type PendingUpload, type TraceEvent } from "@/lib/api";
 import LoginForm from "@/components/LoginForm";
 import { DocumentEnvironment } from "@/components/document/DocumentEnvironment";
 import { DocumentPage, type ShiftPhase } from "@/components/document/DocumentPage";
@@ -21,6 +21,7 @@ import { PageNavigator } from "@/components/document/PageNavigator";
 import { AuditLogTable } from "@/components/document/AuditLogTable";
 import { UploadPanel } from "@/components/document/UploadPanel";
 import { UploadHistoryTable } from "@/components/document/UploadHistoryTable";
+import { ExecutionTrace } from "@/components/document/ExecutionTrace";
 
 const PEER_ENTITIES = ["Eternal", "Paytm"]; // Titan excluded: no annual-aggregate revenue in corpus, growth_comparison always fails for it (known limitation)
 
@@ -40,16 +41,6 @@ function cleanProseText(text: string): string {
 
 function cleanBlockReason(reason: string): string {
   return reason.replace(/^[a-z_]+:\s*/i, "");
-}
-
-function DocumentBodySkeleton() {
-  return (
-    <div className="animate-pulse space-y-4">
-      <div className="h-6 w-1/2 rounded" style={{ background: "var(--ink-divider)" }} />
-      <div className="h-4 w-full rounded" style={{ background: "var(--ink-divider)" }} />
-      <div className="h-4 w-5/6 rounded" style={{ background: "var(--ink-divider)" }} />
-    </div>
-  );
 }
 
 function buildCitationItems(data: QueryResponse) {
@@ -235,11 +226,12 @@ export default function Home() {
     setSessionChecked(true);
   }, []);
 
-  interface Page { response: QueryResponse; originView: "workbench" | "peer"; }
+  interface Page { response: QueryResponse; originView: "workbench" | "peer"; trace: TraceEvent[]; }
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [traceEvents, setTraceEvents] = useState<TraceEvent[]>([]);
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeView, setActiveView] = useState<ActiveView>("workbench");
 
@@ -332,10 +324,22 @@ export default function Home() {
       financial_type: "consolidated"
     } : undefined;
 
+    // Collected locally as well as in state: setState is async, so the array
+    // attached to the finished page must not depend on a flush having happened.
+    const collected: TraceEvent[] = [];
+    setTraceEvents([]);
+
     try {
-      const result = await submitQuery(query, executionContext as any);
+      const result = await submitQueryStreaming(
+        query,
+        (ev) => {
+          collected.push(ev);
+          setTraceEvents([...collected]);
+        },
+        executionContext as any
+      );
       setPages((prev) => {
-        const next = [...prev, { response: result, originView: activeView === "peer" ? "peer" as const : "workbench" as const }];
+        const next = [...prev, { response: result, originView: activeView === "peer" ? "peer" as const : "workbench" as const, trace: collected }];
         setCurrentPageIndex(next.length);
         return next;
       });
@@ -415,9 +419,12 @@ export default function Home() {
               onBack={() => setActiveView("upload")}
             />
           ) : isLoading && idx === ledgerCurrentPage ? (
-            <DocumentBodySkeleton />
+            <ExecutionTrace events={traceEvents} isComplete={false} />
           ) : (
             <>
+              {targetPage && targetPage.trace.length > 0 && (
+                <ExecutionTrace events={targetPage.trace} isComplete />
+              )}
               {targetAnswer && composeDocumentBody(targetAnswer)}
               {error && idx === ledgerCurrentPage && <AnalysisSection paragraphs={[{ text: error, citations: [] }]} />}
             </>
