@@ -167,7 +167,7 @@ def _broaden_retrieval(
     quarter: Optional[str],
     financial_type: str,
     crag_count: int,
-) -> List[ChunkResult]:
+) -> Optional[List[ChunkResult]]:
     """
     Corrective RAG retry with progressively broader filters.
 
@@ -177,6 +177,19 @@ def _broaden_retrieval(
     The most common cause of LOW/MEDIUM retrieval on a small corpus is
     over-specific metadata filters excluding relevant chunks.
     """
+    # A retry that drops a filter which was never set re-issues the IDENTICAL
+    # query and consumes a retry slot for nothing. Confirmed live 2026-07-29:
+    # a query with no period extracted (fiscal_year=None, quarter=None) ran
+    # three retrievals returning byte-identical reranker scores
+    # (0.1364/0.0633) before refusing. Signal "nothing to broaden" with None so
+    # the caller can stop rather than burn latency on a guaranteed no-op.
+    if crag_count == 1 and quarter is None:
+        logger.info("CRAG retry 1 skipped: quarter filter was already unset")
+        return None
+    if crag_count == 2 and fiscal_year is None:
+        logger.info("CRAG retry 2 skipped: fiscal_year filter was already unset")
+        return None
+
     if crag_count == 1:
         logger.info("CRAG retry 1: dropping quarter filter (was %s)", quarter)
         return retrieve_and_rerank(
@@ -261,7 +274,7 @@ def semantic_engine_node(state: QueryState) -> QueryState:
         state["crag_triggered"] = True
         state["crag_count"] = crag_count
 
-        chunks = _broaden_retrieval(
+        broadened = _broaden_retrieval(
             query=query,
             tenant_id=tenant_id,
             company=company,
@@ -271,6 +284,15 @@ def semantic_engine_node(state: QueryState) -> QueryState:
             crag_count=crag_count,
         )
 
+        if broadened is None:
+            # Nothing left to broaden — keep the chunks we already have and
+            # let the existing tier logic below decide accept-vs-refuse.
+            crag_count -= 1
+            state["crag_count"] = crag_count
+            logger.info("CRAG: no further broadening possible — stopping retries")
+            break
+
+        chunks = broadened
         new_score, new_tier = _score_confidence(chunks)
         logger.info(
             "CRAG retry %d: score %.4f→%.4f tier %s→%s",
