@@ -23,7 +23,6 @@ export function AnalysisSection({ paragraphs }: AnalysisSectionProps) {
           key={i}
           style={{
             marginBottom: "0.85rem",
-            textIndent: "1.2rem",
           }}
         >
           {p.text}

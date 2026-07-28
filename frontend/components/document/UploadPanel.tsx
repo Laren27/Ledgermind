@@ -27,7 +27,7 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
 
 const INTAKE_PREVIEW_COUNT = 3;
 const BOX_HEIGHT = 152;
-const CLAMP_HEIGHT = 216;
+const CLAMP_HEIGHT = 232;
 
 interface UploadPanelProps {
   pending: PendingUpload[];
