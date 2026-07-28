@@ -204,7 +204,7 @@ function composeDocumentBody(data: QueryResponse) {
             {data.company} — {data.fiscal_year ?? "Period"}
           </SectionHeading>
         )}
-        {rows.length > 0 && <LedgerTable columns={["PERIOD", "VALUE", "Δ YoY"]} rows={rows} />}
+        {rows.length > 0 && <LedgerTable columns={["PERIOD", "VALUE (₹ Cr)", "Δ YoY"]} rows={rows} />}
         <MetricCallout
           label="Result"
           value={resultValue}
