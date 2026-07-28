@@ -140,6 +140,108 @@ export async function submitQuery(
   return res.json();
 }
 
+export interface TraceEvent {
+  node: string;
+  label: string;
+  status: string;
+  detail?: string;
+  duration_ms?: number;
+}
+
+/**
+ * Streams the query pipeline over SSE, reporting each LangGraph node as it
+ * completes, and resolves with the same payload POST /api/query returns.
+ *
+ * Uses fetch + ReadableStream rather than EventSource: EventSource is GET-only
+ * and cannot set an Authorization header, and moving the JWT into a query
+ * string would put it in server access logs and browser history.
+ *
+ * Falls back to submitQuery() on ANY streaming failure. The trace is an
+ * enhancement to the wait, never a precondition for getting an answer.
+ */
+export async function submitQueryStreaming(
+  question: string,
+  onNode: (event: TraceEvent) => void,
+  executionContext?: Record<string, any>
+): Promise<QueryResponse> {
+  const session = getSession();
+  if (!session) {
+    throw new UnauthorizedError("Not logged in");
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/api/query/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.accessToken}`,
+      },
+      body: JSON.stringify({
+        query: question,
+        execution_context: executionContext ?? null,
+      }),
+    });
+
+    if (res.status === 401) {
+      logout();
+      throw new UnauthorizedError("Session expired");
+    }
+    if (!res.ok || !res.body) {
+      throw new Error(`Stream failed (${res.status})`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let result: QueryResponse | null = null;
+    let streamError: string | null = null;
+
+    // SSE frames are separated by a blank line. Partial frames stay in the
+    // buffer until their terminator arrives -- a chunk boundary can land
+    // anywhere, including mid-JSON.
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? "";
+
+      for (const frame of frames) {
+        let eventName = "message";
+        const dataLines: string[] = [];
+
+        for (const line of frame.split("\n")) {
+          if (line.startsWith(":")) continue; // heartbeat comment
+          if (line.startsWith("event:")) eventName = line.slice(6).trim();
+          else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+        }
+        if (dataLines.length === 0) continue;
+
+        let payload: any;
+        try {
+          payload = JSON.parse(dataLines.join("\n"));
+        } catch {
+          continue; // malformed frame: skip it rather than kill the stream
+        }
+
+        if (eventName === "node") onNode(payload as TraceEvent);
+        else if (eventName === "complete") result = payload as QueryResponse;
+        else if (eventName === "error") streamError = payload?.message ?? "Pipeline error";
+      }
+    }
+
+    if (streamError) throw new Error(streamError);
+    if (!result) throw new Error("Stream ended without a complete event");
+    return result;
+  } catch (err) {
+    // A dead session is a real failure, not a transport problem -- retrying
+    // over the non-streaming endpoint would just 401 again.
+    if (err instanceof UnauthorizedError) throw err;
+    return submitQuery(question, executionContext);
+  }
+}
+
 export async function uploadDocument(
   params: UploadDocumentParams
 ): Promise<UploadDocumentResponse> {
