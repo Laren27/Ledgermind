@@ -27,16 +27,15 @@ const STATUS_COLOR: Record<PendingUpload["status"], string> = {
 
 const INTAKE_PREVIEW_COUNT = 3;
 
-// Total footprint of the Recent Registrations section, hard-clamped.
-// This is a REDUNDANT safety measure on top of the inner scroll box's own
-// height — previously the "View Full History" link's position could drift
-// depending on table content/wrapping even though the box itself had a
-// fixed height. Wrapping everything (label + box + link) in one container
-// with this exact height + overflow:hidden makes that structurally
-// impossible: the section's footprint is now a single fixed number,
-// period, regardless of row count or text wrapping.
-const SECTION_HEIGHT = 224;
+// Fixed-height clamp for JUST the label+box+link content — deliberately
+// NOT including any padding/margin utility class, since mixing a height
+// clamp with padding-on-the-same-element was exactly the bug last round
+// (pt-6 silently ate into the 224px budget, clipping the link). The
+// divider line + spacing-above now live on a SEPARATE outer wrapper that
+// has no height constraint, so this number only ever has to account for
+// what's actually inside it.
 const BOX_HEIGHT = 152;
+const CLAMP_HEIGHT = 216; // label row (~25) + BOX_HEIGHT (152) + link row (~22) + buffer
 
 interface UploadPanelProps {
   pending: PendingUpload[];
@@ -129,7 +128,10 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
   const hasMore = totalCount > INTAKE_PREVIEW_COUNT;
 
   return (
-    <div className="relative space-y-5 px-[78px] pt-11 pb-9">
+    // Symmetric top/bottom panel padding (48px each) — the taller paper
+    // photo gives real headroom now, so header and footer margins can
+    // match instead of top being noticeably more generous than bottom.
+    <div className="relative space-y-5 px-[78px] pt-12 pb-12">
       <ArchiveStamp status={lastStatus} />
 
       <div className="mb-1">
@@ -294,114 +296,115 @@ export function UploadPanel({ pending, loadingPending, onRefresh, onViewHistory 
         )}
       </form>
 
-      {/* HARD CLAMP: entire section (label + box + link) is pinned to
-          SECTION_HEIGHT with overflow:hidden — this is what guarantees
-          "View Full Upload History" never moves, regardless of row count
-          or text wrapping inside the table. The inner scroll box still has
-          its own overflow-y:auto for actual scrolling; this outer clamp is
-          a second, independent guarantee on top of it. */}
-      <div
-        className="pt-6 border-t-2 overflow-hidden"
-        style={{ borderColor: "#8C7A64", height: SECTION_HEIGHT }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div style={labelStyle}>Recent Registrations</div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            style={{
-              fontFamily: "var(--font-archival, monospace)",
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "#2A221A",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              opacity: 0.85,
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-          >
-            {loadingPending ? "Refreshing…" : "↻ Refresh"}
-          </button>
-        </div>
-
-        {pending.length === 0 ? (
-          <div className="text-[12.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
-            No filings registered yet.
-          </div>
-        ) : (
-          <div
-            className="ledger-scroll overflow-y-auto rounded-sm"
-            style={{ height: BOX_HEIGHT, border: "1px solid rgba(184, 170, 145, 0.4)" }}
-          >
-            <table
-              className="w-full border-collapse"
-              style={{ fontFamily: "var(--font-body)", fontSize: 12.5, tableLayout: "fixed" }}
+      {/* Outer wrapper: divider line + margin-top only, NO height
+          constraint. The bug last round was clamping height on the SAME
+          element that also had padding (pt-6) — the padding silently ate
+          into the clamped budget. Keeping the divider/spacing here and the
+          hard clamp on a separate inner div below fixes that permanently. */}
+      <div className="pt-6 border-t-2" style={{ borderColor: "#8C7A64" }}>
+        {/* Inner clamp: ONLY label+box+link live here, height is exactly
+            sized to them with a small buffer — nothing else competes for
+            this budget. */}
+        <div className="overflow-hidden" style={{ height: CLAMP_HEIGHT }}>
+          <div className="flex items-center justify-between mb-3">
+            <div style={labelStyle}>Recent Registrations</div>
+            <button
+              type="button"
+              onClick={onRefresh}
+              style={{
+                fontFamily: "var(--font-archival, monospace)",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "#2A221A",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                opacity: 0.85,
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
             >
-              <colgroup>
-                <col style={{ width: "26%" }} />
-                <col style={{ width: "18%" }} />
-                <col style={{ width: "34%" }} />
-                <col style={{ width: "22%" }} />
-              </colgroup>
-              <thead>
-                <tr
-                  style={{
-                    color: "#5C4D3C",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    position: "sticky",
-                    top: 0,
-                    background: "rgba(239, 231, 212, 0.97)",
-                  }}
-                >
-                  <td style={{ padding: "7px 8px 7px 8px", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
-                  <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
-                  <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
-                  <td style={{ padding: "7px 8px 7px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: "1px solid #E2DACB", color: "#1A140E" }}>
-                    <td style={{ padding: "9px 8px 9px 8px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
-                    <td style={{ padding: "9px 8px 9px 0" }}>
-                      {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
-                    </td>
-                    <td style={{ padding: "9px 8px 9px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
-                      {STATUS_LABEL[row.status]}
-                    </td>
-                    <td style={{ padding: "9px 8px 9px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
-                      {new Date(row.created_at).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              {loadingPending ? "Refreshing…" : "↻ Refresh"}
+            </button>
           </div>
-        )}
 
-        <div className="text-[11.5px] pt-2" style={{ color: "#4A3D2C", fontFamily: "var(--font-body)" }}>
-          {hasMore && `Showing ${INTAKE_PREVIEW_COUNT} of ${totalCount} registrations. `}
-          <button
-            type="button"
-            onClick={onViewHistory}
-            className="group font-bold underline transition-colors"
-            style={{
-              color: "#2A221A",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            View Full Upload History <span style={{ display: "inline-block", transition: "transform 0.15s" }} className="group-hover:translate-x-0.5">→</span>
-          </button>
+          {pending.length === 0 ? (
+            <div className="text-[12.5px]" style={{ color: "#5C4D3C", fontFamily: "var(--font-body)" }}>
+              No filings registered yet.
+            </div>
+          ) : (
+            <div
+              className="ledger-scroll overflow-y-auto rounded-sm"
+              style={{ height: BOX_HEIGHT, border: "1px solid rgba(184, 170, 145, 0.4)" }}
+            >
+              <table
+                className="w-full border-collapse"
+                style={{ fontFamily: "var(--font-body)", fontSize: 12.5, tableLayout: "fixed" }}
+              >
+                <colgroup>
+                  <col style={{ width: "26%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "34%" }} />
+                  <col style={{ width: "22%" }} />
+                </colgroup>
+                <thead>
+                  <tr
+                    style={{
+                      color: "#5C4D3C",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      position: "sticky",
+                      top: 0,
+                      background: "rgba(239, 231, 212, 0.97)",
+                    }}
+                  >
+                    <td style={{ padding: "7px 8px 7px 8px", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>COMPANY</td>
+                    <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>PERIOD</td>
+                    <td style={{ padding: "7px 8px 7px 0", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>STATUS</td>
+                    <td style={{ padding: "7px 8px 7px 0", textAlign: "right", borderBottom: "1px solid rgba(184, 170, 145, 0.55)" }}>REGISTERED</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.map((row) => (
+                    <tr key={row.id} style={{ borderBottom: "1px solid #E2DACB", color: "#1A140E" }}>
+                      <td style={{ padding: "9px 8px 9px 8px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{row.company}</td>
+                      <td style={{ padding: "9px 8px 9px 0" }}>
+                        {row.fiscal_year}{row.quarter ? ` ${row.quarter}` : ""}
+                      </td>
+                      <td style={{ padding: "9px 8px 9px 0", color: STATUS_COLOR[row.status], fontWeight: 700 }}>
+                        {STATUS_LABEL[row.status]}
+                      </td>
+                      <td style={{ padding: "9px 8px 9px 0", textAlign: "right", fontSize: 11, color: "#4A3D2C" }}>
+                        {new Date(row.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="text-[11.5px] pt-2" style={{ color: "#4A3D2C", fontFamily: "var(--font-body)" }}>
+            {hasMore && `Showing ${INTAKE_PREVIEW_COUNT} of ${totalCount} registrations. `}
+            <button
+              type="button"
+              onClick={onViewHistory}
+              className="group font-bold underline transition-colors"
+              style={{
+                color: "#2A221A",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              View Full Upload History <span style={{ display: "inline-block", transition: "transform 0.15s" }} className="group-hover:translate-x-0.5">→</span>
+            </button>
+          </div>
         </div>
       </div>
 
