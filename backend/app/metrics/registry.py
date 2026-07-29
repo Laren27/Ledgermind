@@ -598,6 +598,29 @@ def prompt_warnings() -> list[str]:
     ]
 
 
+def derived_metric_aliases() -> dict[str, str]:
+    """alias (lowercase) -> canonical_name, for metric_type="derived" metrics only.
+
+    Used by quant_engine's pre-DSL substitution guard. These metrics have no
+    SQL formula compiler, so an LLM asked for one cannot emit a computable
+    answer — and when forced to choose from the available list it substitutes
+    the nearest plausible metric rather than refusing. Observed live
+    2026-07-29: "What was Paytm's EBITDA for FY26?" returned total_expenses
+    (Rs 8,523 Cr) with sql_verified=True.
+
+    Restricted to derived metrics deliberately: their aliases are distinctive.
+    Scanning every registry alias would false-positive constantly on short
+    aliases of non-queryable metrics ("others", "india", "cash", "equity").
+    """
+    pairs: dict[str, str] = {}
+    for m in ALL_METRICS:
+        if m.metric_type != "derived":
+            continue
+        for alias in m.aliases:
+            pairs[alias.lower().strip()] = m.canonical_name
+    return pairs
+
+
 def not_yet_derivable_metrics() -> list[str]:
     """dsl_enabled metrics that are metric_type='derived' — no SQL formula
     compiler exists yet, so these currently return a clean unavailable
