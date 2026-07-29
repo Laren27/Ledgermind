@@ -141,10 +141,19 @@ def _should_fall_back(exc: Exception) -> bool:
     """
     s = f"{type(exc).__name__}: {exc}".lower()
     markers = (
-        "timeout", "timed out", "deadline",
+        # transport-level: a bound was hit, or the socket never opened
+        "timeout", "timed out", "deadline", "connection", "connecterror",
+        "network", "unreachable", "max retries", "remote end closed",
+        # provider-level
         "429", "resource_exhausted", "rate limit", "rate_limit",
         "500", "502", "503", "504", "unavailable", "internal server error",
     )
+    # Deliberately NOT here: 401/403/invalid-argument. A bad key or a
+    # malformed request is a config error, and serving those from the
+    # fallback would hide the real fault (2026-07-29: the 1ms probe
+    # surfaced as ConnectionError, not "timeout", and was missed by an
+    # earlier, narrower list — transport failures are exactly the case
+    # blueprint 17 exists for).
     return any(m in s for m in markers)
 
 
