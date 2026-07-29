@@ -45,6 +45,7 @@ from app.engines.dsl_compiler import (
 )
 from app.engines.router import GEMINI_MODEL
 from app.engines.state import DSLObject, QueryState
+from app.llm.client import LLMUnavailable, generate_structured
 from app.metrics.registry import (
     derived_metric_aliases,
     get_metric,
@@ -203,18 +204,19 @@ def _generate_dsl(
     fiscal_year: Optional[str],
     quarter: Optional[str],
     financial_type: str,
-) -> Tuple[Optional[DSLObject], int, Optional[str]]:
+) -> Tuple[Optional[DSLObject], int, Optional[str], Optional[str]]:
     """
     Generate and validate a DSL object, with up to MAX_DSL_ATTEMPTS retries.
 
-    Returns: (dsl_object, attempts_used, error_message)
+    Returns: (dsl_object, attempts_used, error_message, llm_provider)
       - dsl_object is None on failure
       - error_message describes what went wrong (for user-facing response)
+      - llm_provider is whichever provider served the successful call
     """
-    client = _get_gemini_client()
     repair_hint: Optional[str] = None
     attempts = 0
     last_error: Optional[str] = None
+    provider: Optional[str] = None
 
     while attempts < MAX_DSL_ATTEMPTS:
         attempts += 1
@@ -230,19 +232,15 @@ def _generate_dsl(
         )
 
         try:
-            response = _get_gemini_client().models.generate_content(
-                model=GEMINI_MODEL,
-                contents=user_message,
-                config=types.GenerateContentConfig(
-                    system_instruction=DSL_SYSTEM_PROMPT,
-                    temperature=0.0,
-                    max_output_tokens=200,
-                    response_mime_type="application/json",
-                    response_schema=GeminiDSLResponse,
-                ),
+            llm = generate_structured(
+                system=DSL_SYSTEM_PROMPT,
+                user=user_message,
+                schema=GeminiDSLResponse,
+                temperature=0.0,
+                max_tokens=200,
             )
-
-            raw_text = response.text.strip()
+            provider = llm.provider
+            raw_text = llm.text
             logger.debug("DSL raw response (attempt %d): %s", attempts, raw_text)
 
             try:
@@ -269,8 +267,16 @@ def _generate_dsl(
                 raw_dict["quarter"] = quarter
             raw_dict.setdefault("financial_type", financial_type)
 
+        except LLMUnavailable as e:
+            # BREAK, not continue. The self-healing loop exists to repair BAD
+            # DSL; "no provider answered" is not a DSL defect, and a repair
+            # hint cannot fix it. Retrying here burns the single remaining
+            # attempt on a call that will fail identically -- the same
+            # conflation as the CRAG break/continue bug, inverted.
+            logger.error("DSL generation unavailable on ALL providers: %s", e)
+            return None, attempts, f"No LLM provider was available: {e}", None
         except Exception as e:
-            logger.error("DSL Gemini call failed (attempt %d): %s", attempts, e)
+            logger.error("DSL generation failed (attempt %d): %s", attempts, e)
             repair_hint = f"Previous call failed with error: {e}. Try again with valid JSON."
             continue
 
@@ -282,7 +288,7 @@ def _generate_dsl(
                 "DSL valid on attempt %d | metric=%s operation=%s",
                 attempts, validation.dsl_object["metric"], validation.dsl_object["operation"],
             )
-            return validation.dsl_object, attempts, None
+            return validation.dsl_object, attempts, None, provider
 
         # Invalid — check if it's recoverable
         logger.warning(
@@ -294,7 +300,7 @@ def _generate_dsl(
         if validation.repair_hint is None:
             # Non-recoverable (e.g., metric registered but unavailable)
             # Return the error as a clean user message — no retry
-            return None, attempts, validation.error
+            return None, attempts, validation.error, provider
 
         repair_hint = validation.repair_hint
 
@@ -304,7 +310,8 @@ def _generate_dsl(
         attempts,
         f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts. "
         f"Last error: {last_error}" if last_error else
-        f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts."
+        f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts.",
+        provider,
     )
 
 
@@ -636,7 +643,7 @@ def quant_engine_node(state: QueryState) -> QueryState:
         return state
 
     # ── Stage 1: DSL generation ────────────────────────────────────────────
-    dsl, attempts, dsl_error = _generate_dsl(
+    dsl, attempts, dsl_error, dsl_provider = _generate_dsl(
         query=query,
         company=company,
         fiscal_year=fiscal_year,
@@ -645,6 +652,8 @@ def quant_engine_node(state: QueryState) -> QueryState:
     )
 
     state["dsl_attempts"] = attempts
+    if dsl_provider:
+        state["llm_provider"] = dsl_provider
 
     if dsl is None:
         logger.error("DSL generation failed after %d attempts: %s", attempts, dsl_error)
