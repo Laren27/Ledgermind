@@ -69,9 +69,15 @@ def _run_ingestion(
     doc_type: str,
     filing_date: str,
     version: str = "v1",
+    skip_financials: bool = False,
 ) -> dict:
     """
     Run the full ingestion pipeline for one PDF.
+
+    skip_financials=True runs Stages 1-6 only (vector reindex). Used when
+    the financials rows for this document are already correct and must not
+    be re-derived — re-running Stage 7 would re-enter is_latest/restatement
+    logic against known-good rows for no benefit.
 
     Returns a summary dict on success.
     Raises on failure — caller handles state transition and retry.
@@ -176,27 +182,31 @@ def _run_ingestion(
         # ----------------------------------------------------------------
         # Stage 7: Extract financials → PostgreSQL
         # ----------------------------------------------------------------
-        logger.info("[7/7] Extracting financial records → PostgreSQL")
-        records = extract_all_financial_records(
-            blocks=blocks,
-            pdf_path=pdf_path,
-            tenant_id=tenant_id,
-            company=company,
-            ticker=ticker,
-            filing_date=filing_date,
-            doc_id_map=doc_id_map,
-        )
-        load_result = load_financial_records(records, tenant_id, conn)
-        logger.info(
-            "      %d inserted, %d restated, %d skipped, %d errors",
-            load_result["inserted"], load_result["restated"],
-            load_result["skipped"], load_result["errors"],
-        )
-        if load_result["errors"] > 0:
-            logger.warning(
-                "%d financial records failed to load — check logs above",
-                load_result["errors"],
+        if skip_financials:
+            logger.info("[7/7] SKIPPED — skip_financials=True (vector reindex only)")
+            load_result = {"inserted": 0, "restated": 0, "skipped": 0, "errors": 0}
+        else:
+            logger.info("[7/7] Extracting financial records → PostgreSQL")
+            records = extract_all_financial_records(
+                blocks=blocks,
+                pdf_path=pdf_path,
+                tenant_id=tenant_id,
+                company=company,
+                ticker=ticker,
+                filing_date=filing_date,
+                doc_id_map=doc_id_map,
             )
+            load_result = load_financial_records(records, tenant_id, conn)
+            logger.info(
+                "      %d inserted, %d restated, %d skipped, %d errors",
+                load_result["inserted"], load_result["restated"],
+                load_result["skipped"], load_result["errors"],
+            )
+            if load_result["errors"] > 0:
+                logger.warning(
+                    "%d financial records failed to load — check logs above",
+                    load_result["errors"],
+                )
 
         # ----------------------------------------------------------------
         # Mark documents as indexed
@@ -209,6 +219,7 @@ def _run_ingestion(
             "chunks_indexed":   qdrant_result["upserted"],
             "records_inserted": load_result["inserted"],
             "records_restated": load_result["restated"],
+            "financials_skipped": skip_financials,
         }
         logger.info("Ingestion complete: %s", summary)
         return summary
@@ -335,6 +346,7 @@ def ingest_document_sync(
     doc_type: str,
     filing_date: str,
     version: str = "v1",
+    skip_financials: bool = False,
 ) -> dict:
     """
     Run ingestion synchronously without Celery.
@@ -351,6 +363,7 @@ def ingest_document_sync(
         doc_type=doc_type,
         filing_date=filing_date,
         version=version,
+        skip_financials=skip_financials,
     )
 
 
@@ -470,6 +483,8 @@ if __name__ == "__main__":
     parser.add_argument("--doc-type", default="quarterly_result")
     parser.add_argument("--filing-date", default="2026-04-28")
     parser.add_argument("--version", default="v1")
+    parser.add_argument("--skip-financials", action="store_true",
+                         help="Vector reindex only — skip Stage 7 financial extraction")
     parser.add_argument("--min-chunks", type=int, default=100,
                          help="Gate 2 threshold — lower for small test docs")
     args = parser.parse_args()
@@ -498,6 +513,7 @@ if __name__ == "__main__":
         doc_type=args.doc_type,
         filing_date=args.filing_date,
         version=args.version,
+        skip_financials=args.skip_financials,
     )
 
     elapsed = time.time() - t0
