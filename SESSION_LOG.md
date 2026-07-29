@@ -117,3 +117,39 @@ NOTE: `render services env list` lists SERVICES, not env vars — it cannot
 read a service's environment. Use the dashboard Environment tab.
 The prior 81/83 baseline was local-only on 3.1 and predates the LLM client
 work; today's sweep supersedes it.
+
+## BASELINE 2026-07-29 — 83/83 on gemini-3.1-flash-lite (LOCAL)
+Eternal 52/52 | Titan 14/14 | Paytm 17/17. All LLM-served answers from
+Gemini (provider gate clean, not withheld). Local AND Render both on 3.1.
+
+RECOVERED WITHOUT BEING TOUCHED — Q034, TQ006, PQ011, the three unexplained
+semantic failures carried in from the previous session. Fixed by the CRAG
+break/continue correction and the Paytm FY99 payload repair. Worth noting:
+three sessions of theorising were resolved by two unrelated bug fixes.
+
+TQ010 CLOSED — asserted 'limited review' + 'unmodified opinion' instead of
+'chartered accountants' (which 3.1 omits and 3.5 includes). Did NOT assert
+the firm name: the filing spaces it 'B S R & Co. LLP', the model rendered
+'BS R & Co. LLP' — swapping one brittleness for another.
+
+Q038 CLOSED — was never a keyword problem. Reclassified semantic_audit ->
+semantic_honest_refusal. The answer opens "the provided documents do not
+state the specific findings..." and then honestly explains what IS covered.
+Five keyword sets across two models failed because we were keywording an
+answer whose correct form is a refusal. Distinct from Q036 (flat absence);
+this is present-but-inconclusive. RESIDUAL RISK: on 3.5 this answer has
+been observed structured as "Y is present without X", which the subject-
+anchored regex may not catch — re-verify if the model ever changes back.
+
+EVAL GUARD — first outing was a FALSE POSITIVE: it counted blocked queries
+as contaminated, because prompt_shield blocks before router_node and no LLM
+call is ever made. The unknown count matched the adversarial count exactly
+in all three datasets. Fixed by excluding blocked results from the tally.
+
+ALSO FIXED: _format_citations_block rendered "(unknown)" financial_type in
+the plain-text Sources block — the frontend equivalent was fixed earlier,
+this was the last place it leaked to users.
+
+STILL OPEN: production has NOT been swept. Local and prod now run the same
+model and the same code so they SHOULD agree — but "should" is what
+blueprint 17 said about the Groq fallback. Next session's first item.
