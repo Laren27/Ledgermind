@@ -156,12 +156,13 @@
     "expected_is_blocked": false,
     "expected_confidence_tier": "high",
     "expected_keywords": [
-      "llp"
+      "chartered accountants",
+      "limited review"
     ],
     "expected_source_pages": [
       6
     ],
-    "notes": "Verified: B S R & Co. LLP, Chartered Accountants, Limited Review Report. Keyword changed from \"bsr\" to \"llp\" \u2014 OCR/LLM phrasing renders the auditor name with spaces (\"B S R & Co. LLP\"), making a bare \"bsr\" substring match unreliable. \"llp\" is unambiguous and always present regardless of spacing variant."
+    "notes": "Verified: B S R & Co. LLP, Chartered Accountants, Limited Review Report. Keyword changed from \"bsr\" to \"llp\" — OCR/LLM phrasing renders the auditor name with spaces (\"B S R & Co. LLP\"), making a bare \"bsr\" substring match unreliable. \"llp\" is unambiguous and always present regardless of spacing variant. Keywords chosen for run-to-run stability (verified 2026-07-29 across repeated live runs): assert on contiguous quoted phrases and paraphrase-proof terms, never on single short acronyms or on nominalisations that inflect."
   },
   {
     "id": "TQ011",
@@ -201,6 +202,6 @@
     "expected_confidence_tier": "low",
     "expected_sql_verified": false,
     "expected_error": "no_data_found",
-    "notes": "Verified: no ebit/ebitda metric exists in financials table for Titan at all (checked live, 0 rows). Press release states 'Earnings before Interest & Tax' with real values, but that press-release table wasn't captured by structured extraction \u2014 only the formal financial-statement pages were. Must return no_data_found, not hallucinate a value from the press release text."
+    "notes": "Verified: no ebit/ebitda metric exists in financials table for Titan at all (checked live, 0 rows). Press release states 'Earnings before Interest & Tax' with real values, but that press-release table wasn't captured by structured extraction — only the formal financial-statement pages were. Must return no_data_found, not hallucinate a value from the press release text."
   }
 ]
