@@ -124,6 +124,11 @@ class QueryState(TypedDict):
     error_node: Optional[str]
 
     # ── Audit ──────────────────────────────────────────────────────────────
+    # Which provider actually served the LLM calls: "gemini" | "groq" | None.
+    # An answer produced by the fallback is a materially different artifact
+    # from one produced by the primary and must not be indistinguishable in
+    # the audit log. Admin-tier only.
+    llm_provider: Optional[str]
     tokens_used: int
     cache_hit: bool
     latency_ms: int
@@ -185,6 +190,7 @@ def make_initial_state(
         error=None,
         error_node=None,
 
+        llm_provider=None,
         tokens_used=0,
         cache_hit=False,
         latency_ms=0,
