@@ -434,22 +434,31 @@ def print_report(results: list[dict], model: str):
     # normal. So the headline score is withheld, not annotated: a score
     # printed with a warning above it still gets copied into a README.
     from collections import Counter
+    # Blocked queries are excluded: prompt_shield blocks before router_node,
+    # which returns immediately on is_blocked, so NO LLM call is ever made and
+    # llm_provider is legitimately None. Counting those as "unknown" withheld
+    # three otherwise-clean scores on 2026-07-29 -- the unknown count matched
+    # the adversarial count exactly in all three datasets.
+    scored = [r for r in results
+              if not (r.get("api_response") or {}).get("is_blocked")]
     providers = Counter(
         (r.get("api_response") or {}).get("llm_provider") or "unknown"
-        for r in results
+        for r in scored
     )
+    n_blocked = len(results) - len(scored)
     contaminated = {p for p in providers if p not in ("gemini",)}
 
     print(f"\n{'='*60}")
     print(f"LedgerMind Eval Report — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"Model (stated): {model}")
-    print(f"Providers: {dict(providers)}")
+    print(f"Providers: {dict(providers)}"
+          + (f"  (+{n_blocked} blocked, no LLM call)" if n_blocked else ""))
     print(f"{'='*60}")
 
     if contaminated:
         print(f"\n  *** SCORE WITHHELD — NOT A VALID BASELINE ***")
-        print(f"  {sum(v for k, v in providers.items() if k != 'gemini')}/{total} "
-              f"answers were not served by Gemini.")
+        print(f"  {sum(v for k, v in providers.items() if k != 'gemini')}/{len(scored)} "
+              f"LLM-served answers were not served by Gemini.")
         if "unknown" in contaminated:
             print(f"  'unknown' means llm_provider was absent — run as admin "
                   f"(--email admin@alpha.ledgermind.test); the field is admin-tier only.")
