@@ -13,4 +13,5 @@ psycopg2-binary==2.9.12
 PyJWT
 bcrypt
 pdfplumber
-cohere==7.0.8groq
+cohere==7.0.8
+groq==1.6.0
