@@ -153,3 +153,61 @@ this was the last place it leaked to users.
 STILL OPEN: production has NOT been swept. Local and prod now run the same
 model and the same code so they SHOULD agree — but "should" is what
 blueprint 17 said about the Groq fallback. Next session's first item.
+
+## CARRY-FORWARD — next session, priority order
+
+MUST HAVE
+  1. Production sweep, all 3 datasets, --api-base https://ledgermind-shaz.onrender.com
+     --model gemini-3.1-flash-lite. Local is 83/83; prod runs the same model and
+     the same commit, so it SHOULD match. Never verified. Distinct --out names.
+  2. Verify Render's GEMINI_MODEL value was actually saved as 3.1 (set via
+     dashboard, never read back). If it still says 3.5, the prod sweep is
+     mislabelled before it starts.
+  3. DISABLE_LOCAL_RERANKER — value never inspected on Render. If true, prod has
+     no reranker fallback when Cohere fails: same single-point-of-failure shape
+     as the Groq gap closed today. Check the dashboard Environment tab.
+
+SHOULD HAVE
+  4. logging.basicConfig import-order bug — router.py logs the resolved
+     GEMINI_MODEL at import, BEFORE main.py configures logging, so the line is
+     swallowed. Cost real time twice today (couldn't tell which model prod ran).
+     Fix: configure logging before any app import, or move the log to startup.
+  5. Blueprint is NOT in the repo — lives only in Claude project knowledge.
+     Sec 17 named a retired model (llama-3.1-70b) and promised a fallback that
+     did not exist for months; nothing could catch that drift. Commit it to
+     docs/ARCHITECTURE.md with the 17 correction applied (now
+     llama-3.3-70b-versatile, implemented in app/llm/client.py).
+  6. Cross-path (path="cross") never exercised by any golden question. The
+     Groq/timeout refactor touched response_generator's cross branch and it has
+     not been run once since. Add one cross question or hand-test it.
+
+NICE TO HAVE
+  7. app/core/config.py Settings has gemini_api_key/groq_api_key fields that
+     NOTHING reads — every engine uses os.getenv directly. Pick one pattern.
+     Deliberately not touched today to avoid introducing a third.
+  8. quant_engine.py + response_generator.py still import GEMINI_MODEL, types,
+     and _get_gemini_client() — all dead after the refactor. Harmless, left in
+     place to avoid churning files mid-workstream.
+  9. Multi-entity pill selector for Peer Comparison; shared "N Supporting
+     Citations" component; keyboard nav + focus model; citation-hover
+     pencil-underline; hand-drawn checkmarks. (Unchanged from prior sessions.)
+
+FUTURE PHASE (unchanged)
+  Desk-texture background + ghost-stack depth; evidence-drawer side panel;
+  Knowledge Graph V2; corpus expansion; Titan/Paytm FY23-24 backfill (demo
+  uniformity only, NOT a correctness gap — confirmed); auto-classification of
+  uploaded PDFs (this is where Trap 1 standalone-vs-consolidated lives, needs a
+  human-in-the-loop design pass); next@14.2.35 -> 16.x for the 2 pre-existing
+  high-severity npm audit findings — its own session, do NOT run
+  `npm audit fix --force`.
+  SSE-specific: reconnect/replay on dropped stream, token-level streaming,
+  persisting the trace into audit_log, multi-instance support.
+
+RETRIEVAL QUALITY (open question, no owner)
+  The _prefer_narrative reverts (61731ce, 7f34ab5) were made on a causation
+  theory later proven WRONG. The underlying problem is real and still present:
+  Cohere promoted a balance-sheet chunk to rank 1 for a risk-factors query
+  ahead of on-topic narrative chunks. Today's TQ010 shows five citations at
+  0.99-1.00 — suspiciously flat, worth checking whether Cohere is
+  discriminating at all on short documents. Candidate design if revisited:
+  ratio-based gating, measured against the full golden set, not one query.
