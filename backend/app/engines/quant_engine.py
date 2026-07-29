@@ -45,7 +45,12 @@ from app.engines.dsl_compiler import (
 )
 from app.engines.router import GEMINI_MODEL
 from app.engines.state import DSLObject, QueryState
-from app.metrics.registry import prompt_metric_lines, prompt_warnings
+from app.metrics.registry import (
+    derived_metric_aliases,
+    get_metric,
+    prompt_metric_lines,
+    prompt_warnings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +129,12 @@ def _build_dsl_system_prompt() -> str:
       this is a SEPARATE sub-line some companies report alongside main revenue)
     - "revenue" / "revenue from operations" → "revenue"
     - You MUST use the exact metric key string from the AVAILABLE list above.
-    - If the user asks for a metric not in either list, pick the closest available match.
+    - If the user asks for a metric in the UNAVAILABLE list, return that exact
+      name. Do NOT substitute an available metric for it. Returning the
+      unavailable name lets the system refuse honestly; substituting produces
+      a confidently wrong answer to a question nobody asked.
+    - Only if the user asks for a metric in NEITHER list may you pick the
+      closest available match.
     - If a query describes a metric CHANGING over time using direction words
       (declined, fell, dropped, decreased, grew, rose, increased, improved,
       worsened) you MUST use operation="yoy_growth", even when no year is named.
@@ -296,6 +306,36 @@ def _generate_dsl(
         f"Last error: {last_error}" if last_error else
         f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts."
     )
+
+
+# ---------------------------------------------------------------------------
+# Derived-metric substitution guard
+# ---------------------------------------------------------------------------
+# Metrics with metric_type="derived" have no SQL formula compiler. Gemini,
+# constrained to emit some metric string, substitutes the nearest available
+# one rather than refusing — the validator cannot catch this, because the
+# substituted metric is a perfectly valid DSL. The only place the user's real
+# intent still exists is the raw query text, so it is checked here, before
+# Gemini is called at all.
+
+_DERIVED_ALIASES = derived_metric_aliases()
+
+# Longest-first so "ebitda margin" wins over "ebitda".
+_DERIVED_ALIAS_RE = re.compile(
+    "|".join(
+        rf"\b{re.escape(a)}\b"
+        for a in sorted(_DERIVED_ALIASES, key=len, reverse=True)
+    ),
+    re.IGNORECASE,
+)
+
+
+def _query_names_derived_metric(query: str) -> Optional[str]:
+    """Canonical name of a derived metric named in the query, else None."""
+    m = _DERIVED_ALIAS_RE.search(query or "")
+    if not m:
+        return None
+    return _DERIVED_ALIASES.get(m.group(0).lower().strip())
 
 
 # ---------------------------------------------------------------------------
@@ -569,6 +609,31 @@ def quant_engine_node(state: QueryState) -> QueryState:
         "QuantEngine | company=%s fiscal_year=%s quarter=%s financial_type=%s",
         company, fiscal_year, quarter, financial_type,
     )
+
+    # ── Stage 0: derived-metric guard (see _query_names_derived_metric) ───
+    derived = _query_names_derived_metric(query)
+    if derived:
+        d = get_metric(derived)
+        label = d.label if d else derived
+        formula = d.derivation_formula if d else None
+        logger.info(
+            "Query names derived metric '%s' — refusing before DSL generation",
+            derived,
+        )
+        state["error"] = "metric_not_computable"
+        state["error_node"] = "quant_engine"
+        state["sql_verified"] = False
+        state["confidence_score"] = 0.0
+        state["confidence_tier"] = "low"
+        state["response_text"] = (
+            f"LedgerMind cannot currently compute {label}. It is a derived "
+            f"metric" + (f" ({formula})" if formula else "") + ", and the "
+            f"deterministic SQL compiler does not yet support deriving metrics "
+            f"from their components. Rather than return an approximation, the "
+            f"system declines. You can query the component line items directly "
+            f"if they were extracted for this filing."
+        )
+        return state
 
     # ── Stage 1: DSL generation ────────────────────────────────────────────
     dsl, attempts, dsl_error = _generate_dsl(
