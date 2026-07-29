@@ -75,5 +75,10 @@ def role_filtered_response(response: dict, role: str) -> dict:
         "latency_ms": response.get("latency_ms"),
         "tokens_used": response.get("tokens_used"),
         "cache_hit": response.get("cache_hit"),
+        # Which provider actually served this answer. Admin-only: it is
+        # operational detail, but it must be visible SOMEWHERE -- a
+        # Groq-served answer is a different artifact from a Gemini one and
+        # cannot be allowed to look identical in the record.
+        "llm_provider": response.get("llm_provider"),
     })
     return base
