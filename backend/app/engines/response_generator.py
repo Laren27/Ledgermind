@@ -338,8 +338,17 @@ def _format_citations_block(citations: List[Citation]) -> str:
         return ""
     lines = ["\n\nSources:"]
     for i, c in enumerate(citations, 1):
+        # Omit financial_type when it is "unknown" rather than printing the
+        # word. section_classifier assigns UNKNOWN to every non-FINANCIAL_
+        # STATEMENT block BY DESIGN, so "(unknown)" is not missing data --
+        # it is a category that simply does not apply to narrative text.
+        # Omission, not substitution, per the Zero UI-Hallucination Mandate.
+        # The frontend's buildCitationItems was fixed earlier; this is the
+        # same bug in the plain-text Sources block.
+        ftype = c.get('financial_type')
+        type_part = f" ({ftype})" if ftype and ftype != "unknown" else ""
         lines.append(
-            f"  [{i}] {c['company']} {c['fiscal_year']} ({c['financial_type']}) — "
+            f"  [{i}] {c['company']} {c['fiscal_year']}{type_part} — "
             f"page {c['page_number']}, filed {c['filing_date']} "
             f"(relevance score: {c['reranker_score']:.2f})"
         )
