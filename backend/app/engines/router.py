@@ -29,6 +29,17 @@ class RouterResponse(BaseModel):
 
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+
+# Logged at import so every run records which model produced its results.
+# Eval scores are only meaningful relative to a known model, and a silently
+# missing GEMINI_MODEL would otherwise swap the model with no trace — the
+# same silent-fallback class as the old user_id="anonymous" default.
+if not os.getenv("GEMINI_MODEL"):
+    logger.warning(
+        "GEMINI_MODEL not set in environment — falling back to %s", GEMINI_MODEL
+    )
+else:
+    logger.info("Gemini model: %s", GEMINI_MODEL)
 _gemini_client: Optional[genai.Client] = None
 
 
