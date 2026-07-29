@@ -60,3 +60,44 @@ NEW LEAD ITEM — UNBOUNDED GEMINI TAIL LATENCY (outranks Groq):
 
 GROQ: blueprint 17's llama-3.1-70b is RETIRED. Pin llama-3.3-70b-versatile
   (JSON mode, 128k ctx, free tier). 17 needs a correction commit.
+
+## SHIPPED 2026-07-29 — app/llm/client.py (10 commits)
+Two defects fixed together because they are causally linked:
+  (a) unbounded Gemini tail latency — no call site set a timeout
+  (b) blueprint 17's Groq fallback — confirmed never implemented
+A timeout is what converts an unbounded hang into a catchable exception;
+without it a fallback keyed on exceptions can never fire.
+
+DESIGN (verified live, not assumed):
+  - Bounds: structured 8s, text 20s, groq 20s.
+  - Fallback triggers: timeout, transport failure, 429, 5xx.
+    NOT auth/invalid-argument — VERIFIED: an invalid GEMINI_API_KEY raises
+    400 INVALID_ARGUMENT and does NOT fall back, so a bad key cannot be
+    masked by the fallback.
+  - 429 is ambiguous: Google labels the quotaId "...PerDay..." for BOTH the
+    per-minute and per-day limit, so only retryDelay distinguishes them.
+    <=5s -> sleep once, retry Gemini. Otherwise -> Groq.
+    VERIFIED both branches live: 2.8s delay retried; 51s delay fell through.
+  - Groq has no response_schema, only json_object. generate_structured
+    injects the schema into the prompt and validates with Pydantic; an
+    off-schema response is a PROVIDER failure, never passed to validate_dsl.
+    VERIFIED: llama-3.3-70b-versatile returned a valid RouterResponse.
+  - quant_engine: LLMUnavailable BREAKS the self-healing loop (that loop
+    repairs bad DSL; a repair hint cannot fix an absent provider).
+  - llm_provider recorded on QueryState, admin-tier only. This paid for
+    itself within the hour: all three local end-to-end tests returned
+    llm_provider="groq" and would have looked completely normal otherwise.
+
+ALSO FIXED: requirements.txt had no trailing newline, so "echo groq >>"
+produced "cohere==7.0.8groq" — would have failed the next Render build.
+frontend/.dockerignore was missing; host node_modules overwrote the image's
+and broke COPY (pre-existing, unrelated, surfaced by the rebuild).
+
+NEW MUST HAVE — eval_runner.py must record llm_provider per question and
+refuse to report a clean score if ANY answer was Groq-served. Mixed-provider
+sweeps are not comparable, and TQ010 is already a model-sensitivity failure.
+DO NOT run a sweep before this lands.
+
+NEXT: (1) add GROQ_API_KEY + GROQ_MODEL to Render env — prod has NO fallback
+without them; (2) correct blueprint 17 (llama-3.1-70b is retired);
+(3) eval_runner provider guard; (4) TQ010/Q038 on fresh quota.
