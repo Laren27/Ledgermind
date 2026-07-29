@@ -169,9 +169,40 @@ VALUES (
     %(sha256_checksum)s, %(ingestion_state)s
 )
 ON CONFLICT (sha256_checksum) DO UPDATE
-    SET ingestion_state = EXCLUDED.ingestion_state
-RETURNING doc_id
+    SET ingestion_state = EXCLUDED.ingestion_state,
+        company         = EXCLUDED.company,
+        ticker          = EXCLUDED.ticker,
+        fiscal_year     = EXCLUDED.fiscal_year,
+        quarter         = EXCLUDED.quarter,
+        doc_type        = EXCLUDED.doc_type,
+        filing_date     = EXCLUDED.filing_date,
+        version         = EXCLUDED.version
+RETURNING doc_id, (xmax <> 0) AS was_existing
 """
+
+# WHY THE CONFLICT CLAUSE UPDATES METADATA (do not revert to ingestion_state only)
+# --------------------------------------------------------------------------------
+# Before 2026-07-29 this clause set ingestion_state alone. That left two
+# independent sources of truth for the same fields: `documents` kept whatever
+# the FIRST ingest inserted, while chunker.chunk_blocks() wrote whatever the
+# CURRENT call's arguments said into every Qdrant payload. Re-registering the
+# same PDF with different metadata silently diverged the two stores.
+#
+# Confirmed live: a test of the upload endpoint re-registered the real Paytm
+# PDF with junk form values. `documents` correctly read FY26 (protected by
+# this clause) while all 115 Qdrant chunks were written as FY26->FY99, which
+# meant the fiscal_year retrieval filter could never match and every Paytm
+# semantic query survived only via CRAG dropping the filter entirely.
+#
+# Last-write-wins was chosen over first-write-wins deliberately: under
+# first-write-wins a document ingested once with wrong metadata could never
+# be corrected by re-ingesting, which is a worse operational position than
+# the bug being fixed. Re-ingesting with correct values is now the repair.
+#
+# tenant_id is NOT updated — a conflicting checksum from another tenant must
+# not reassign row ownership. financial_type is NOT updated — it is part of
+# the conflict key via section_checksum() and cannot mismatch. is_latest is
+# NOT updated — the Truth Resolution Engine owns it, not ingestion.
 
 # ---------------------------------------------------------------------------
 # DB registration
@@ -219,15 +250,29 @@ def register_sections(
             row = cur.fetchone()
 
             section.doc_id = uuid.UUID(str(row[0]))
+            was_existing   = bool(row[1])
 
-            logger.info(
-                "Registered document: %s | %s | pages %d–%d | doc_id=%s",
-                section.financial_type,
-                fiscal_year,
-                section.page_start,
-                section.page_end,
-                section.doc_id,
-            )
+            if was_existing:
+                # Re-registration of an already-known checksum. Metadata is
+                # now overwritten by this call's arguments on both sides
+                # (documents here, Qdrant payloads via chunk_blocks). Logged
+                # loudly because a silent version of this is exactly what
+                # corrupted PAYTM's vector metadata undetected.
+                logger.warning(
+                    "Re-registering existing document (checksum match) — metadata "
+                    "overwritten: %s | %s %s %s | filing_date=%s | doc_id=%s",
+                    section.financial_type, company, fiscal_year,
+                    quarter or "annual", filing_date, section.doc_id,
+                )
+            else:
+                logger.info(
+                    "Registered document: %s | %s | pages %d–%d | doc_id=%s",
+                    section.financial_type,
+                    fiscal_year,
+                    section.page_start,
+                    section.page_end,
+                    section.doc_id,
+                )
 
     conn.commit()
     return sections
