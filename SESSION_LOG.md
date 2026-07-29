@@ -101,3 +101,19 @@ DO NOT run a sweep before this lands.
 NEXT: (1) add GROQ_API_KEY + GROQ_MODEL to Render env — prod has NO fallback
 without them; (2) correct blueprint 17 (llama-3.1-70b is retired);
 (3) eval_runner provider guard; (4) TQ010/Q038 on fresh quota.
+
+## MODEL ALIGNMENT 2026-07-29
+Local .env AND Render both set to gemini-3.1-flash-lite. Verified in the
+container (`docker compose exec backend printenv GEMINI_MODEL`) and on the
+Render dashboard Environment tab.
+Chosen because 3.5's daily quota was exhausted (500/500) and sweeping 3.1
+while prod served 3.5 would reproduce exactly the mistake that produced
+TQ010 — a question that passes on one model and fails on the other.
+Quota is PER MODEL, so 3.1 had a full bucket.
+Render env confirmed to also hold GROQ_API_KEY + GROQ_MODEL, so the
+fallback exists in production (verified live: a prod query returned
+llm_provider="groq" while rate-limited, correct figure, sql_verified=true).
+NOTE: `render services env list` lists SERVICES, not env vars — it cannot
+read a service's environment. Use the dashboard Environment tab.
+The prior 81/83 baseline was local-only on 3.1 and predates the LLM client
+work; today's sweep supersedes it.
