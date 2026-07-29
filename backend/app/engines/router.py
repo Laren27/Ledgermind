@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from app.engines.dsl_compiler import METRIC_ALIASES, METRIC_REGISTRY
 from app.engines.state import QueryState
+from app.llm.client import LLMUnavailable, generate_structured
 
 logger = logging.getLogger(__name__)
 
@@ -99,21 +100,17 @@ Return ONLY a valid JSON object matching the requested schema. No explanation.
 
 
 def _classify_query(query: str) -> dict:
-    client = _get_gemini_client()
+    provider = None
     try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=query,
-            config=types.GenerateContentConfig(
-                system_instruction=ROUTER_SYSTEM_PROMPT,
-                temperature=0.0,
-                max_output_tokens=200,
-                response_mime_type="application/json",
-                response_schema=RouterResponse,
-            ),
+        llm = generate_structured(
+            system=ROUTER_SYSTEM_PROMPT,
+            user=query,
+            schema=RouterResponse,
+            temperature=0.0,
+            max_tokens=200,
         )
-
-        raw_text = response.text.strip()
+        provider = llm.provider
+        raw_text = llm.text
         try:
             result = json.loads(raw_text)
         except json.JSONDecodeError:
@@ -157,11 +154,18 @@ def _classify_query(query: str) -> dict:
             "financial_type": financial_type,
             "path": path,
             "route_reason": result.get("route_reason", ""),
+            "llm_provider": provider,
         }
 
+    except LLMUnavailable as e:
+        logger.error("Router classification unavailable on ALL providers: %s", e)
     except Exception as e:
-        logger.error("Router Gemini call failed: %s", e)
+        logger.error("Router classification failed: %s", e)
 
+    # Both providers failed (or the response was unparseable). The audit trail
+    # must be able to tell this apart from a genuine semantic classification —
+    # an error-masked-as-semantic route is indistinguishable otherwise, which
+    # is the defect class that cost two sessions of investigation.
     return {
         "company": None,
         "ticker": None,
@@ -169,7 +173,8 @@ def _classify_query(query: str) -> dict:
         "quarter": None,
         "financial_type": "consolidated",
         "path": "semantic",
-        "route_reason": "Fallback to semantic: Gemini classification failed",
+        "route_reason": "FALLBACK_ERROR: classification failed on all providers",
+        "llm_provider": None,
     }
 
 
@@ -198,6 +203,7 @@ def router_node(state: QueryState) -> QueryState:
     state["fiscal_year"]    = result["fiscal_year"]
     state["quarter"]        = result["quarter"]
     state["financial_type"] = result["financial_type"]
+    state["llm_provider"]   = result.get("llm_provider")
     state["resolved_query"] = _build_resolved_query(
         original_query=state["query"],
         company=result["company"],
