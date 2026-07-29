@@ -285,12 +285,17 @@ def semantic_engine_node(state: QueryState) -> QueryState:
         )
 
         if broadened is None:
-            # Nothing left to broaden — keep the chunks we already have and
-            # let the existing tier logic below decide accept-vs-refuse.
-            crag_count -= 1
-            state["crag_count"] = crag_count
-            logger.info("CRAG: no further broadening possible — stopping retries")
-            break
+            # This RUNG was a no-op (the filter it drops was already unset) —
+            # advance to the next rung rather than abandoning the ladder.
+            # Original bug: this used `break`, so any query with quarter=None
+            # (i.e. every annual query) skipped rung 2 as well, which drops
+            # fiscal_year and is real broadening. That silently removed CRAG
+            # recovery from most semantic queries. crag_count is the RUNG
+            # INDEX reached, not the number of retrievals actually performed.
+            logger.info(
+                "CRAG rung %d was a no-op — advancing to next rung", crag_count
+            )
+            continue
 
         chunks = broadened
         new_score, new_tier = _score_confidence(chunks)
