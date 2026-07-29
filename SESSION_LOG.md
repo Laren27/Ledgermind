@@ -32,3 +32,31 @@ LESSONS
   - Verify across MODELS, not just across runs (TQ010 is the counterexample)
   - 500/day quota: full sweeps first while fresh, hand-debugging second
   - Read full response text, not the 200-char eval preview (cost time 4x today)
+
+## FOUND 2026-07-29 (post-deploy verification)
+PRIORITY 0 CLOSED — EBITDA guard confirmed live in prod:
+  error=metric_not_computable, error_node=quant_engine, sql_verified=false,
+  path=quantitative (router classified correctly, Stage 0 fired pre-DSL).
+  All five of the session's local fixes are deployed at 099b369.
+
+NEW LEAD ITEM — UNBOUNDED GEMINI TAIL LATENCY (outranks Groq):
+  Same query ("Eternal revenue FY26") x3: 3.07s / 120.0s (curl --max-time
+  hit, still waiting) / 3.00s. Fast runs match the recorded 3.2s baseline,
+  so nothing is structurally slow — the tail is unbounded.
+  Confirmed from Render logs it is ONE call, not SDK retry:
+    14:44:42 AFC is enabled  →  14:46:00 AFC remote call 1 is done  (78s)
+    everything downstream (quant_engine, Stage 0 guard, audit) < 1s.
+  No Gemini call site sets a timeout, so a slow provider blocks the request
+  with no ceiling. Returns 200, looks normal in the audit log — same silent
+  degradation class as user_id="anonymous" and the router exception-swallow.
+  On Vercel this is a hard-kill with no application hook, not a slow answer.
+  FIX ORDER: (1) explicit per-call timeout via types.HttpOptions — converts
+  an unbounded hang into a catchable exception at a chosen bound;
+  (2) Groq fallback catches that exception. Timeout first — it is a real
+  improvement standalone, and without it a fallback keyed on exceptions
+  would never fire on this failure mode.
+  Proposed bounds from measured p50: router/DSL 8s (200 tok), synthesis 20s
+  (400 tok).
+
+GROQ: blueprint 17's llama-3.1-70b is RETIRED. Pin llama-3.3-70b-versatile
+  (JSON mode, 128k ctx, free tier). 17 needs a correction commit.
