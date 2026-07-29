@@ -41,6 +41,7 @@ KNOWN CALIBRATION ISSUE (flagged, not fixed by this runner):
 
 import argparse
 import json
+import re as _re
 import os
 import sys
 import time
@@ -362,10 +363,22 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
     # ── Semantic: honest refusal (correctly reports no relevant content) ─
     if category == "semantic_honest_refusal":
         response = (result.get("response_text") or "").lower()
-        refusal_phrases = ["do not contain", "does not contain", "no information",
-                           "not addressed", "not discussed", "not found",
-                           "does not explicitly state", "do not explicitly state"]
-        refused = any(p in response for p in refusal_phrases)
+        # Anchored on the SUBJECT (excerpts/documents/...), not the verb.
+        # Observed live 2026-07-29 across repeated Q038 runs: the model
+        # freely varies the verb — "do not contain", "do not provide",
+        # "do not detail" — while the subject phrasing stays stable. An
+        # enumerated verb list is a treadmill; each new phrasing silently
+        # scores an honest refusal as a failure.
+        refusal_subject_re = _re.compile(
+            r"\b(?:excerpts?|documents?|results?|reports?|filings?|"
+            r"statements?|sources?|materials?)\s+(?:do|does)\s+not\b",
+            _re.IGNORECASE,
+        )
+        refusal_phrases = ["no information", "not addressed", "not discussed",
+                           "not found", "does not explicitly state",
+                           "do not explicitly state"]
+        refused = bool(refusal_subject_re.search(response)) or \
+                  any(p in response for p in refusal_phrases)
         return {
             "pass": refused,
             "reason": "Correctly reported absence of relevant content" if refused
