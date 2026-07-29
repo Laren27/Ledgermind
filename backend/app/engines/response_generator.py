@@ -35,6 +35,7 @@ from google.genai import types
 
 from app.engines.router import GEMINI_MODEL
 from app.engines.state import ChunkResult, Citation, ContradictionFlag, QueryState
+from app.llm.client import LLMUnavailable, generate_text
 
 logger = logging.getLogger(__name__)
 
@@ -293,37 +294,38 @@ def _format_chunks_for_prompt(chunks: List[ChunkResult]) -> str:
     return "\n\n".join(blocks)
 
 
-def _generate_semantic_response(query: str, chunks: List[ChunkResult]) -> str:
+def _generate_semantic_response(
+    query: str, chunks: List[ChunkResult]
+) -> tuple:
     """
-    Call Gemini to synthesise an answer from retrieved chunks.
-    Falls back to a raw excerpt dump if Gemini fails — never returns empty.
+    Synthesise an answer from retrieved chunks.
+
+    Returns (text, provider). provider is None when no LLM produced the
+    text — either there were no chunks, or both providers failed and the
+    raw-excerpt floor below was used. That floor is the last resort AFTER
+    the Groq fallback, not instead of it.
     """
     if not chunks:
-        return "No relevant information was found in the available documents."
+        return "No relevant information was found in the available documents.", None
 
-    client = _get_gemini_client()
     context = _format_chunks_for_prompt(chunks)
     user_message = f"Question: {query}\n\nRetrieved excerpts:\n\n{context}"
 
     try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=SYNTHESIS_SYSTEM_PROMPT,
-                temperature=0.2,
-                max_output_tokens=400,
-            ),
+        llm = generate_text(
+            system=SYNTHESIS_SYSTEM_PROMPT,
+            user=user_message,
+            temperature=0.2,
+            max_tokens=400,
         )
-        return response.text.strip()
-    except Exception as e:
-        logger.error("Response synthesis Gemini call failed: %s", e)
-        # Fallback: return the top chunk's text directly rather than failing silently
+        return llm.text, llm.provider
+    except LLMUnavailable as e:
+        logger.error("Response synthesis unavailable on ALL providers: %s", e)
         return (
             f"Unable to synthesise a summary due to a temporary error. "
             f"Top matching excerpt (page {chunks[0]['page_number']}): "
             f"{chunks[0]['text'][:300].strip()}"
-        )
+        ), None
 
 
 # ---------------------------------------------------------------------------
@@ -402,18 +404,22 @@ def response_generator_node(state: QueryState) -> QueryState:
 
 
     elif path == "semantic":
-        body = _generate_semantic_response(
+        body, provider = _generate_semantic_response(
             query=state["query"],
             chunks=state.get("retrieved_chunks", []),
         )
+        if provider:
+            state["llm_provider"] = provider
         state["response_text"] = body + citations_block
         qualitative_text_for_refusal_check = body
 
     elif path == "cross":
-        qual_body = _generate_semantic_response(
+        qual_body, provider = _generate_semantic_response(
             query=state["query"],
             chunks=state.get("retrieved_chunks", []),
         )
+        if provider:
+            state["llm_provider"] = provider
         quant_body = ""
         if state.get("sql_verified") and state.get("sql_result"):
             quant_body = "\n\n" + _format_quant_response(state) + _period_assumption_note(state)
