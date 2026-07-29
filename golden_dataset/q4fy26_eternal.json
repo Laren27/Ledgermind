@@ -596,21 +596,17 @@
   },
   {
     "id": "Q038",
-    "category": "semantic_audit",
+    "category": "semantic_honest_refusal",
     "question": "What does ETERNAL's audit report say about internal controls?",
     "expected_path": "semantic",
     "expected_is_blocked": false,
     "expected_confidence_tier": "medium",
-    "expected_keywords": [
-      "internal financial control",
-      "effectiveness"
-    ],
     "expected_source_pages": [
       27,
       38
     ],
     "known_limitation": "This is a Q4 results REVIEW (SRE 2410), not a full statutory audit — the auditor explicitly disclaims opining on internal control effectiveness rather than stating controls are adequate. 'adequate' as a keyword was based on an incorrect assumption about filing type; corrected after direct Qdrant verification confirmed the word never appears in this context.",
-    "notes": "Pages 27 and 38 discuss internal control relevant to audit design, but the auditor explicitly does NOT express an opinion on internal control effectiveness for this review-type engagement."
+    "notes": "Reclassified 2026-07-29. The correct answer is a PARTIAL refusal: the SRE 2410 limited review mentions communicating internal-control deficiencies to those charged with governance, but never states whether any were found. The model correctly opens 'the provided documents do not state...' then explains what is and isn't covered. Five keyword sets across two models all failed because we were keywording an answer whose correct form is an honest refusal. Distinct from Q036 (flat absence); this is present-but-inconclusive."
   },
   {
     "id": "Q039",
