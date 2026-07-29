@@ -55,8 +55,11 @@ import requests
 # ---------------------------------------------------------------------------
 parser = argparse.ArgumentParser(description="LedgerMind eval runner")
 parser.add_argument("--api-base", default="http://localhost:8000")
-parser.add_argument("--email",    default="analyst@alpha.ledgermind.test",
-                    help="Login email (analyst sees DSL+SQL needed for scoring)")
+parser.add_argument("--email",    default="admin@alpha.ledgermind.test",
+                    help="Login email. MUST be admin: llm_provider is admin-tier only "
+                         "in response_shaping.py, and without it the provider guard "
+                         "silently reads None for every question and concludes the "
+                         "whole sweep was Gemini-served.")
 parser.add_argument("--password", default="demo1234")
 parser.add_argument("--dataset",  default="golden_dataset/q4fy26_eternal.json")
 parser.add_argument("--out",      default="golden_dataset/eval_results.json")
@@ -64,6 +67,13 @@ parser.add_argument("--delay",    type=float, default=15.0,
                     help="Seconds between requests (Gemini 5 RPM = 12s minimum; default 15)")
 parser.add_argument("--category", default=None,
                     help="Run only this category (e.g. adversarial)")
+parser.add_argument("--model", required=True,
+                    help="REQUIRED. The GEMINI_MODEL the target API is running "
+                         "(e.g. gemini-3.5-flash-lite). Not auto-detected on purpose: "
+                         "a score is meaningless without a stated model, and TQ010 is "
+                         "a live example of a question that passes on one and fails on "
+                         "another. Verify with: docker compose exec backend printenv "
+                         "GEMINI_MODEL")
 args = parser.parse_args()
 
 API_BASE = args.api_base
@@ -410,15 +420,45 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
 # ---------------------------------------------------------------------------
 # Report generation
 # ---------------------------------------------------------------------------
-def print_report(results: list[dict]):
+def print_report(results: list[dict], model: str):
     total    = len(results)
     passed   = sum(1 for r in results if r["score"]["pass"])
     failed   = total - passed
 
+    # ── Provider integrity gate ──────────────────────────────────────────
+    # app/llm/client.py falls back to Groq on 429/timeout/5xx. That is
+    # correct behaviour for a USER -- the answer still arrives -- but it is
+    # fatal for an EVAL: a mixed-provider sweep produces a number that
+    # describes neither model. Confirmed 2026-07-29 that a rate-limited run
+    # returned llm_provider="groq" on every query while looking entirely
+    # normal. So the headline score is withheld, not annotated: a score
+    # printed with a warning above it still gets copied into a README.
+    from collections import Counter
+    providers = Counter(
+        (r.get("api_response") or {}).get("llm_provider") or "unknown"
+        for r in results
+    )
+    contaminated = {p for p in providers if p not in ("gemini",)}
+
     print(f"\n{'='*60}")
     print(f"LedgerMind Eval Report — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"Model (stated): {model}")
+    print(f"Providers: {dict(providers)}")
     print(f"{'='*60}")
-    print(f"Total:  {total}  |  Pass: {passed}  |  Fail: {failed}  |  Score: {passed/total*100:.1f}%")
+
+    if contaminated:
+        print(f"\n  *** SCORE WITHHELD — NOT A VALID BASELINE ***")
+        print(f"  {sum(v for k, v in providers.items() if k != 'gemini')}/{total} "
+              f"answers were not served by Gemini.")
+        if "unknown" in contaminated:
+            print(f"  'unknown' means llm_provider was absent — run as admin "
+                  f"(--email admin@alpha.ledgermind.test); the field is admin-tier only.")
+        if "groq" in contaminated:
+            print(f"  'groq' means the fallback fired (rate limit / timeout). "
+                  f"Wait for quota and re-run.")
+        print(f"  Raw tally (DO NOT publish): {passed}/{total}")
+    else:
+        print(f"Total:  {total}  |  Pass: {passed}  |  Fail: {failed}  |  Score: {passed/total*100:.1f}%")
 
     from collections import defaultdict
     by_cat = defaultdict(list)
@@ -452,6 +492,7 @@ def main():
         print(f"Filtered to category '{args.category}': {len(golden_questions)} questions")
 
     token = get_token(args.email, args.password)
+    print(f"Stated model: {args.model}")
 
     all_results = []
     n = len(golden_questions)
@@ -482,6 +523,9 @@ def main():
                 "sql_verified":    result.get("sql_verified") if result else None,
                 "error":           result.get("error") if result else None,
                 "response_preview": (result.get("response_text") or "")[:200] if result else None,
+                # Admin-tier field. None here means either the run was not
+                # authenticated as admin, or no LLM produced the text.
+                "llm_provider":    result.get("llm_provider") if result else None,
             } if result else None,
         })
 
@@ -494,7 +538,7 @@ def main():
         json.dump(all_results, f, indent=2, default=str)
     print(f"\nFull results saved to {args.out}")
 
-    print_report(all_results)
+    print_report(all_results, args.model)
 
 
 if __name__ == "__main__":
