@@ -91,18 +91,29 @@ def _is_refusal_text(text: str) -> bool:
     audit opinion" as the last sentence of an otherwise complete answer) —
     that is a caveat, not a refusal, and should not cap confidence to low.
 
-    Guard: only counts as a refusal if the match starts within the first
-    40% of the text, OR the text is short overall (<300 chars) — i.e. the
-    refusal is the point of the response, not a footnote to it.
+    Guard: counts as a refusal only if the match starts within the first
+    40% of the text AND little substantive text follows it.
+
+    The previous version used `len(text) < 300` as an OR-branch escape
+    hatch. That short-circuited the position test entirely for brief
+    answers: confirmed live 2026-07-29 that Q030 (260 chars, match at 48%)
+    and Q038 (~300 chars, match mid-sentence) were both capped to low
+    confidence despite being correct, substantive answers that merely
+    flagged one limitation. Length is not the signal — a genuine refusal
+    has no real content BESIDES the refusal, however long it happens to
+    be. So the test is now what remains after the match, not how many
+    characters precede it.
     """
     if not text:
         return False
     for pattern in REFUSAL_PATTERNS:
         match = pattern.search(text)
         if match:
-            is_short_response = len(text) < 300
-            match_is_early = match.start() < len(text) * 0.4
-            if is_short_response or match_is_early:
+            if match.start() >= len(text) * 0.4:
+                continue
+            # Substantive tail => caveat within an answer, not a refusal.
+            tail = text[match.end():].strip()
+            if len(tail) < 120:
                 return True
     return False
 
