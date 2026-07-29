@@ -170,15 +170,15 @@
     "expected_is_blocked": false,
     "expected_confidence_tier": "high",
     "expected_keywords": [
-      "RBI",
+      "reserve bank",
       "cancelled",
-      "PPBL",
+      "paytm payments bank",
       "winding up"
     ],
     "expected_source_pages": [
       12
     ],
-    "notes": "Verified: RBI cancelled PPBL's license April 24, 2026; shareholders approved winding-up resolutions April 25, 2026."
+    "notes": "Verified: RBI cancelled PPBL's license April 24, 2026; shareholders approved winding-up resolutions April 25, 2026. Keywords assert FULL entity names, not the RBI/PPBL abbreviations: confirmed 2026-07-29 that Gemini varies run-to-run on whether it introduces the ('PPBL') gloss at all, while the answer stays factually identical (tier=high, crag=0 both runs). An abbreviation gloss is never load-bearing; assert only on facts the answer cannot be correct without."
   },
   {
     "id": "PQ012",
@@ -194,7 +194,7 @@
       12
     ],
     "notes": "Verified: company states no exposure, no board/management involvement, investment fully impaired as of March 31, 2024.",
-    "known_limitation": "System retrieves note 9 (PPBL 'no exposure' disclosure) correctly but does not surface note 4 (the \u20b9190cr JV-loan impairment) for this query phrasing \u2014 confirmed via live API call, response_text has zero mention of note 4. The answer given is accurate as far as it goes but incomplete. This is a real retrieval-completeness gap, not a scoring error. Tracked as backlog item."
+    "known_limitation": "System retrieves note 9 (PPBL 'no exposure' disclosure) correctly but does not surface note 4 (the ₹190cr JV-loan impairment) for this query phrasing — confirmed via live API call, response_text has zero mention of note 4. The answer given is accurate as far as it goes but incomplete. This is a real retrieval-completeness gap, not a scoring error. Tracked as backlog item."
   },
   {
     "id": "PQ013",
