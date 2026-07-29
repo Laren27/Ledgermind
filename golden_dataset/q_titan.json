@@ -156,13 +156,13 @@
     "expected_is_blocked": false,
     "expected_confidence_tier": "high",
     "expected_keywords": [
-      "chartered accountants",
-      "limited review"
+      "limited review",
+      "unmodified opinion"
     ],
     "expected_source_pages": [
       6
     ],
-    "notes": "Verified: B S R & Co. LLP, Chartered Accountants, Limited Review Report. Keyword changed from \"bsr\" to \"llp\" — OCR/LLM phrasing renders the auditor name with spaces (\"B S R & Co. LLP\"), making a bare \"bsr\" substring match unreliable. \"llp\" is unambiguous and always present regardless of spacing variant. Keywords chosen for run-to-run stability (verified 2026-07-29 across repeated live runs): assert on contiguous quoted phrases and paraphrase-proof terms, never on single short acronyms or on nominalisations that inflect."
+    "notes": "Keywords are engagement facts quoted from the filing, not the auditor's name. 'chartered accountants' failed on 3.1 (which omits the suffix) while passing on 3.5. The firm name is also unsafe: the filing spaces it 'B S R & Co. LLP' and the model rendered 'BS R & Co. LLP'. Assert the engagement type and opinion instead."
   },
   {
     "id": "TQ011",
