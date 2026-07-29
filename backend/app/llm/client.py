@@ -51,8 +51,10 @@ to validate_dsl.
 import json
 import logging
 import os
+import re
+import time
 from dataclasses import dataclass
-from typing import Optional, Type
+from typing import Callable, Optional, Type
 
 from google import genai
 from google.genai import types
@@ -132,6 +134,49 @@ def _get_groq():
     return _groq_client
 
 
+# Gemini enforces BOTH a per-minute and a per-day quota, and returns 429 for
+# either. They need opposite handling: an RPM limit refills in seconds and the
+# server tells us exactly how long to wait, so falling straight to Groq there
+# abandons the better model — and a Groq-served answer is not eval-comparable
+# to a Gemini one. A daily limit does not refill, so sleeping is pointless.
+#
+# Confirmed live 2026-07-29: a 429 arrived with retryDelay 2s while the daily
+# counter stood at 277/500. Google's error body labels the quotaId
+# "...PerDay..." in BOTH cases, so the id cannot be trusted to tell them
+# apart — the retry delay can.
+_RETRY_DELAY_RE = re.compile(
+    r"'retryDelay':\s*'(\d+(?:\.\d+)?)s'|retry in (\d+(?:\.\d+)?)s",
+    re.IGNORECASE,
+)
+MAX_RPM_RETRY_WAIT_S = 5.0
+
+
+def _short_retry_delay(exc: Exception) -> Optional[float]:
+    """Server-advised wait, if it is short enough to be worth honouring."""
+    m = _RETRY_DELAY_RE.search(str(exc))
+    if not m:
+        return None
+    delay = float(m.group(1) or m.group(2))
+    return delay if 0 < delay <= MAX_RPM_RETRY_WAIT_S else None
+
+
+def _call_gemini(fn: Callable):
+    """
+    One attempt, plus exactly one retry if the server asked for a short wait.
+    No ladder: a second failure means the condition is not transient and the
+    caller should fall through to Groq rather than keep a user waiting.
+    """
+    try:
+        return fn()
+    except Exception as e:
+        delay = _short_retry_delay(e)
+        if delay is None:
+            raise
+        logger.info("Gemini rate-limited — honouring server retryDelay %.1fs", delay)
+        time.sleep(delay + 0.2)
+        return fn()
+
+
 def _should_fall_back(exc: Exception) -> bool:
     """
     Narrow trigger — see module docstring. Matches on the string form because
@@ -170,7 +215,7 @@ def generate_text(
 ) -> LLMResult:
     try:
         client = _get_gemini(timeout_ms)
-        resp = client.models.generate_content(
+        resp = _call_gemini(lambda: client.models.generate_content(
             model=GEMINI_MODEL,
             contents=user,
             config=types.GenerateContentConfig(
@@ -178,7 +223,7 @@ def generate_text(
                 temperature=temperature,
                 max_output_tokens=max_tokens,
             ),
-        )
+        ))
         return LLMResult(resp.text.strip(), "gemini", GEMINI_MODEL)
     except Exception as e:
         if not _should_fall_back(e):
@@ -222,7 +267,7 @@ def generate_structured(
 ) -> LLMResult:
     try:
         client = _get_gemini(timeout_ms)
-        resp = client.models.generate_content(
+        resp = _call_gemini(lambda: client.models.generate_content(
             model=GEMINI_MODEL,
             contents=user,
             config=types.GenerateContentConfig(
@@ -232,7 +277,7 @@ def generate_structured(
                 response_mime_type="application/json",
                 response_schema=schema,
             ),
-        )
+        ))
         return LLMResult(resp.text.strip(), "gemini", GEMINI_MODEL)
     except Exception as e:
         if not _should_fall_back(e):
