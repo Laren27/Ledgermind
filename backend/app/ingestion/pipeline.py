@@ -449,7 +449,7 @@ if __name__ == "__main__":
     )
 
     # Load .env
-    env_path = Path.home() / ".env"
+    env_path = Path.home() / "ledgermind" / ".env"
     if env_path.exists():
         for line in env_path.read_text().splitlines():
             line = line.strip()
