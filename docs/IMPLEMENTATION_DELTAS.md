@@ -72,6 +72,59 @@ same 512MB constraint. Measured side effect: semantic retrieval runs ~1283ms on
 Render vs ~18233ms locally — a 14x gap. Never tune thresholds or judge latency
 from local timings.
 
+### §14 — RLS policies: AND is not a short-circuit operator
+The blueprint's RLS example is `tenant_id = current_setting('app.tenant_id')::uuid`.
+Shipped as written, this broke authentication in production from launch until
+2026-07-30: roughly 95% of logins returned 500 whenever any other traffic was
+running, while succeeding 10/10 when the service was idle.
+
+Two stacked defects:
+
+1. **Empty GUC, not NULL.** `DATABASE_URL` routes through a transaction pooler,
+   so a login gets handed a server connection that previously served a query and
+   ran `SET LOCAL app.tenant_id`. The GUC stays defined on that connection and
+   reverts to `''` — not NULL — when the transaction ends. `NULL::uuid` is legal;
+   `''::uuid` raises 22P02. Idle service means fresh connections, which is why
+   every low-traffic test passed.
+
+2. **`AND` does not short-circuit.** The first fix guarded the cast with
+   `coalesce(...) <> '' AND tenant_id = ...::uuid`. PostgreSQL does not guarantee
+   left-to-right evaluation of boolean conjuncts — the planner orders them by
+   estimated cost and may evaluate the cast first. Confirmed still failing with
+   pgcode 22P02 after that guard shipped (migration 009).
+
+As shipped: every policy is a single `CASE` expression, `CASE` being the only
+construct that guarantees an untaken branch is never evaluated. `users`
+(migration 010) yields true on empty context — the login-by-email bootstrap.
+All other tables (migration 011) yield **false**: fail closed, since an empty
+tenant context must return zero rows, not all rows.
+
+Diagnosis note worth keeping: this took three attempts because Render's log
+stream truncates multi-line tracebacks, hiding the exception type. It was
+settled by logging `pgcode` on a single line in `auth/service.py`, which also
+now returns 503 rather than 500 for transient DB failures.
+
+### §5 / §14 — Per-tenant rate limiting — NOT BUILT
+The blueprint specifies a Redis token bucket per API key at the FastAPI layer.
+Verified 2026-07-30 by grep: no limiter exists anywhere in `app/`. Nothing
+throttles per-tenant request volume, and no endpoint returns 429.
+
+### §9 — DISABLE_LOCAL_RERANKER removed
+An env flag added during the 512MB OOM crisis returned `hybrid_search`
+candidates directly, skipping reranking. Those chunks carry
+`reranker_score=float("-inf")` and `reranker_backend="none"`, so
+`_score_confidence()` classified **every** semantic query as LOW and refused —
+after burning all CRAG rungs on identical retrievals first. Never enabled in
+production (the sweep returns `confidence=high` throughout, which is impossible
+if it were set), so this was a loaded footgun rather than a live defect.
+
+Removed rather than fixed: RRF scores (~0.016 at rank 1, k=60) are a third
+incompatible scale needing their own calibrated thresholds — the exact mismatch
+class that produced the Cohere-vs-local confidence bug. Cohere primary plus
+local ONNX fallback already covers the RAM constraint. `_score_confidence()`
+now logs an error if unscored chunks ever reach it, rather than reporting a
+false refusal.
+
 ### §22 — Audit log path values
 The blueprint writes `query_path: "cross_examination"`. The code uses `"cross"`
 everywhere (Pydantic Literal, `route_after_router()`). The DB CHECK constraint
