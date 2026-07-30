@@ -273,7 +273,10 @@ def _format_chunks_for_prompt(chunks: List[ChunkResult]) -> str:
 
 
 def _generate_semantic_response(
-    query: str, chunks: List[ChunkResult]
+    query: str,
+    chunks: List[ChunkResult],
+    extra_instructions: str = "",
+    verified_facts: str = "",
 ) -> tuple:
     """
     Synthesise an answer from retrieved chunks.
@@ -289,9 +292,21 @@ def _generate_semantic_response(
     context = _format_chunks_for_prompt(chunks)
     user_message = f"Question: {query}\n\nRetrieved excerpts:\n\n{context}"
 
+    # Verified facts are supplied BEFORE the model writes, not reconciled
+    # after. Placed last so they are the most recent thing in context. This is
+    # not a violation of "LLMs never do math" — the figure is a constant the
+    # SQL layer already computed and verified; the model reports it, it does
+    # not derive it, and it is instructed below not to restate the numeral.
+    if verified_facts:
+        user_message += (
+            f"\n\nVerified figures (retrieved from extracted financial "
+            f"statements, NOT from the excerpts above — treat as established "
+            f"fact):\n{verified_facts}"
+        )
+
     try:
         llm = generate_text(
-            system=SYNTHESIS_SYSTEM_PROMPT,
+            system=SYNTHESIS_SYSTEM_PROMPT + extra_instructions,
             user=user_message,
             temperature=0.2,
             max_tokens=400,
@@ -362,6 +377,123 @@ def _format_contradiction_block(contradictions: List[ContradictionFlag]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Cross-path reconciliation
+# ---------------------------------------------------------------------------
+# AUTHORITY RULE: for path="cross", THIS MODULE is the final word on
+# confidence_tier / error / error_node. cross_engine.py's assignments are an
+# INPUT to _reconcile_cross(), not a competing decision. Do not add a second
+# copy of this rule to cross_engine — that is the _compute_derived_totals /
+# validate_financial_identities failure class, and it has already cost this
+# project real extraction bugs.
+
+# Rewritten after the first version failed live. That version told the model
+# not to say the documents lack the figure — an instruction to withhold
+# something TRUE about its own context, competing against SYNTHESIS_SYSTEM_
+# PROMPT's earlier and more concrete "say what is and isn't covered". The
+# earlier, more specific rule won, exactly as in the EBITDA silent-
+# substitution bug. This version doesn't ask for a withholding: the figure is
+# now IN context, so there is nothing to conceal.
+CROSS_SCOPE_INSTRUCTION = """
+
+CROSS-EXAMINATION CONTEXT: the excerpts are narrative disclosure text. Any verified figures appear in a separate block at the end of the user message; they come from extracted financial statements and are already verified. Use them as established fact — do not question their availability, and do not state that the excerpts or documents lack them. Your task is to assess whether the narrative commentary is consistent with those figures. Refer to a verified figure qualitatively (e.g. "the reported profit", "the figure below") rather than restating the numeral — the system appends the exact figure verbatim after your answer, and a restatement risks transcription drift."""
+
+CROSS_NARRATIVE_SCOPE_NOTE = (
+    "The retrieved narrative excerpts do not discuss this metric directly. "
+    "The figure below is drawn from the extracted financial statements."
+)
+
+CROSS_NO_VERIFIED_FIGURE_NOTE = (
+    "No SQL-verified figure is available for the metric identified in this "
+    "question, so the above reflects narrative disclosure only. Any figures "
+    "appearing in it are quoted from the excerpts and have not been verified "
+    "against the extracted financial statements."
+)
+
+
+def _reconcile_cross(state: QueryState, qual_body: str, chunks: list) -> tuple:
+    """
+    Deterministic availability reconciliation for path="cross".
+
+    The live bug this fixes: the cross branch was `qual_body + quant_body`
+    with neither half aware of the other. The semantic engine's scope is the
+    top-k NARRATIVE chunks; when it says "the documents do not contain PAT"
+    that is a SCOPED negative about those chunks, true and unremarkable —
+    line items rarely appear in narrative text. Concatenating it with an
+    SQL-verified figure printed that scoped negative as a global claim,
+    immediately contradicted by the next sentence.
+
+    Contradiction detection answers "do the halves DISAGREE about a value?"
+    That question is only meaningful once "does each half HAVE anything?"
+    resolves. Asking them in the wrong order is what produced the eleven
+    false-high magnitude flags. So availability is classified FIRST, as a
+    four-way branch with no judgment calls:
+
+      qual substantive + quant verified -> both halves, contradiction block
+      qual refused     + quant verified -> evidence asymmetry: suppress the
+                                           false global negative, replace
+                                           with a true scoped one
+      qual substantive + quant absent   -> qualitative only; disclose the
+                                           gap ONLY if a metric was actually
+                                           identified (dsl_object present),
+                                           and mark prose figures unverified
+      qual refused     + quant absent   -> one refusal, one voice
+
+    "qual refused" covers BOTH refusal shapes, which previously failed in
+    opposite directions: the LLM's soft refusal (caught by _is_refusal_text)
+    was over-punished, while semantic_engine's hard refusal — which empties
+    retrieved_chunks and triggers _generate_semantic_response's "No relevant
+    information was found..." floor — matched NO refusal pattern and escaped
+    detection entirely.
+
+    Returns (body, confidence_tier, error, error_node) as FINAL values.
+    """
+    current_tier = state.get("confidence_tier")
+
+    quant_available = bool(state.get("sql_verified") and state.get("sql_result"))
+    quant_attempted = state.get("dsl_object") is not None
+    qual_refused = (not chunks) or _is_refusal_text(qual_body)
+
+    quant_body = ""
+    if quant_available:
+        quant_body = _format_quant_response(state) + _period_assumption_note(state)
+
+    # Quadrant 1 — genuine cross-examination.
+    if not qual_refused and quant_available:
+        return (
+            qual_body + "\n\n" + quant_body,
+            current_tier,
+            state.get("error"),
+            state.get("error_node"),
+        )
+
+    # Quadrant 2 — evidence asymmetry. The suppressed text is logged (single
+    # line, Render truncates multi-line output) so audit lineage survives the
+    # rewrite: response_text is corrected, the model's literal claim is not
+    # silently discarded.
+    if qual_refused and quant_available:
+        logger.info(
+            "Cross reconciliation Q2 (evidence asymmetry) — qualitative half "
+            "suppressed | chunks=%d | suppressed_text=%s",
+            len(chunks), qual_body.replace("\n", " ")[:400],
+        )
+        # Cap, never raise: reuses cross_engine's existing "cross-examination
+        # promised both sides" convention rather than inventing new tier
+        # vocabulary. A half-answered cross query is not a high-confidence one.
+        capped = "medium" if current_tier == "high" else current_tier
+        return CROSS_NARRATIVE_SCOPE_NOTE + "\n\n" + quant_body, capped, None, None
+
+    # Quadrant 3 — quantitative gap.
+    if not qual_refused and not quant_available:
+        body = qual_body
+        if quant_attempted:
+            body += "\n\n" + CROSS_NO_VERIFIED_FIGURE_NOTE
+        return body, current_tier, state.get("error"), state.get("error_node")
+
+    # Quadrant 4 — genuine no-answer.
+    return qual_body, "low", "low_confidence_refusal", "response_generator"
+
+
+# ---------------------------------------------------------------------------
 # LangGraph node
 # ---------------------------------------------------------------------------
 
@@ -401,18 +533,36 @@ def response_generator_node(state: QueryState) -> QueryState:
         qualitative_text_for_refusal_check = body
 
     elif path == "cross":
+        cross_chunks = state.get("retrieved_chunks", [])
+
+        # Same deterministic sentence that gets appended below, reused as the
+        # injected fact. Deliberately ONE formatter: if the injected fact and
+        # the appended line came from separate code paths they could drift,
+        # which is the _compute_derived_totals / validate_financial_identities
+        # failure class this project has already paid for once.
+        verified_facts = ""
+        if state.get("sql_verified") and state.get("sql_result"):
+            verified_facts = _format_quant_response(state)
+
         qual_body, provider = _generate_semantic_response(
             query=state["query"],
-            chunks=state.get("retrieved_chunks", []),
+            chunks=cross_chunks,
+            extra_instructions=CROSS_SCOPE_INSTRUCTION,
+            verified_facts=verified_facts,
         )
         if provider:
             state["llm_provider"] = provider
-        quant_body = ""
-        if state.get("sql_verified") and state.get("sql_result"):
-            quant_body = "\n\n" + _format_quant_response(state) + _period_assumption_note(state)
 
-        state["response_text"] = qual_body + quant_body + citations_block + contradiction_block
-        qualitative_text_for_refusal_check = qual_body
+        # See _reconcile_cross's AUTHORITY RULE. The generic post-generation
+        # refusal detector below is deliberately NOT applied to this path:
+        # it was capping SQL-verified cross answers to tier=low with
+        # error="low_confidence_refusal", which the frontend renders as
+        # MetricCallout status="refused" beside a ticked, correct figure.
+        body, tier, err, err_node = _reconcile_cross(state, qual_body, cross_chunks)
+        state["response_text"] = body + citations_block + contradiction_block
+        state["confidence_tier"] = tier
+        state["error"] = err
+        state["error_node"] = err_node
 
     else:
         state["response_text"] = (
@@ -447,7 +597,7 @@ def response_generator_node(state: QueryState) -> QueryState:
     # text exists. response_text is intentionally left untouched so the
     # frontend can render Gemini's exact explanation inside the refusal card.
     if (
-        path in ("semantic", "cross")
+        path == "semantic"
         and qualitative_text_for_refusal_check
         and _is_refusal_text(qualitative_text_for_refusal_check)
     ):
