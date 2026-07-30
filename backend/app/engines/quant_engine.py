@@ -48,6 +48,7 @@ from app.metrics.registry import (
     get_metric,
     prompt_metric_lines,
     prompt_warnings,
+    unqueryable_metric_aliases,
 )
 
 logger = logging.getLogger(__name__)
@@ -323,6 +324,34 @@ def _query_names_derived_metric(query: str) -> Optional[str]:
     if not m:
         return None
     return _DERIVED_ALIASES.get(m.group(0).lower().strip())
+
+
+# ---------------------------------------------------------------------------
+# Unqueryable-metric substitution guard
+# ---------------------------------------------------------------------------
+# Sibling of the derived-metric guard above, same failure mode, other half of
+# the class: a metric the registry knows but that is not dsl_enabled. See
+# registry.unqueryable_metric_aliases() for the rationale and the live case.
+
+_UNQUERYABLE_ALIASES = unqueryable_metric_aliases()
+
+_UNQUERYABLE_ALIAS_RE = re.compile(
+    "|".join(
+        rf"\b{re.escape(a)}\b"
+        for a in sorted(_UNQUERYABLE_ALIASES, key=len, reverse=True)
+    ),
+    re.IGNORECASE,
+) if _UNQUERYABLE_ALIASES else None
+
+
+def _query_names_unqueryable_metric(query: str) -> Optional[str]:
+    """Canonical name of a known-but-unqueryable metric named in the query."""
+    if _UNQUERYABLE_ALIAS_RE is None:
+        return None
+    m = _UNQUERYABLE_ALIAS_RE.search(query or "")
+    if not m:
+        return None
+    return _UNQUERYABLE_ALIASES.get(m.group(0).lower().strip())
 
 
 # ---------------------------------------------------------------------------
@@ -619,6 +648,53 @@ def quant_engine_node(state: QueryState) -> QueryState:
             f"from their components. Rather than return an approximation, the "
             f"system declines. You can query the component line items directly "
             f"if they were extracted for this filing."
+        )
+        return state
+
+    # ── Stage 0b: unqueryable-metric guard ────────────────────────────────
+    # Deliberately AFTER the derived guard: a metric can only be in one class,
+    # but derived carries the more specific explanation, so it wins on order.
+    unqueryable = _query_names_unqueryable_metric(query)
+    if unqueryable:
+        u = get_metric(unqueryable)
+        label = u.label if u else unqueryable
+        logger.info(
+            "Query names registered-but-unqueryable metric '%s' — refusing "
+            "before DSL generation", unqueryable,
+        )
+        # Record WHAT was refused. Returning before Stage 1 means no DSL is
+        # ever generated, so dsl_object stays None -- and response_generator's
+        # cross reconciliation reads dsl_object presence to distinguish "a
+        # metric was identified but produced no verified figure" (disclose the
+        # gap) from "this query never asked for a figure" (say nothing).
+        # Without this, a query the guard refused on looks identical to a
+        # purely qualitative one, and the user is never told the system
+        # declined to verify the figure they named. Metric resolution DID
+        # happen here -- precisely enough to refuse on -- so recording it is
+        # accurate, not a placeholder.
+        state["dsl_object"] = {
+            "metric": unqueryable,
+            "entity": company,
+            "fiscal_year": fiscal_year,
+            "quarter": quarter,
+            "financial_type": financial_type,
+            "operation": None,
+            "comparison_entity": None,
+            "comparison_period": None,
+            "guard_refused": "metric_not_queryable",
+        }
+        state["error"] = "metric_not_queryable"
+        state["error_node"] = "quant_engine"
+        state["sql_verified"] = False
+        state["confidence_score"] = 0.0
+        state["confidence_tier"] = "low"
+        state["response_text"] = (
+            f"{label} is recognised by LedgerMind but is not available through "
+            f"the quantitative query path, so no SQL-verified figure can be "
+            f"returned for it. The system declines rather than answering with a "
+            f"different metric. Any figure discussed above is drawn from the "
+            f"filing's narrative text and has not been independently verified "
+            f"against the extracted financial statements."
         )
         return state
 
