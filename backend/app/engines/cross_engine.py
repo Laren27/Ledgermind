@@ -65,11 +65,17 @@ def cross_engine_node(state: QueryState) -> QueryState:
 
     Steps:
       1. Resolve subsidiary entity to parent (if applicable) for sub-engine calls
-      2. Run semantic_engine logic (qualitative retrieval)
-      3. Run quant_engine logic (quantitative SQL) — only if a metric is
+      2. Run quant_engine logic (quantitative SQL) FIRST — only if a metric is
          identifiable; cross-examination queries don't always have one
+      3. Run semantic_engine logic (qualitative retrieval), so the verified
+         figure is available to the synthesis call downstream
       4. Run contradiction detection on the combined output
       5. Merge state from both sub-engines + contradictions
+
+    AUTHORITY: the confidence_tier / error values set here are an INPUT to
+    response_generator._reconcile_cross(), which is the final word for this
+    path. Step 4's error-clearing below runs BEFORE response_generator and
+    was previously undone by it. Do not re-implement reconciliation here.
     """
     original_entity = state.get("company")
     resolved_entity = resolve_parent_entity(original_entity)
@@ -80,8 +86,62 @@ def cross_engine_node(state: QueryState) -> QueryState:
             original_entity, resolved_entity,
         )
 
-    # ── Step 1: Run semantic engine with resolved entity ───────────────────
-    # Temporarily substitute resolved entity for the sub-call, restore after.
+    # ── Step 1: Run quant engine with resolved entity ──────────────────────
+    # QUANT RUNS FIRST — deliberate, and the fix for the cross-path
+    # self-contradiction. Previously semantic ran first and the two halves
+    # were assembled independently, so the semantic half wrote its answer
+    # from narrative chunks alone. Asked "does commentary align with FY26
+    # PAT?", it correctly reported that the excerpts contain no PAT figure —
+    # a true statement about ITS context window — and the quant template then
+    # appended "PAT was ₹366 Cr" directly underneath it.
+    #
+    # Two earlier attempts failed because both tried to SUPPRESS that
+    # sentence (post-hoc rewriting in response_generator, then a prompt
+    # instruction not to say it). Neither worked, because the model was being
+    # asked to withhold something true about the evidence it was given. The
+    # working fix is to make it false: run quant first and inject the
+    # verified figure into the synthesis context as an established fact, so
+    # the model writes one coherent answer with nothing left to contradict.
+    #
+    # Safe to reorder: quant_engine reads only the DSL-relevant state fields
+    # (company / fiscal_year / quarter / financial_type / query) and never
+    # touches retrieved_chunks or citations. The two sub-engines are genuinely
+    # independent; only the ASSEMBLY was coupled.
+    #
+    # Cross-examination queries don't always map cleanly to a DSL metric.
+    # quant_engine_node already handles "could not interpret" gracefully via
+    # its own error path — we treat that as "no quantitative side available"
+    # rather than a hard failure for the whole cross-examination.
+    quant_state = dict(state)
+    quant_state["company"] = resolved_entity
+    quant_result = quant_engine_node(QueryState(**quant_state))
+
+    quant_succeeded = quant_result.get("error") is None and quant_result.get("sql_verified")
+
+    # Copied UNCONDITIONALLY. dsl_object presence is how response_generator's
+    # cross reconciliation tells "a metric was identified but produced no
+    # verified figure" (a real gap worth disclosing) apart from "this query
+    # never asked for a figure" (nothing to disclose — emitting a gap note
+    # there is noise). Copying it only on success made the two cases
+    # indistinguishable downstream. .get() because quant_engine can fail
+    # before a DSL object exists at all.
+    state["dsl_object"] = quant_result.get("dsl_object")
+
+    if quant_succeeded:
+        state["sql_query"]     = quant_result["sql_query"]
+        state["sql_result"]    = quant_result["sql_result"]
+        state["sql_row_count"] = quant_result["sql_row_count"]
+        state["sql_verified"]  = True
+    else:
+        logger.info(
+            "CrossEngine: quant side unavailable (%s) — proceeding with qualitative-only result",
+            quant_result.get("error"),
+        )
+        state["sql_verified"] = False
+
+    # ── Step 2: Run semantic engine with resolved entity ───────────────────
+    # Runs AFTER quant so response_generator can hand the verified figure to
+    # the synthesis call. Temporarily substitute resolved entity, restore after.
     semantic_state = dict(state)
     semantic_state["company"] = resolved_entity
     semantic_result = semantic_engine_node(QueryState(**semantic_state))
@@ -98,30 +158,6 @@ def cross_engine_node(state: QueryState) -> QueryState:
         logger.warning("CrossEngine: semantic side returned low confidence")
         # Don't hard-fail yet — quant side might still produce a usable answer.
         # contradiction detection will simply skip if no chunks available.
-
-    # ── Step 2: Run quant engine with resolved entity ───────────────────────
-    # Cross-examination queries don't always map cleanly to a DSL metric.
-    # quant_engine_node already handles "could not interpret" gracefully via
-    # its own error path — we treat that as "no quantitative side available"
-    # rather than a hard failure for the whole cross-examination.
-    quant_state = dict(state)
-    quant_state["company"] = resolved_entity
-    quant_result = quant_engine_node(QueryState(**quant_state))
-
-    quant_succeeded = quant_result.get("error") is None and quant_result.get("sql_verified")
-
-    if quant_succeeded:
-        state["dsl_object"]    = quant_result["dsl_object"]
-        state["sql_query"]     = quant_result["sql_query"]
-        state["sql_result"]    = quant_result["sql_result"]
-        state["sql_row_count"] = quant_result["sql_row_count"]
-        state["sql_verified"]  = True
-    else:
-        logger.info(
-            "CrossEngine: quant side unavailable (%s) — proceeding with qualitative-only result",
-            quant_result.get("error"),
-        )
-        state["sql_verified"] = False
 
     # ── Step 3: Contradiction detection ─────────────────────────────────────
     sql_value: Optional[float] = None
