@@ -276,6 +276,78 @@ def hybrid_search(
 # Core: rerank
 # ---------------------------------------------------------------------------
 
+
+# ---------------------------------------------------------------------------
+# Near-duplicate suppression
+# ---------------------------------------------------------------------------
+# OVERLAP_TOKENS=150 in chunker.py means adjacent chunks share ~150 tokens by
+# design, and that overlap must STAY: it was raised from 50 specifically to fix
+# a mid-sentence split that orphaned Paytm's PPBL impairment fact in an
+# unretrieved chunk. The bug is not that overlapping chunks exist -- it is that
+# two windows over the same text can both occupy final top-5 slots.
+#
+# Measured live 2026-07-30 on the ETERNAL FY26 cross query: chunks
+# 0b035c3c... and 387d1a8c... are both page 23, both exactly 705 chars,
+# offset by ~90 chars, 87.8% token overlap. They consumed 2 of 5 slots with
+# identical forward-looking-statements boilerplate, while the management
+# commentary chunk that actually addressed the question sat at rank 2. An
+# earlier scroll showed page 9 appearing four times in one top-10.
+#
+# Deliberately token-set overlap, not embedding cosine: the text is already in
+# hand, and a second model invocation to answer what a set intersection
+# answers is cost for nothing.
+#
+# Denominator is the SMALLER chunk, so a short chunk fully contained in a
+# longer one scores 1.0 rather than being diluted by the longer one's length.
+
+NEAR_DUPLICATE_THRESHOLD = 0.70
+
+
+def _token_overlap(a: str, b: str) -> float:
+    """Jaccard-style containment: |A∩B| / min(|A|,|B|)."""
+    sa, sb = set(a.split()), set(b.split())
+    if not sa or not sb:
+        return 0.0
+    return len(sa & sb) / min(len(sa), len(sb))
+
+
+def _deduplicate_near_identical(
+    chunks: List[ChunkResult], threshold: float = NEAR_DUPLICATE_THRESHOLD
+) -> List[ChunkResult]:
+    """
+    Drop chunks that substantially repeat a higher-ranked chunk's text.
+
+    MUST be called on a list already sorted by reranker_score descending --
+    "keep the first occurrence" is only "keep the best occurrence" if the
+    input is sorted. Both call sites sort immediately before.
+
+    O(n^2) over ~20 candidates is ~190 set intersections; negligible against
+    a network rerank call.
+    """
+    kept: List[ChunkResult] = []
+    for chunk in chunks:
+        duplicate_of = None
+        for existing in kept:
+            ratio = _token_overlap(chunk["text"], existing["text"])
+            if ratio >= threshold:
+                duplicate_of = (existing, ratio)
+                break
+        if duplicate_of is None:
+            kept.append(chunk)
+        else:
+            existing, ratio = duplicate_of
+            # Logged at INFO with the real ratio so the eval sweep yields the
+            # actual overlap distribution -- the threshold above is a starting
+            # point calibrated on ONE measured pair, not a settled constant.
+            logger.info(
+                "Near-duplicate suppressed | page=%s score=%.4f overlap=%.1f%% "
+                "with page=%s score=%.4f",
+                chunk.get("page_number"), chunk["reranker_score"], ratio * 100,
+                existing.get("page_number"), existing["reranker_score"],
+            )
+    return kept
+
+
 def rerank(
     query: str,
     chunks: List[ChunkResult],
@@ -301,7 +373,12 @@ def rerank(
                 model="rerank-english-v3.0",
                 query=query,
                 documents=doc_texts,
-                top_n=top_k,
+                # Score ALL candidates, not just top_k. Cohere bills per
+                # SEARCH (not per document), so widening this is free, and
+                # dedup below needs a pool to backfill from -- with top_n=5,
+                # dropping a near-duplicate left 4 chunks instead of swapping
+                # in the 6th-best.
+                top_n=len(doc_texts),
             )
             
             scored_chunks: List[ChunkResult] = []
@@ -313,6 +390,12 @@ def rerank(
                 scored_chunks.append(ChunkResult(**updated))
                 
             # Calibration logging removed 2026-07-27 — see semantic_engine.py threshold comment for findings
+
+            # Cohere returns results sorted by relevance; sort defensively so
+            # _deduplicate_near_identical's "keep first = keep best" holds
+            # regardless of provider ordering.
+            scored_chunks.sort(key=lambda c: c["reranker_score"], reverse=True)
+            scored_chunks = _deduplicate_near_identical(scored_chunks)[:top_k]
 
             if scored_chunks:
                 logger.info(
@@ -339,7 +422,7 @@ def rerank(
         scored_chunks.append(ChunkResult(**updated))
 
     scored_chunks.sort(key=lambda c: c["reranker_score"], reverse=True)
-    top_chunks = scored_chunks[:top_k]
+    top_chunks = _deduplicate_near_identical(scored_chunks)[:top_k]
 
     if top_chunks:
         logger.info(
