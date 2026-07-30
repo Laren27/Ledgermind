@@ -1,3 +1,16 @@
+-- SUPERSEDED BY 010 — DO NOT RELY ON THIS FILE AS THE FIX.
+--
+-- This migration was applied to production on 2026-07-30 and did NOT resolve
+-- the login failures it was written for. The empty-GUC diagnosis below is
+-- correct, but the guard is not: PostgreSQL does not guarantee left-to-right
+-- evaluation of AND, so the planner could still evaluate the ::uuid cast
+-- before the `<> ''` conjunct. Confirmed still failing with pgcode 22P02
+-- after this ran. 010 replaces both policies with a single CASE-guarded one,
+-- CASE being the only construct that guarantees evaluation order.
+--
+-- Kept in the repo rather than deleted so the sequence of applied migrations
+-- matches what production actually received.
+
 -- Migration 008: fix auth_bootstrap_lookup for reused connections
 --
 -- BUG (found in production 2026-07-30): login returned 500 on ~95% of
