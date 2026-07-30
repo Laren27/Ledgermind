@@ -7,18 +7,49 @@ verified quantitative SQL results.
 Two contradiction types:
 
   1. MAGNITUDE — a numeric claim in qualitative text vs the SQL value.
-     Tolerance-based: claims within TOLERANCE_PCT of the SQL value are
-     treated as consistent, not flagged. This directly addresses Trap 7
-     (blueprint §25B): "approximately ₹12,000 crore" vs SQL "₹12,114 crore"
-     must NOT be flagged — they're within 1%.
-
-  2. DIRECTIONAL — qualitative text uses absolute directional language
-     ("revenue declined", "grew strongly") that contradicts the SIGN of
-     a YoY computation from quant_engine. No numeric extraction needed —
-     just polarity comparison.
+  2. DIRECTIONAL — directional language ("declined", "grew") vs the SIGN of
+     a YoY computation from quant_engine.
 
 No LLM call. Pure regex + arithmetic — same philosophy as dsl_compiler.py.
-Deterministic, auditable, no hallucination risk in the comparison itself.
+
+WHAT COUNTS AS A CLAIM (read before loosening any of this)
+-----------------------------------------------------------
+The first shipped version treated EVERY crore figure in EVERY retrieved chunk
+as a claim about the queried metric. Confirmed live 2026-07-30: the question
+"Does ETERNAL's management commentary on profitability align with its actual
+PAT for FY26?" produced ELEVEN "severity: high" contradictions against
+PAT = INR 366 Cr, including +4730.6%, +7244.3% and -99.7%. None were
+contradictions. They were cash-flow lines, Adjusted EBITDA and other line
+items that happened to share a chunk, differenced against an unrelated metric.
+
+Worse, the top-cited chunk was page 33 — the Consolidated Statement of Cash
+Flows, which is part of the SAME document the `financials` row was extracted
+from. The engine was flagging disagreement between a verified value and its
+own source. Circular by construction.
+
+Blueprint §25B's Trap 7 anticipated a narrower failure (an approximation like
+"approximately INR 12,000 crore" flagged against an exact INR 12,114 crore)
+and prescribed a tolerance threshold. Tolerance is necessary but was never
+sufficient: the real defect is comparing numbers that are not about the metric
+at all. Two additional constraints now apply:
+
+  A. NARRATIVE CHUNKS ONLY. FINANCIAL_STATEMENT and TABLE chunks are the
+     extraction source, not independent claims about it. A table of figures
+     also has no prose tying any metric name to any number, so proximity
+     anchoring below cannot work on it either.
+
+  B. METRIC PROXIMITY. A figure is a claim about PAT only if a PAT alias
+     appears within PROXIMITY_WINDOW characters of it ("PAT of INR 366 crore",
+     "profit after tax was INR 366 crore"). Aliases come from the shared
+     registry (app/metrics/registry.py), never a second hand-maintained list —
+     three parallel metric dicts is the exact split that file was created to
+     end.
+
+A FALSE contradiction is worse than a missed one. This system's stated value
+is surfacing disagreement instead of fabricating certainty; fabricating
+disagreement is the one failure that directly inverts that claim. These rules
+are deliberately strict and will miss real contradictions phrased at a
+distance from the metric name. That trade is intentional.
 """
 
 import logging
@@ -26,6 +57,7 @@ import re
 from typing import List, Optional
 
 from app.engines.state import ChunkResult, ContradictionFlag
+from app.metrics.registry import get_metric
 
 logger = logging.getLogger(__name__)
 
@@ -33,21 +65,29 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-# Tolerance for magnitude comparisons — claims within this % of SQL value
-# are treated as consistent (Trap 7 fix). 5% per blueprint §25B example.
+# Claims within this % of the SQL value are consistent, not flagged (Trap 7).
 MAGNITUDE_TOLERANCE_PCT = 5.0
 
-# Severity bands for magnitude contradictions that DO exceed tolerance
 SEVERITY_HIGH_PCT   = 20.0   # >20% off → high severity
 SEVERITY_MEDIUM_PCT = 10.0   # 10-20% off → medium severity
 # <10% but >tolerance → low severity
+
+# Characters either side of a figure searched for a metric alias. ~120 covers
+# "profit after tax for the year ended March 31, 2026 was INR 366 crore"
+# without spanning into an adjacent unrelated sentence.
+PROXIMITY_WINDOW = 120
+
+# Chunk types that can carry an independent qualitative claim. Everything else
+# (FINANCIAL_STATEMENT, TABLE) is the extraction source — see module docstring.
+NARRATIVE_CHUNK_TYPES = frozenset({
+    "TEXT", "RISK_DISCLOSURE", "MANAGEMENT_DISCUSSION", "FOOTNOTE",
+})
 
 # ---------------------------------------------------------------------------
 # Numeric claim extraction — Indian currency formats
 # ---------------------------------------------------------------------------
 
 # Matches: "₹12,114 crore", "Rs 12,114 Cr", "12,114 crore", "₹12114.5 Cr"
-# Captures the numeric value (with commas/decimals) before the crore unit.
 _CRORE_PATTERN = re.compile(
     r"(?:₹|Rs\.?|INR)?\s*"
     r"([\d,]+(?:\.\d+)?)\s*"
@@ -55,8 +95,6 @@ _CRORE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# "approximately X" / "around X" / "nearly X" / "about X" — signals an
-# approximation, used to widen tolerance interpretation in logging only.
 _APPROXIMATION_SIGNAL = re.compile(
     r"\b(approximately|around|nearly|about|roughly|~)\b",
     re.IGNORECASE,
@@ -82,17 +120,64 @@ _NEGATIVE_DIRECTION = re.compile(
 
 
 # ---------------------------------------------------------------------------
+# Metric anchoring
+# ---------------------------------------------------------------------------
+
+def _metric_alias_pattern(sql_metric: str) -> Optional[re.Pattern]:
+    """
+    Regex matching any alias of `sql_metric`, sourced from the shared registry.
+
+    Returns None when the metric is unknown to the registry — the caller then
+    skips detection entirely rather than falling back to unanchored matching,
+    which is the behaviour that produced the false positives.
+    """
+    if not sql_metric:
+        return None
+
+    key = sql_metric.strip().lower().replace(" ", "_")
+    metric = get_metric(key) or get_metric(sql_metric.strip().lower())
+    if metric is None:
+        logger.warning(
+            "Metric %r not found in registry — skipping contradiction detection "
+            "rather than comparing figures with no metric anchor.", sql_metric,
+        )
+        return None
+
+    # Longest-first so "profit after tax" wins over "pat".
+    aliases = sorted(set(metric.aliases), key=len, reverse=True)
+    return re.compile(
+        "|".join(rf"\b{re.escape(a)}\b" for a in aliases), re.IGNORECASE
+    )
+
+
+def _is_narrative(chunk: ChunkResult) -> bool:
+    """True if this chunk can hold an independent claim (see module docstring)."""
+    return (chunk.get("chunk_type") or "").upper() in NARRATIVE_CHUNK_TYPES
+
+
+def _near(text: str, start: int, end: int, pattern: re.Pattern) -> bool:
+    """True if `pattern` matches within PROXIMITY_WINDOW chars of [start, end)."""
+    window = text[max(0, start - PROXIMITY_WINDOW):min(len(text), end + PROXIMITY_WINDOW)]
+    return bool(pattern.search(window))
+
+
+# ---------------------------------------------------------------------------
 # Numeric claim extraction
 # ---------------------------------------------------------------------------
 
-def extract_numeric_claims(text: str) -> List[float]:
+def extract_numeric_claims(text: str, anchor: Optional[re.Pattern] = None) -> List[float]:
     """
-    Extract all crore-denominated numeric claims from a text chunk.
-    Returns a list of float values (commas stripped, parsed).
-    Handles "12,114" → 12114.0
+    Crore-denominated figures in `text`.
+
+    When `anchor` is supplied, only figures with a metric alias within
+    PROXIMITY_WINDOW characters are returned. Without it every figure is
+    returned — kept for callers that do their own filtering, but note that
+    contradiction detection must always pass an anchor.
     """
-    claims = []
+    claims: List[float] = []
     for match in _CRORE_PATTERN.finditer(text):
+        if anchor is not None and not _near(text, match.start(), match.end(), anchor):
+            continue
         raw_number = match.group(1).replace(",", "")
         try:
             claims.append(float(raw_number))
@@ -110,16 +195,26 @@ def has_approximation_language(text: str) -> bool:
 # Directional sentiment extraction
 # ---------------------------------------------------------------------------
 
-def extract_direction(text: str) -> Optional[str]:
+def extract_direction(text: str, anchor: Optional[re.Pattern] = None) -> Optional[str]:
     """
-    Determine the dominant directional sentiment in a text chunk.
-    Returns 'positive', 'negative', or None if no clear signal / mixed signal.
+    Dominant directional sentiment: 'positive', 'negative', or None.
 
-    Simple heuristic: count matches for each polarity, return the dominant one.
-    If counts are equal and non-zero, treat as ambiguous (None) — don't guess.
+    With `anchor`, only polarity words within PROXIMITY_WINDOW of a metric
+    alias are counted. Unanchored, "revenue grew strongly" in a chunk would
+    contradict a PAT decline — a different metric entirely.
+
+    Ties are treated as ambiguous (None) rather than guessed.
     """
-    pos_matches = len(_POSITIVE_DIRECTION.findall(text))
-    neg_matches = len(_NEGATIVE_DIRECTION.findall(text))
+    def _count(pattern: re.Pattern) -> int:
+        if anchor is None:
+            return len(pattern.findall(text))
+        return sum(
+            1 for m in pattern.finditer(text)
+            if _near(text, m.start(), m.end(), anchor)
+        )
+
+    pos_matches = _count(_POSITIVE_DIRECTION)
+    neg_matches = _count(_NEGATIVE_DIRECTION)
 
     if pos_matches == 0 and neg_matches == 0:
         return None
@@ -154,14 +249,8 @@ def detect_magnitude_contradictions(
     sql_metric: str,
 ) -> List[ContradictionFlag]:
     """
-    Compare numeric claims in qualitative chunks against the verified SQL value.
-
-    For each chunk, extract all crore-denominated numbers and compare each
-    against sql_value. A claim within MAGNITUDE_TOLERANCE_PCT is consistent
-    and NOT flagged (Trap 7 fix). Claims outside tolerance ARE flagged with
-    severity based on how far off they are.
-
-    Returns a list of ContradictionFlag — empty if everything is consistent.
+    Compare metric-anchored numeric claims in NARRATIVE chunks against the
+    verified SQL value. See module docstring for why both restrictions exist.
     """
     flags: List[ContradictionFlag] = []
 
@@ -169,14 +258,23 @@ def detect_magnitude_contradictions(
         logger.debug("Skipping magnitude check — sql_value is None or zero")
         return flags
 
+    anchor = _metric_alias_pattern(sql_metric)
+    if anchor is None:
+        return flags
+
+    skipped_non_narrative = 0
+
     for chunk in chunks:
-        claims = extract_numeric_claims(chunk["text"])
+        if not _is_narrative(chunk):
+            skipped_non_narrative += 1
+            continue
+
+        claims = extract_numeric_claims(chunk["text"], anchor=anchor)
 
         for claim_value in claims:
             delta_pct = (claim_value - sql_value) / abs(sql_value) * 100
 
             if abs(delta_pct) <= MAGNITUDE_TOLERANCE_PCT:
-                # Within tolerance — consistent, not a contradiction
                 logger.debug(
                     "Magnitude check: claim=%.2f sql=%.2f delta=%.2f%% — WITHIN TOLERANCE",
                     claim_value, sql_value, delta_pct,
@@ -184,7 +282,7 @@ def detect_magnitude_contradictions(
                 continue
 
             severity = _classify_severity(delta_pct)
-            flag = ContradictionFlag(
+            flags.append(ContradictionFlag(
                 type="magnitude",
                 qualitative_claim=chunk["text"][:200].strip(),
                 qualitative_source=chunk["chunk_id"],
@@ -192,13 +290,20 @@ def detect_magnitude_contradictions(
                 quantitative_metric=sql_metric,
                 delta_pct=round(delta_pct, 2),
                 severity=severity,
-            )
-            flags.append(flag)
+            ))
 
             logger.info(
-                "Magnitude contradiction flagged | claim=%.2f sql=%.2f delta=%.2f%% severity=%s | chunk=%s",
+                "Magnitude contradiction flagged | claim=%.2f sql=%.2f delta=%.2f%% "
+                "severity=%s | chunk=%s",
                 claim_value, sql_value, delta_pct, severity, chunk["chunk_id"],
             )
+
+    if skipped_non_narrative:
+        logger.debug(
+            "Magnitude check skipped %d non-narrative chunk(s) (statement/table "
+            "chunks are the extraction source, not independent claims)",
+            skipped_non_narrative,
+        )
 
     return flags
 
@@ -213,15 +318,8 @@ def detect_directional_contradictions(
     sql_metric: str,
 ) -> List[ContradictionFlag]:
     """
-    Compare directional language in qualitative chunks against the SIGN
-    of a YoY growth computation.
-
-    If quant_engine computed yoy_pct = +31.69% (positive growth) but a
-    chunk says "revenue declined", that's a directional contradiction —
-    regardless of the exact magnitude.
-
-    Returns a list of ContradictionFlag — empty if directions align or
-    yoy_pct is None (no YoY computation available to compare against).
+    Compare metric-anchored directional language in NARRATIVE chunks against
+    the SIGN of a YoY growth computation.
     """
     flags: List[ContradictionFlag] = []
 
@@ -233,27 +331,32 @@ def detect_directional_contradictions(
     if sql_direction is None:
         return flags   # flat growth, no directional claim to contradict
 
-    for chunk in chunks:
-        text_direction = extract_direction(chunk["text"])
+    anchor = _metric_alias_pattern(sql_metric)
+    if anchor is None:
+        return flags
 
+    for chunk in chunks:
+        if not _is_narrative(chunk):
+            continue
+
+        text_direction = extract_direction(chunk["text"], anchor=anchor)
         if text_direction is None:
-            continue   # no clear directional language in this chunk
+            continue
 
         if text_direction != sql_direction:
-            flag = ContradictionFlag(
+            flags.append(ContradictionFlag(
                 type="direction",
                 qualitative_claim=chunk["text"][:200].strip(),
                 qualitative_source=chunk["chunk_id"],
                 quantitative_value=yoy_pct,
                 quantitative_metric=f"{sql_metric}_yoy_growth",
-                delta_pct=None,   # not applicable for directional flags
-                severity="high",  # directional mismatches are always high severity
-            )
-            flags.append(flag)
+                delta_pct=None,
+                severity="high",
+            ))
 
             logger.info(
-                "Directional contradiction flagged | text_direction=%s sql_direction=%s "
-                "yoy_pct=%.2f | chunk=%s",
+                "Directional contradiction flagged | text_direction=%s "
+                "sql_direction=%s yoy_pct=%.2f | chunk=%s",
                 text_direction, sql_direction, yoy_pct, chunk["chunk_id"],
             )
 
@@ -271,17 +374,10 @@ def detect_contradictions(
     yoy_pct: Optional[float] = None,
 ) -> List[ContradictionFlag]:
     """
-    Run both contradiction detectors and merge results.
+    Run both detectors and merge, sorted by severity (high first).
 
-    Args:
-      chunks:     Retrieved chunks from semantic_engine (qualitative side).
-      sql_value:  Point-in-time SQL value to compare numeric claims against.
-                  None skips magnitude detection.
-      sql_metric: Human-readable metric name for the flag (e.g. "Revenue").
-      yoy_pct:    YoY growth % from quant_engine, for directional comparison.
-                  None skips directional detection.
-
-    Returns combined list of ContradictionFlag, sorted by severity (high first).
+    Both detectors require `sql_metric` to resolve in the shared metric
+    registry. An unresolvable metric yields NO flags — see module docstring.
     """
     all_flags: List[ContradictionFlag] = []
 
