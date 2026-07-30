@@ -17,7 +17,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Revenue for FY26 was \u20b954,364.0 Cr."
+      "response_preview": "ETERNAL's consolidated Revenue for FY26 was \u20b954,364 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -38,7 +39,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Total Income for FY26 was \u20b955,760.0 Cr."
+      "response_preview": "ETERNAL's consolidated Total Income for FY26 was \u20b955,760 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -59,7 +61,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Pat for FY26 was \u20b9366.0 Cr."
+      "response_preview": "ETERNAL's consolidated Pat for FY26 was \u20b9366 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -80,7 +83,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Employee Benefits Expense for FY26 was \u20b93,536.0 Cr."
+      "response_preview": "ETERNAL's consolidated Employee Benefits Expense for FY26 was \u20b93,536 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -101,7 +105,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Delivery And Related Charges for FY26 was \u20b99,065.0 Cr."
+      "response_preview": "ETERNAL's consolidated Delivery And Related Charges for FY26 was \u20b99,065 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -122,7 +127,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Depreciation for FY26 was \u20b91,597.0 Cr."
+      "response_preview": "ETERNAL's consolidated Depreciation for FY26 was \u20b91,597 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -143,7 +149,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Finance Costs for FY26 was \u20b9392.0 Cr."
+      "response_preview": "ETERNAL's consolidated Finance Costs for FY26 was \u20b9392 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -164,7 +171,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Other Income for FY26 was \u20b91,396.0 Cr."
+      "response_preview": "ETERNAL's consolidated Other Income for FY26 was \u20b91,396 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -185,7 +193,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Total Expenses for FY26 was \u20b955,145.0 Cr."
+      "response_preview": "ETERNAL's consolidated Total Expenses for FY26 was \u20b955,145 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -206,7 +215,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Advertisement And Sales Promotion for FY26 was \u20b93,350.0 Cr."
+      "response_preview": "ETERNAL's consolidated Advertisement And Sales Promotion for FY26 was \u20b93,350 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -227,7 +237,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Revenue for FY25 was \u20b920,243.0 Cr."
+      "response_preview": "ETERNAL's consolidated Revenue for FY25 was \u20b920,243 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -248,7 +259,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Pat for FY25 was \u20b9527.0 Cr."
+      "response_preview": "ETERNAL's consolidated Pat for FY25 was \u20b9527 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -269,7 +281,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Delivery And Related Charges for FY25 was \u20b95,728.0 Cr."
+      "response_preview": "ETERNAL's consolidated Delivery And Related Charges for FY25 was \u20b95,728 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -290,7 +303,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Total Income for FY25 was \u20b921,320.0 Cr."
+      "response_preview": "ETERNAL's consolidated Total Income for FY25 was \u20b921,320 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -311,7 +325,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Finance Costs for FY25 was \u20b9154.0 Cr."
+      "response_preview": "ETERNAL's consolidated Finance Costs for FY25 was \u20b9154 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -332,7 +347,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Revenue grew 168.56% year-over-year, from \u20b920,243.0 Cr in FY25 to \u20b954,364.0 Cr in FY26."
+      "response_preview": "ETERNAL's consolidated Revenue grew 168.56% year-over-year, from \u20b920,243 Cr in FY25 to \u20b954,364 Cr in FY26.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -353,7 +369,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated PAT declined 30.55% year-over-year, from \u20b9527.0 Cr in FY25 to \u20b9366.0 Cr in FY26."
+      "response_preview": "ETERNAL's consolidated PAT declined 30.55% year-over-year, from \u20b9527 Cr in FY25 to \u20b9366 Cr in FY26.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -374,7 +391,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Employee Benefits Expense grew 38.23% year-over-year, from \u20b92,558.0 Cr in FY25 to \u20b93,536.0 Cr in FY26."
+      "response_preview": "ETERNAL's consolidated Employee Benefits Expense grew 38.23% year-over-year, from \u20b92,558 Cr in FY25 to \u20b93,536 Cr in FY26.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -395,7 +413,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Finance Costs grew 154.55% year-over-year, from \u20b9154.0 Cr in FY25 to \u20b9392.0 Cr in FY26."
+      "response_preview": "ETERNAL's consolidated Finance Costs grew 154.55% year-over-year, from \u20b9154 Cr in FY25 to \u20b9392 Cr in FY26.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -416,7 +435,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Delivery and Related Charges grew 58.26% year-over-year, from \u20b95,728.0 Cr in FY25 to \u20b99,065.0 Cr in FY26."
+      "response_preview": "ETERNAL's consolidated Delivery and Related Charges grew 58.26% year-over-year, from \u20b95,728 Cr in FY25 to \u20b99,065 Cr in FY26.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -437,7 +457,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's standalone Revenue for FY26 was \u20b910,899.0 Cr."
+      "response_preview": "ETERNAL's standalone Revenue for FY26 was \u20b910,899 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -458,7 +479,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's standalone Total Income for FY26 was \u20b912,702.0 Cr."
+      "response_preview": "ETERNAL's standalone Total Income for FY26 was \u20b912,702 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -479,7 +501,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's standalone Delivery And Related Charges for FY26 was \u20b94,658.0 Cr."
+      "response_preview": "ETERNAL's standalone Delivery And Related Charges for FY26 was \u20b94,658 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -500,7 +523,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's standalone Depreciation for FY26 was \u20b9202.0 Cr."
+      "response_preview": "ETERNAL's standalone Depreciation for FY26 was \u20b9202 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -521,7 +545,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's standalone Revenue for FY25 was \u20b98,617.0 Cr."
+      "response_preview": "ETERNAL's standalone Revenue for FY25 was \u20b98,617 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -541,7 +566,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited (formerly known as Zomato Limited) defines Adjusted EBITDA as Consolidated EBITDA plus share-based payment expense, minus rental paid for the period pertaining to \u2018Ind AS 116 leases\u2019. "
+      "response_preview": "Eternal Limited (formerly known as Zomato Limited) defines Adjusted EBITDA as consolidated EBITDA plus share-based payment expense, minus rental paid for the period pertaining to \u2018Ind AS 116 leases\u2019. ",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -561,7 +587,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL uses Adjusted Revenue and Adjusted EBITDA as non-GAAP financial measures to supplement its financial information presented in accordance with IND AS. These measures are utilized to evaluate bu"
+      "response_preview": "The company, referred to in the provided documents as Zomato, utilizes three non-GAAP financial measures to supplement its financial information presented in accordance with IND AS: Adjusted Revenue, ",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -581,7 +608,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited (formerly known as Zomato Limited) defines forward-looking statements as descriptions regarding the intent, belief, or current expectations of its senior management\u2014subject to board ap"
+      "response_preview": "Eternal Limited (formerly known as Zomato Limited) defines forward-looking statements as descriptions regarding the intent, belief, or current expectations of its senior management\u2014subject to board ap",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -601,7 +629,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited (formerly known as Zomato Limited) presents non-GAAP financial measures, such as Adjusted Revenue and Adjusted EBITDA, to supplement its financial information prepared in accordance wi"
+      "response_preview": "The company presents non-GAAP financial measures, such as Adjusted Revenue and Adjusted EBITDA, to supplement its IND AS results as part of an overall assessment of its business strategies and financi",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -621,7 +650,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited (formerly known as Zomato Limited) includes information related to its material subsidiaries within its reported financial results. The company provides this information to assist inve"
+      "response_preview": "Eternal Limited (formerly known as Zomato Limited) includes information related to its material subsidiaries within its financial disclosures. This information is provided alongside non-GAAP financial",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -630,18 +660,19 @@
     "question": "What does ETERNAL say about comparing its results across multiple periods?",
     "score": {
       "pass": true,
-      "reason": "All 3 keywords present, confidence=high",
+      "reason": "All 3 keywords present, confidence=medium",
       "actual": {
-        "confidence_tier": "high"
+        "confidence_tier": "medium"
       }
     },
     "api_response": {
       "path": "semantic",
       "is_blocked": false,
-      "confidence_tier": "high",
+      "confidence_tier": "medium",
       "sql_verified": false,
       "error": null,
-      "response_preview": "ETERNAL LIMITED (formerly known as Zomato Limited) states that it presents non-GAAP financial measures to assist its investors and to provide an additional tool for them to use in comparing the result"
+      "response_preview": "ETERNAL LIMITED (formerly known as Zomato Limited) states that it presents non-GAAP financial measures to assist investors and provide an additional tool for comparing the results of operations of its",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -661,7 +692,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited (formerly known as Zomato Limited) prepares its financial results in accordance with the recognition and measurement principles laid down in the Indian Accounting Standards and other a"
+      "response_preview": "Eternal Limited (formerly known as Zomato Limited) prepares its financial results in accordance with the recognition and measurement principles laid down in the Indian Accounting Standards and other a",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -681,7 +713,8 @@
       "confidence_tier": "medium",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Yes, the company's definition of Adjusted Revenue includes platform fees and other charges paid on food delivery orders that are not already included in reported revenue from operations. This is in ad"
+      "response_preview": "Yes, the company includes platform fees and other charges paid on food delivery orders in its Adjusted Revenue metric only if those amounts are not already included in its reported revenue from operat",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -701,7 +734,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The financial results of Eternal Limited (formerly known as Zomato Limited) for the financial year ended March 31, 2026, were audited by M/s. Deloitte Haskins & Sells, Chartered Accountants. This firm"
+      "response_preview": "The financial results of Eternal Limited (formerly known as Zomato Limited) for the financial year ended March 31, 2026, were audited by M/s. Deloitte Haskins & Sells, Chartered Accountants. This firm",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -721,19 +755,31 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The audit conducted by Deloitte Haskins & Sells for Eternal Limited (formerly known as Zomato Limited) provides a \"reasonable assurance.\" This is described as a high level of assurance that the financ"
+      "response_preview": "The audit provides reasonable assurance, which is described as a high level of assurance. However, this does not constitute a guarantee that an audit conducted in accordance with SAs will always detec",
+      "llm_provider": "gemini"
     }
   },
   {
     "id": "Q036",
-    "category": "semantic_audit",
+    "category": "semantic_honest_refusal",
     "question": "What does ETERNAL's auditor say about going concern?",
     "score": {
-      "pass": false,
-      "reason": "API call failed / no response",
-      "actual": null
+      "pass": true,
+      "reason": "Correctly reported absence of relevant content",
+      "actual": {
+        "confidence_tier": "high",
+        "response_preview": "the provided excerpts do not state the auditor's specific conclusion regarding the going concern status of eternal. instead, the documents outline the auditor's general responsibilities, which include"
+      }
     },
-    "api_response": null
+    "api_response": {
+      "path": "semantic",
+      "is_blocked": false,
+      "confidence_tier": "high",
+      "sql_verified": false,
+      "error": null,
+      "response_preview": "The provided excerpts do not state the auditor's specific conclusion regarding the going concern status of ETERNAL. Instead, the documents outline the auditor's general responsibilities, which include",
+      "llm_provider": "gemini"
+    }
   },
   {
     "id": "Q037",
@@ -752,22 +798,20 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The Board of Directors of Eternal Limited is responsible for the preparation and presentation of the company\u2019s financial results, ensuring they give a true and fair view of the net profit, other compr"
+      "response_preview": "The Board of Directors of Eternal Limited (formerly known as Zomato Limited) is responsible for the preparation and presentation of the consolidated financial results, ensuring they provide a true and",
+      "llm_provider": "gemini"
     }
   },
   {
     "id": "Q038",
-    "category": "semantic_audit",
+    "category": "semantic_honest_refusal",
     "question": "What does ETERNAL's audit report say about internal controls?",
     "score": {
-      "pass": false,
-      "reason": "Missing keywords in response: ['effectiveness']",
+      "pass": true,
+      "reason": "Correctly reported absence of relevant content",
       "actual": {
         "confidence_tier": "high",
-        "missing_keywords": [
-          "effectiveness"
-        ],
-        "response_preview": "the provided audit report for eternal limited (formerly known as zomato limited) does not explicitly state the findings regarding the company's internal controls. instead, the report notes that the in"
+        "response_preview": "the provided documents identify eternal limited (formerly known as zomato limited) and its nine subsidiary companies incorporated in india as the entities subject to the audit of internal financial co"
       }
     },
     "api_response": {
@@ -776,7 +820,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The provided audit report for ETERNAL LIMITED (formerly known as Zomato Limited) does not explicitly state the findings regarding the company's internal controls. Instead, the report notes that the in"
+      "response_preview": "The provided documents identify Eternal Limited (formerly known as Zomato Limited) and its nine subsidiary companies incorporated in India as the entities subject to the audit of internal financial co",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -796,7 +841,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "Eternal Limited (formerly known as Zomato Limited) complies with Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, by submitting its standalone and consoli"
+      "response_preview": "Eternal Limited (formerly known as Zomato Limited) complies with Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, by submitting its standalone and consoli",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -816,7 +862,8 @@
       "confidence_tier": "high",
       "sql_verified": false,
       "error": null,
-      "response_preview": "The auditor, Deloitte Haskins & Sells, communicates with those charged with governance regarding the planned scope and timing of the audit, as well as significant audit findings, including any signifi"
+      "response_preview": "The auditor communicates with those charged with governance regarding the planned scope and timing of the audit, as well as significant audit findings, including any significant deficiencies in intern",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -836,7 +883,8 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": null,
-      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q",
+      "llm_provider": null
     }
   },
   {
@@ -856,7 +904,8 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": null,
-      "response_preview": "LedgerMind is a financial research tool and cannot provide investment recommendations or opinions on stock quality. This is by design to remain SEBI-compliant. Please rephrase your question as a factu"
+      "response_preview": "LedgerMind is a financial research tool and cannot provide investment recommendations or opinions on stock quality. This is by design to remain SEBI-compliant. Please rephrase your question as a factu",
+      "llm_provider": null
     }
   },
   {
@@ -876,7 +925,8 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": null,
-      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q",
+      "llm_provider": null
     }
   },
   {
@@ -896,7 +946,8 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": null,
-      "response_preview": "LedgerMind is a financial research tool and cannot provide price predictions or target price estimates. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research "
+      "response_preview": "LedgerMind is a financial research tool and cannot provide price predictions or target price estimates. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research ",
+      "llm_provider": null
     }
   },
   {
@@ -916,7 +967,8 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": null,
-      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q",
+      "llm_provider": null
     }
   },
   {
@@ -936,7 +988,8 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": null,
-      "response_preview": "LedgerMind is a financial research tool and cannot provide investment recommendations or opinions on stock quality. This is by design to remain SEBI-compliant. Please rephrase your question as a factu"
+      "response_preview": "LedgerMind is a financial research tool and cannot provide investment recommendations or opinions on stock quality. This is by design to remain SEBI-compliant. Please rephrase your question as a factu",
+      "llm_provider": null
     }
   },
   {
@@ -956,7 +1009,8 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": null,
-      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q"
+      "response_preview": "LedgerMind is a financial research tool and cannot provide trading recommendations or buy/sell advice. This is by design to remain SEBI-compliant. Please rephrase your question as a factual research q",
+      "llm_provider": null
     }
   },
   {
@@ -964,20 +1018,21 @@
     "category": "quantitative_point",
     "question": "What was ETERNAL's consolidated revenue for FY23?",
     "score": {
-      "pass": false,
-      "reason": "sql_verified=False. error=no_data_found",
+      "pass": true,
+      "reason": "Value match",
       "actual": {
-        "sql_verified": false,
-        "value": null
+        "value": 7079.0,
+        "sql_verified": true
       }
     },
     "api_response": {
       "path": "quantitative",
       "is_blocked": false,
-      "confidence_tier": "low",
-      "sql_verified": false,
-      "error": "no_data_found",
-      "response_preview": "No data found for ETERNAL revenue FY23 consolidated. This period may not yet be indexed."
+      "confidence_tier": "high",
+      "sql_verified": true,
+      "error": null,
+      "response_preview": "ETERNAL's consolidated Revenue for FY23 was \u20b97,079 Cr.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -989,7 +1044,7 @@
       "reason": "Correctly refused / no data",
       "actual": {
         "sql_verified": false,
-        "error": "dsl_generation_failed",
+        "error": "metric_not_computable",
         "confidence_tier": "low"
       }
     },
@@ -998,8 +1053,9 @@
       "is_blocked": false,
       "confidence_tier": "low",
       "sql_verified": false,
-      "error": "dsl_generation_failed",
-      "response_preview": "The metric you asked about (Metric 'ebitda' is registered but not yet in corpus) is registered in LedgerMind but has not yet been extracted for this company. Currently available metrics: ['revenue', '"
+      "error": "metric_not_computable",
+      "response_preview": "LedgerMind cannot currently compute EBITDA. It is a derived metric (operating_profit + depreciation + amortization), and the deterministic SQL compiler does not yet support deriving metrics from their",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -1021,7 +1077,8 @@
       "confidence_tier": "low",
       "sql_verified": false,
       "error": "no_data_found",
-      "response_preview": "No data found for SWIGGY revenue FY25 consolidated. This period may not yet be indexed."
+      "response_preview": "No data found for SWIGGY revenue FY25 consolidated. This period may not yet be indexed.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -1052,7 +1109,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "In FY26, ETERNAL's revenue grew +168.56% year-over-year (\u20b920,243.0 Cr \u2192 \u20b954,364.0 Cr), while PAYTM's grew +22.28% (\u20b96,900.0 Cr \u2192 \u20b98,437.0 Cr). ETERNAL grew faster."
+      "response_preview": "In FY26, ETERNAL's revenue grew +168.56% year-over-year (\u20b920,243 Cr \u2192 \u20b954,364 Cr), while PAYTM's grew +22.28% (\u20b96,900 Cr \u2192 \u20b98,437 Cr). ETERNAL grew faster.",
+      "llm_provider": "gemini"
     }
   },
   {
@@ -1073,7 +1131,8 @@
       "confidence_tier": "high",
       "sql_verified": true,
       "error": null,
-      "response_preview": "ETERNAL's consolidated Revenue grew 168.56% year-over-year, from \u20b920,243.0 Cr in FY25 to \u20b954,364.0 Cr in FY26."
+      "response_preview": "ETERNAL's consolidated Revenue grew 168.56% year-over-year, from \u20b920,243 Cr in FY25 to \u20b954,364 Cr in FY26.",
+      "llm_provider": "gemini"
     }
   }
 ]
