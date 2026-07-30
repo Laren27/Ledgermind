@@ -1,32 +1,49 @@
-import asyncio
-import psycopg2
-from fastapi import FastAPI
-import redis.asyncio as aioredis
-import httpx
-from app.api.metrics import router as metrics_router
-from app.auth.router import router as auth_router
-from app.api.query import router as query_router
-from app.core.config import settings
-from app.api.documents import router as documents_router
+# ---------------------------------------------------------------------------
+# Logging must be configured BEFORE any `app.*` import.
+#
+# Importing app.api.query pulls in app.engines.router, which logs its
+# resolved GEMINI_MODEL at module scope. With no root handler installed,
+# Python falls back to logging.lastResort (fixed at WARNING) and the line
+# is discarded silently. This applied to every import-time INFO log in the
+# codebase, not just that one.
+#
+# force=True so a dependency that installs a root handler cannot turn
+# basicConfig into a silent no-op later.
+#
+# DO NOT move this below the app.* imports.
+# ---------------------------------------------------------------------------
 import logging
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    force=True,
 )
 
-app = FastAPI(title="LedgerMind API", version="0.1.0")
+import asyncio
 
+import httpx
+import psycopg2
+import redis.asyncio as aioredis
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.documents import router as documents_router
+from app.api.metrics import router as metrics_router
+from app.api.query import router as query_router
+from app.auth.router import router as auth_router
+from app.core.config import settings
+
+app = FastAPI(title="LedgerMind API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:8000",
-        "https://ledgermind-ypmv8v239-laren-house.vercel.app",  # Your current preview URL
+        "https://ledgermind-ypmv8v239-laren-house.vercel.app",
     ],
-    # This regex is magic: it automatically allows ALL your Vercel preview URLs and production domains!
+    # Covers all Vercel preview + production domains.
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -39,8 +56,9 @@ app.include_router(query_router)
 app.include_router(metrics_router)
 app.include_router(documents_router)
 
+
 def check_postgres_sync():
-    """Sync function to check DB, run in a separate thread so it doesn't block FastAPI."""
+    """Sync DB check, run in a thread so it doesn't block the event loop."""
     conn = psycopg2.connect(settings.database_url)
     cur = conn.cursor()
     cur.execute("SELECT 1")
@@ -52,7 +70,7 @@ def check_postgres_sync():
 async def health_check():
     services = {}
 
-    # PostgreSQL (Using psycopg2)
+    # PostgreSQL (psycopg2)
     try:
         await asyncio.to_thread(check_postgres_sync)
         services["postgres"] = "ok"
