@@ -80,7 +80,8 @@ running, while succeeding 10/10 when the service was idle.
 
 Two stacked defects:
 
-1. **Empty GUC, not NULL.** `DATABASE_URL` routes through a transaction pooler,
+1. **Empty GUC, not NULL.** `DATABASE_URL` routes through Supabase's session
+   pooler (port 5432),
    so a login gets handed a server connection that previously served a query and
    ran `SET LOCAL app.tenant_id`. The GUC stays defined on that connection and
    reverts to `''` — not NULL — when the transaction ends. `NULL::uuid` is legal;
