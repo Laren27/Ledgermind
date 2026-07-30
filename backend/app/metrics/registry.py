@@ -641,6 +641,52 @@ def derived_metric_aliases() -> dict[str, str]:
     return pairs
 
 
+UNQUERYABLE_MIN_WORDS = 4
+
+
+def unqueryable_metric_aliases(min_words: int = UNQUERYABLE_MIN_WORDS) -> dict[str, str]:
+    """alias/canonical-phrase (lowercase) -> canonical_name, for metrics the
+    registry KNOWS but that are not exposed to the DSL (dsl_enabled=False).
+
+    Sibling of derived_metric_aliases(), covering the other half of the same
+    failure class. Gemini is constrained to emit some metric string from the
+    AVAILABLE list; asked about a metric that is registered but not queryable,
+    it substitutes the nearest neighbour rather than refusing. The validator
+    cannot catch this -- a substituted metric is perfectly valid DSL, and
+    nothing downstream records what the user actually asked.
+
+    Observed live 2026-07-30: "Paytm ... the 207 crore impairment of loans and
+    investments in associates recorded in FY26?" produced
+    metric="exceptional_items" and appended "PAYTM's consolidated Exceptional
+    Items for FY26 was Rs -186 Cr" -- a ticked, sql_verified figure for a
+    metric nobody asked about. Same shape as the EBITDA substitution, which
+    the derived-metric guard fixed for derived metrics only.
+
+    CANONICAL NAMES ARE INCLUDED as matchable phrases, underscores expanded.
+    This is load-bearing, not tidiness: every stored alias for the impairment
+    metric uses a slash ("loans/investment"), while the query and the canonical
+    name use "and". Aliases alone would not have matched the very query that
+    exposed the bug.
+
+    min_words is the false-positive guard. dsl_enabled=False covers aliases
+    like "cash", "equity", "others", "orders", "india" -- scanning those would
+    fire on almost any query, which is exactly why derived_metric_aliases()
+    was deliberately narrow. A 4-word floor makes matches specific enough to
+    be intentional. Conservative on purpose: it fails toward NOT firing, so
+    behaviour is unchanged anywhere the phrase is not unmistakable.
+    """
+    pairs: dict[str, str] = {}
+    for m in ALL_METRICS:
+        if m.dsl_enabled:
+            continue
+        phrases = list(m.aliases) + [m.canonical_name.replace("_", " ")]
+        for phrase in phrases:
+            p = phrase.lower().strip()
+            if len(p.split()) >= min_words:
+                pairs[p] = m.canonical_name
+    return pairs
+
+
 def not_yet_derivable_metrics() -> list[str]:
     """dsl_enabled metrics that are metric_type='derived' — no SQL formula
     compiler exists yet, so these currently return a clean unavailable
