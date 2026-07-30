@@ -134,6 +134,66 @@ code rather than widening it to admit both spellings, which would have made two
 names for one concept permanent schema drift. `'unknown'` is included because
 `audit_writer_node` can emit it on a pre-router exception.
 
+**Amended 2026-07-30.** The paragraph above described `init.sql`, not every
+live database. The local Postgres volume predated that edit and still carried
+the original four-value constraint admitting `cross_examination`. Because
+`CREATE TABLE IF NOT EXISTS` makes re-running `init.sql` against an existing
+volume a no-op, nothing ever corrected it. Every `path="cross"` query had its
+audit row rejected for the lifetime of that database: 2646 rows, zero cross,
+across the entire history of the table. `audit_writer` logged
+`Audit log write FAILED (response still delivered)` at ERROR and returned the
+answer anyway — correct for the user, and not silent, but never grepped for.
+Repaired by migration 013. Supabase was verified as already correct, so this
+affected local only.
+
+Two things worth keeping. First, a delta recorded as "corrected" is a claim
+about the code, not about every deployed schema; the two can diverge without
+any diff showing it, which is the same failure mode this whole file exists to
+prevent. Second, `check_migrations.py` structurally cannot catch this class —
+it diffs migration filenames against `schema_migrations`, not schema contents
+against the code that depends on them.
+
+### §9 — Near-duplicate suppression after reranking
+The blueprint's retrieval pipeline is top-20 hybrid → cross-encoder rerank →
+top-5 to the LLM, with no diversity step. That assumes the 20 candidates are 20
+distinct passages. They are not: `chunker.py` uses `OVERLAP_TOKENS=150`, so
+adjacent chunks share roughly 150 tokens by design, and both windows over the
+same text are independently retrievable points.
+
+Measured live 2026-07-30 on an ETERNAL FY26 cross query: chunks `0b035c3c…` and
+`387d1a8c…` were both page 23, both exactly 705 characters, offset by about 90
+characters, 87.8% token overlap. They occupied 2 of the 5 slots with identical
+forward-looking-statements boilerplate while the management-commentary chunk
+that actually addressed the question sat at rank 2. The first run after the fix
+suppressed **9 of 20** candidates, overlaps ranging 72.5%–90.3%, including one
+cross-page catch (page 36 against page 25, a repeated auditor letterhead).
+
+The overlap is not the bug and must stay. `OVERLAP_TOKENS` was raised from 50 to
+150 specifically to fix a mid-sentence split that orphaned Paytm's PPBL
+impairment fact in an unretrieved chunk. The bug is that two windows over the
+same text could both survive to the final cut. So the fix sits in
+`retriever.py`, after rerank and before the top-k slice, not in the chunker.
+
+As shipped: `_deduplicate_near_identical()` compares token-set containment
+(`|A∩B| / min(|A|,|B|)`, so a short chunk fully inside a longer one scores 1.0)
+against a 0.70 threshold, keeping the higher-scored member of each pair. Token
+sets rather than embedding cosine — the text is already in hand, and a second
+model invocation to answer what a set intersection answers is cost for nothing.
+Cohere is now asked to score the full candidate set rather than `top_n=5`; it
+bills per search rather than per document, so this is free, and without it
+dropping a duplicate left four chunks instead of promoting the sixth-best.
+
+The threshold is calibrated on one measured distribution and every suppression
+logs its real ratio, so the eval sweep accumulates evidence. Note the asymmetry:
+those logs show only what was dropped. False positives live on the kept side and
+would surface as a changed answer, not a log line. 83/83 held after the change,
+which is evidence rather than proof.
+
+Surfaced but not addressed: with duplicates cleared, slots 4 and 5 now hold
+chunks scoring 0.026 and 0.014 — effectively noise presented to the user as
+citations. A minimum relevance floor for citation is separate open work,
+distinct from the confidence tier thresholds in §13.
+
 ---
 
 ## B. Unbuilt — specified, not implemented
@@ -166,6 +226,14 @@ balance-sheet chunk above on-topic narrative chunks for a risk-factors query. A
 causation theory later proven wrong. The underlying ranking problem is real and
 unowned. Candidate design if revisited: ratio-based gating, measured against the
 full golden set rather than one query's citation list.
+
+Partially explained 2026-07-30. Some of what looked like bad ranking was
+duplicate chunks consuming slots — see the near-duplicate entry in section A,
+where 9 of 20 candidates for one query were repeats. That is now suppressed. It
+does not account for all of it: a cover-letter chunk still outranked the only
+relevant commentary chunk 0.584 to 0.245 on the same query, which is genuinely a
+ranking problem and remains unowned. Worth separating the two before any further
+attempt — the previous reverts conflated them.
 
 ### §21 — RAGAS — NOT USED
 Replaced by `scripts/eval_runner.py`, an 83-question golden-dataset runner
@@ -213,6 +281,65 @@ nothing about this path, and the LLM-client refactor touched
 
 This is the weakest claim in the system: an untested path in a platform whose
 premise is verifiability. Closing it needs golden questions, not code.
+
+Still true as of 2026-07-30, though the cross branch has since been rewritten
+(see Trap 7 in section C) and verified by hand across repeated runs. Golden
+questions were deliberately not written first: asserting against the old output
+would have baked in behaviour known to be wrong. A useful set needs one question
+per availability quadrant plus at least one where a real contradiction exists —
+otherwise it only asserts that nothing fires.
+
+### Trap 7 / §12 — Tolerance was necessary but never sufficient
+The blueprint's Trap 7 prescribes a tolerance threshold so that "approximately
+₹12,000 crore" in narrative text is not flagged as contradicting ₹12,114 crore
+from SQL. That fix is correct and shipped. It is also incomplete, in a way two
+separate production bugs demonstrated.
+
+Tolerance answers *do the two halves disagree about a value?* That question only
+has meaning once *does each half have anything at all?* has resolved. Asking
+them in the wrong order produced both known failures: eleven false
+`severity: high` magnitude flags on a query where the top-cited chunk was the
+same cash-flow statement the SQL row came from, and a cross response whose
+semantic half stated the documents did not contain the company's FY26 PAT
+immediately above a quant template reporting ₹366 Cr.
+
+The second was not a contradiction at all. The semantic engine's scope is the
+top-k narrative chunks; when it reported no PAT figure there, that was a true
+and unremarkable scoped negative — line items rarely appear in narrative prose.
+Concatenating it with an SQL-verified figure promoted a scoped negative into a
+global claim.
+
+As shipped, two changes. `cross_engine` now runs the quant side **first**, and
+`response_generator` passes the verified figure into the synthesis call as
+established fact, so the model writes one coherent answer with nothing left to
+contradict. Safe to reorder: `quant_engine` reads only DSL-relevant state and
+never touches `retrieved_chunks`; the engines were always independent and only
+the assembly was coupled. Separately, `_reconcile_cross()` classifies evidence
+availability across four quadrants before contradiction detection runs.
+
+Two earlier attempts failed and are recorded because the reason generalises.
+Both tried to *suppress* the sentence — first by rewriting it post-hoc, then by
+instructing the model not to say it. Neither worked, because the model was being
+asked to withhold something true about the evidence it had been given. The
+working fix made the statement false instead, by supplying the evidence. The
+prompt-instruction attempt failed the same way the EBITDA silent substitution
+did: an appended instruction lost to an earlier, more concrete rule in the same
+prompt.
+
+Accepted tradeoff. With the figure in context, the model restates it in prose in
+roughly two runs out of three, so the numeral can appear twice. The deterministic
+appended line is kept anyway. Dropping it would make an LLM-transcribed figure
+the only one present in the response, trading a cosmetic redundancy for a
+transcription risk on an SQL-verified number in a financial tool.
+
+Quadrant 4 (both halves empty) was verified live and closed a latent bug of its
+own: `semantic_engine`'s hard refusal empties `retrieved_chunks`, and the
+resulting "No relevant information was found in the available documents" floor
+string matches none of `REFUSAL_PATTERNS`, so it previously escaped post-
+generation detection entirely. The generic detector is now scoped to
+`path="semantic"`; on `cross` it had been capping SQL-verified answers to
+`tier=low` with `error="low_confidence_refusal"`, which the frontend renders as
+`MetricCallout status="refused"` beside a ticked, correct figure.
 
 ### §1 / §21 — Corpus
 Shipped corpus is Eternal (formerly Zomato), Titan, and Paytm — not the ten
