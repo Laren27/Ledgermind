@@ -84,6 +84,19 @@ def _score_confidence(chunks: List[ChunkResult]) -> Tuple[float, str]:
         return 0.0, "low"
 
     top_score = chunks[0]["reranker_score"]
+
+    # Unscored chunks (reranker_backend="none", reranker_score=-inf) mean the
+    # rerank step was skipped entirely. Comparing -inf against ANY threshold
+    # yields "low", so this would silently look like a legitimate refusal
+    # rather than a broken pipeline. Fail loudly instead -- this is a code
+    # defect, not a retrieval outcome.
+    if chunks[0].get("reranker_backend") == "none" or top_score == float("-inf"):
+        logger.error(
+            "Unscored chunks reached _score_confidence (backend=%s score=%s) — "
+            "rerank() did not run. This is a bug, not a low-confidence result.",
+            chunks[0].get("reranker_backend"), top_score,
+        )
+        return 0.0, "low"
     bottom_score = chunks[-1]["reranker_score"]
     backend = chunks[0].get("reranker_backend", "local")  # default to stricter/local scale if untagged
 
