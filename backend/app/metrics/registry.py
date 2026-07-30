@@ -541,6 +541,26 @@ def get_metric(canonical_name: str) -> MetricDefinition | None:
     return _BY_CANONICAL.get(canonical_name)
 
 
+def display_label(canonical_name: str) -> str:
+    """Human-facing label for a canonical metric name.
+
+    Falls back to a title-cased key for metrics not in the registry —
+    financials stores unmapped OCR line items as-is (see the "Unknown
+    metric ... storing as-is" path in financial_extractor), so a row's
+    metric column is not guaranteed to be a registry key.
+
+    Exists because _format_quant_response carried THREE conventions for
+    the same job: .replace("_"," ").title() in point_in_time (which
+    rendered "pat" as "Pat"), the raw key in yoy_growth, and the raw key
+    .lower()'d in comparison. Same failure class as the three metric
+    registries — one concept, several copies, drifting.
+    """
+    m = _BY_CANONICAL.get(canonical_name)
+    if m:
+        return m.label
+    return canonical_name.replace("_", " ").title()
+
+
 def all_alias_pairs() -> dict[str, str]:
     """alias (lowercase) -> canonical_name, for every metric regardless of dsl_enabled.
     Used by entity_resolver.py to build its ingestion-time alias lookup."""
