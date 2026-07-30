@@ -138,13 +138,28 @@ ALTER TABLE financials FORCE ROW LEVEL SECURITY;
 ALTER TABLE audit_log  FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_documents ON documents
-    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+    USING (
+        CASE
+            WHEN coalesce(current_setting('app.tenant_id', TRUE), '') = '' THEN FALSE
+            ELSE tenant_id = current_setting('app.tenant_id', TRUE)::UUID
+        END
+    );
 
 CREATE POLICY tenant_isolation_financials ON financials
-    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+    USING (
+        CASE
+            WHEN coalesce(current_setting('app.tenant_id', TRUE), '') = '' THEN FALSE
+            ELSE tenant_id = current_setting('app.tenant_id', TRUE)::UUID
+        END
+    );
 
 CREATE POLICY tenant_isolation_audit ON audit_log
-    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+    USING (
+        CASE
+            WHEN coalesce(current_setting('app.tenant_id', TRUE), '') = '' THEN FALSE
+            ELSE tenant_id = current_setting('app.tenant_id', TRUE)::UUID
+        END
+    );
 
 -- ============================================================
 -- INDEXES
