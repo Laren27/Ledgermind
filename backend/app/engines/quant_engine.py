@@ -33,8 +33,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg2
 import psycopg2.extras
-from google import genai
-from google.genai import types
 from pydantic import BaseModel
 
 from app.engines.dsl_compiler import (
@@ -43,7 +41,6 @@ from app.engines.dsl_compiler import (
     compile_dsl,
     validate_dsl,
 )
-from app.engines.router import GEMINI_MODEL
 from app.engines.state import DSLObject, QueryState
 from app.llm.client import LLMUnavailable, generate_structured
 from app.metrics.registry import (
@@ -72,23 +69,6 @@ class GeminiDSLResponse(BaseModel):
     operation: str
     comparison_entity: Optional[str]
     comparison_period: Optional[str]
-
-# ---------------------------------------------------------------------------
-# Gemini client singleton (reuses same pattern as router)
-# ---------------------------------------------------------------------------
-
-_gemini_client: Optional[genai.Client] = None
-
-
-def _get_gemini_client() -> genai.Client:
-    global _gemini_client
-    if _gemini_client is None:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY environment variable not set")
-        _gemini_client = genai.Client(api_key=api_key)
-    return _gemini_client
-
 
 # ---------------------------------------------------------------------------
 # DSL generation prompt
