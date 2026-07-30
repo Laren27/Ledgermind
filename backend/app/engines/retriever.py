@@ -384,13 +384,17 @@ def retrieve_and_rerank(
         logger.warning("hybrid_search returned 0 results — skipping rerank")
         return []
 
-    if os.getenv("DISABLE_LOCAL_RERANKER", "").lower() == "true":
-        logger.info(
-            "DISABLE_LOCAL_RERANKER=true — skipping cross-encoder rerank, "
-            "returning top-%d RRF-fused candidates directly (temporary RAM "
-            "mitigation, see blueprint Phase 7 for planned Cohere Rerank API move)",
-            rerank_top_k,
-        )
-        return candidates[:rerank_top_k]
-
+    # DISABLE_LOCAL_RERANKER removed 2026-07-30. It was a temporary RAM
+    # mitigation from before Cohere Rerank became the primary backend, and it
+    # was silently broken: it returned hybrid_search candidates directly, whose
+    # reranker_score is still float("-inf") and whose reranker_backend is
+    # "none". _score_confidence() then read -inf, fell to the local logit
+    # thresholds, and classified EVERY semantic query as LOW -> refusal, after
+    # burning all CRAG rungs on identical retrievals first. Nothing surfaced an
+    # error; confidence_score simply read 0.0.
+    #
+    # Not reinstated as a "fix" because RRF scores (~0.016 at rank 1, k=60) are
+    # a third incompatible scale needing their own calibrated thresholds -- the
+    # exact class of mismatch that produced the Cohere-vs-local confidence bug.
+    # Cohere primary + local ONNX fallback already covers the RAM constraint.
     return rerank(query=query, chunks=candidates, top_k=rerank_top_k)
