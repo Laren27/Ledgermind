@@ -27,34 +27,12 @@ a safety net for unexpected upstream gaps, not the primary mechanism.)
 """
 
 import logging
-import os
-from typing import List, Optional
+from typing import List
 
-from google import genai
-from google.genai import types
-
-from app.engines.router import GEMINI_MODEL
 from app.engines.state import ChunkResult, Citation, ContradictionFlag, QueryState
 from app.llm.client import LLMUnavailable, generate_text
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Gemini client singleton (shared pattern across router/quant_engine)
-# ---------------------------------------------------------------------------
-
-_gemini_client: Optional[genai.Client] = None
-
-
-def _get_gemini_client() -> genai.Client:
-    global _gemini_client
-    if _gemini_client is None:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY environment variable not set")
-        _gemini_client = genai.Client(api_key=api_key)
-    return _gemini_client
-
 
 # ---------------------------------------------------------------------------
 # Post-generation refusal detection
