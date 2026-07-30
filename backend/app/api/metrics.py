@@ -41,6 +41,12 @@ class MetricsResponse(BaseModel):
 _SQL_SUMMARY = """
     SELECT
         COUNT(*)                                                        AS total_queries,
+        -- WARNING: structurally always 0.0. The semantic cache described in
+        -- blueprint §15 was never built (no cache module exists; Redis is only
+        -- the Celery broker + health check). QueryState.cache_hit is set False
+        -- in make_initial_state and never written again, so this AVG has no
+        -- producer. Do NOT surface this in a dashboard as a measurement until
+        -- a cache actually writes the column. See docs/IMPLEMENTATION_DELTAS.md §B.
         ROUND(AVG(CASE WHEN cache_hit THEN 1.0 ELSE 0.0 END) * 100, 1) AS cache_hit_rate_pct,
         ROUND(AVG(latency_ms)::numeric, 0)                              AS avg_latency_ms,
         ROUND((PERCENTILE_CONT(0.95) WITHIN GROUP
