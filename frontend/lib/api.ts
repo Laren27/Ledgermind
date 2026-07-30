@@ -66,6 +66,8 @@ export interface QueryResponse {
 
   latency_ms?: number;
   tokens_used?: number;
+  // Always false — the semantic cache (blueprint §15) was never built and
+  // nothing writes this. Kept in the contract for when it is. Do not render.
   cache_hit?: boolean;
 }
 
