@@ -28,7 +28,8 @@ Scoring logic by category:
   out_of_corpus                     → PASS if NOT sql_verified AND (expected_error in error field
                                        OR confidence_tier == 'low')
 
-Rate limiting: Gemini free tier is 5 RPM. Safe delay between requests: 15 seconds.
+Rate limiting: Gemini free tier is 5 RPM (one call per 12s). A semantic
+question makes TWO Gemini calls, so the safe per-question delay is 25s.
 Override with --delay <seconds>.
 
 KNOWN CALIBRATION ISSUE (flagged, not fixed by this runner):
@@ -63,7 +64,13 @@ parser.add_argument("--email",    default="admin@alpha.ledgermind.test",
 parser.add_argument("--password", default="demo1234")
 parser.add_argument("--dataset",  default="golden_dataset/q4fy26_eternal.json")
 parser.add_argument("--out",      default="golden_dataset/eval_results.json")
-parser.add_argument("--delay",    type=float, default=15.0,
+# 5 RPM = one call per 12s, and a semantic question makes TWO Gemini calls
+# (router classification, then response synthesis): 2 x 12s = 24s, rounded
+# to 25s. The previous default of 15.0 assumed one call per question, giving
+# ~8 RPM against a 5 RPM limit -- over budget by construction, and why the
+# Groq fallback fired mid-sweep and withheld the score (2026-07-30, Paytm).
+# Do not lower this to speed up a run; an invalid baseline costs a full re-run.
+parser.add_argument("--delay",    type=float, default=25.0,
                     help="Seconds between requests (Gemini 5 RPM = 12s minimum; default 15)")
 parser.add_argument("--category", default=None,
                     help="Run only this category (e.g. adversarial)")
