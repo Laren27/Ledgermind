@@ -31,6 +31,7 @@ from typing import List
 
 from app.engines.state import ChunkResult, Citation, ContradictionFlag, QueryState
 from app.llm.client import LLMUnavailable, generate_text
+from app.metrics.registry import display_label
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ def _format_quant_response(state: QueryState) -> str:
         unit = row.get("unit", "crore_inr")
         unit_label = "Cr" if unit == "crore_inr" else unit
         period_label = f"{quarter} {fiscal_year}" if quarter else fiscal_year
-        metric_label = row.get("metric", dsl["metric"]).replace("_", " ").title()
+        metric_label = display_label(row.get("metric", dsl["metric"]))
 
         return (
             f"{entity}'s {financial_type} {metric_label} for {period_label} "
@@ -164,7 +165,7 @@ def _format_quant_response(state: QueryState) -> str:
     if "yoy_pct" in row:
         if row.get("error"):
             return f"Could not compute year-over-year growth: {row['error']}"
-        metric = row["metric"]
+        metric = display_label(row["metric"])
         current_fy = row["current_fy"]
         prior_fy = row["prior_fy"]
         current_val = row["current_value"]
@@ -184,7 +185,7 @@ def _format_quant_response(state: QueryState) -> str:
     if "yoy_a_pct" in row:
         if row.get("error"):
             return f"Could not compare growth rates: {row['error']}"
-        metric = row["metric"]
+        metric = display_label(row["metric"])
         ea, ea_pct = row["entity_a"], row["yoy_a_pct"]
         eb, eb_pct = row["entity_b"], row["yoy_b_pct"]
         faster = row["faster_growing_entity"]
@@ -192,7 +193,7 @@ def _format_quant_response(state: QueryState) -> str:
         unit_label = "Cr" if row.get("unit") == "crore_inr" else row.get("unit", "")
 
         return (
-            f"In {fy}, {ea}'s {metric.lower()} grew {ea_pct:+.2f}% year-over-year "
+            f"In {fy}, {ea}'s {metric if metric.isupper() else metric.lower()} grew {ea_pct:+.2f}% year-over-year "
             f"(₹{_fmt_money(row['a_prior_value'])} {unit_label} → ₹{_fmt_money(row['a_current_value'])} {unit_label}), "
             f"while {eb}'s grew {eb_pct:+.2f}% "
             f"(₹{_fmt_money(row['b_prior_value'])} {unit_label} → ₹{_fmt_money(row['b_current_value'])} {unit_label}). "
@@ -203,7 +204,7 @@ def _format_quant_response(state: QueryState) -> str:
     if "entity1" in row:
         if row.get("error"):
             return f"Could not complete comparison: {row['error']}"
-        metric = row["metric"]
+        metric = display_label(row["metric"])
         e1, v1 = row["entity1"], row["value1"]
         e2, v2 = row["entity2"], row["value2"]
         diff_pct = row.get("difference_pct")
@@ -219,14 +220,14 @@ def _format_quant_response(state: QueryState) -> str:
 
         return (
             f"{e1}'s {metric} was ₹{_fmt_money(v1)} {unit_label}, compared to "
-            f"{e2}'s ₹{_fmt_money(v2)} {unit_label} — {higher} reported {comparison_text} {metric.lower()}."
+            f"{e2}'s ₹{_fmt_money(v2)} {unit_label} — {higher} reported {comparison_text} {metric if metric.isupper() else metric.lower()}."
         )
 
     # cagr
     if "cagr_pct" in row:
         if row.get("error"):
             return f"Could not compute CAGR: {row['error']}"
-        metric = row["metric"]
+        metric = display_label(row["metric"])
         start_fy, end_fy = row["start_fy"], row["end_fy"]
         cagr_pct = row["cagr_pct"]
         unit_label = "Cr" if row.get("unit") == "crore_inr" else row.get("unit", "")
