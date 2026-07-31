@@ -71,12 +71,14 @@ def audit_writer_node(state: QueryState) -> QueryState:
                         tenant_id, user_id, query_text, query_path,
                         retrieved_chunk_ids, vector_scores, reranker_scores,
                         dsl_generated, sql_executed, confidence_score,
-                        response_text, latency_ms, tokens_used, created_at
+                        response_text, latency_ms, tokens_used,
+                        llm_provider, llm_model, created_at
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s, %s, %s,
                         %s, %s, %s,
-                        %s, %s, %s, NOW()
+                        %s, %s, %s,
+                        %s, %s, NOW()
                     )
                     """,
                     (
@@ -93,14 +95,23 @@ def audit_writer_node(state: QueryState) -> QueryState:
                         response_summary,
                         latency_ms,
                         state.get("tokens_used", 0),
+                        # NULL is a real state, not missing data: a blocked
+                        # query makes no LLM call, and the synthesis floor
+                        # clears attribution when every provider fails. Both
+                        # must record honestly as "no model served this"
+                        # rather than inheriting whatever ran earlier.
+                        state.get("llm_provider"),
+                        state.get("llm_model"),
                     ),
                 )
         conn.close()
 
         logger.info(
-            "Audit log written | request_id=%s path=%s latency_ms=%d confidence=%.2f",
+            "Audit log written | request_id=%s path=%s latency_ms=%d "
+            "confidence=%.2f provider=%s model=%s",
             state["request_id"], state.get("path"), latency_ms,
             state.get("confidence_score", 0.0),
+            state.get("llm_provider"), state.get("llm_model"),
         )
 
     except Exception as e:
