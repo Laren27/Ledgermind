@@ -111,6 +111,10 @@ CREATE TABLE IF NOT EXISTS audit_log (
     cache_hit            BOOLEAN     DEFAULT FALSE,
     latency_ms           INTEGER,
     tokens_used          INTEGER,
+    -- Nullable and unconstrained by design — see migration 014's header for
+    -- why NULL is a real state here and why there is no CHECK on provider.
+    llm_provider         TEXT,
+    llm_model            TEXT,
     created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
