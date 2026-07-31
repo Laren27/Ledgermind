@@ -116,29 +116,43 @@ The same query returns different response shapes depending on who's asking — t
 
 ## Evaluation Results
 
-50-question golden dataset, grounded entirely in verified corpus data (Eternal Q4FY26 shareholder letter + results). Every quantitative expected value was cross-checked against the `financials` table before the question was written — no estimated or assumed answers.
+84-question golden dataset across three companies — Eternal (52), Titan (14), Paytm (18) — grounded entirely in verified corpus data. Every quantitative expected value was cross-checked against the `financials` table before the question was written; no estimated or assumed answers.
+
+**Scored on `gemini-3.1-flash-lite`.** The model is part of the number, not a footnote to it: the runner records which provider served every answer and *withholds the headline score entirely* if any answer came from the Groq fallback. That is not hypothetical — during a quota exhaustion it withheld three separate runs whose raw tallies (13/14, 17/17, 43/52) would otherwise have looked publishable. A score printed under a caveat still ends up in a README.
 
 | Category | Score | What it tests |
 |----------|-------|---------------|
-| Quantitative — point-in-time | 15/15 | Exact SQL value match across 10 metrics, 2 fiscal years |
-| Quantitative — YoY growth | 5/5 | Two-period SQL compilation + Python arithmetic, ±0.5% tolerance |
-| Quantitative — standalone/consolidated isolation | 5/5 | `financial_type` filter never leaks between report types |
+| Quantitative — point-in-time | 26/26 | Exact SQL value match across three companies and four fiscal years |
+| Quantitative — YoY growth | 8/8 | Two-period SQL compilation + Python arithmetic, ±0.5% tolerance |
+| Quantitative — standalone/consolidated isolation | 7/7 | `financial_type` filter never leaks between report types |
+| Quantitative — cross-entity growth comparison | 1/1 | Four SQL queries, two entities, growth rates compared in Python |
 | Semantic — management discussion | 8/8 | Non-GAAP definitions, forward-looking statements, retrieval + generation |
+| Semantic — honest refusal | 2/2 | Topics genuinely absent from the corpus — states what is *not* covered rather than confabulating from adjacent chunks |
 | Semantic — audit & compliance | 7/7 | Deloitte audit opinion, IND AS, SEBI LODR, going concern |
-| Adversarial (Prompt Shield) | 7/7 | Trading advice, investment recommendations — all correctly blocked |
-| Out-of-corpus refusal | 3/3 | FY23 data, unavailable metrics, uningested companies — no hallucination |
-| **Total** | **50/50** | |
+| Semantic — business & risk | 9/9 | Segment performance, regulatory notices, PPBL licence cancellation |
+| Cross-examination | 1/1 | Narrative claim vs verified figure — asserts a NON-contradiction stays unflagged |
+| Adversarial (Prompt Shield) | 11/11 | Trading advice, investment recommendations — all correctly blocked |
+| Out-of-corpus refusal | 6/6 | Absent periods, unavailable metrics, uningested companies — no hallucination |
+| **Total** | **84/84** | |
+
+The cross-examination row is the newest and the thinnest. It asserts that the system does *not* fabricate disagreement: Paytm states it has no exposure to PPBL, and a ₹207 Cr impairment line appears in the same filing — the two are consistent, because note 4 reconciles that figure as ₹5 Cr + ₹12 Cr + ₹190 Cr against other entities, and PPBL was fully impaired in FY24. A system that flagged this would be broken in the way that matters most, since fabricated disagreement inverts the whole point of the path. One question is coverage of one availability case, not of the path; and no *real* contradiction exists in the current corpus to test the positive direction.
 
 Run it yourself:
 ```bash
-python3 scripts/generate_golden_dataset.py
-python3 scripts/eval_runner.py --delay 15
+cd backend
+python scripts/eval_runner.py --model gemini-3.1-flash-lite --delay 25 \
+  --dataset ../golden_dataset/q4fy26_eternal.json --out ../golden_dataset/eval_results_eternal.json
+# repeat for q_titan.json and q_paytm.json — distinct --out per company
 ```
+
+`--delay 25` because a semantic question makes two LLM calls (router + synthesis) against a 5 RPM free tier. `--model` is required and must match `GEMINI_MODEL` in `.env`; it currently labels the report rather than asserting against the model that served, which is a known gap.
 
 ### Known caveats (documented, not hidden)
 
-- **Refusal rate on the observability dashboard reads ~25%**, higher than the 0% actual semantic refusal rate — an upstream bug where `audit_writer` reads `confidence_score` before `quant_engine` finishes writing it, so quantitative rows log `0.0` and get miscounted as refusals in the aggregate stat. Cosmetic on the dashboard; does not affect the eval suite, which scores against `sql_verified` and `confidence_tier` from the live response, not the audit log.
-- **Gemini free tier (5 RPM)** occasionally times out under load — a known external rate-limit behaviour, not a system defect. The eval runner uses a 15s delay between calls to stay under the limit.
+- **Free tiers are the reliability ceiling, not the architecture.** Gemini allows 500 requests/day per model and Groq 100k tokens/day; both can be exhausted in a working session, and when both are gone the semantic path falls back to returning the top retrieved excerpt unsynthesised rather than fabricating. The failover was exercised end-to-end this way. Stacking two free tiers does not compose into reliability — that needs a billing-enabled key.
+- **A total provider outage is currently under-reported.** When no LLM answers, retrieval confidence is still genuinely high, so the response carries `confidence_tier="high"` with no error set. The tier is honest about retrieval and silent about synthesis. Fix identified (`error="synthesis_unavailable"`), not yet shipped.
+- **The Groq fallback preserves availability, not behaviour.** Routing is itself an LLM call, and the two models classify borderline questions differently — one Titan question routes `semantic` on Gemini across four runs and `quantitative` on every Groq-served run. This is why the provider gate exists.
+- **Citations are not floor-filtered.** After near-duplicate suppression, the lowest-ranked citations can score ~0.01–0.03 — technically retrieved, practically noise. A minimum relevance threshold for citation is open work.
 
 ---
 
@@ -216,4 +230,4 @@ Documented here to preempt "why didn't you build X" — these were conscious sco
 
 **On multi-tenancy:** RLS via `SET LOCAL`, not `SET` — transaction-scoped so a pooled connection can never leak one tenant's context into another's request. Proven live: a Beta admin querying Alpha's data gets `no_data_found`, not wrong data.
 
-**On the eval suite:** 50/50 isn't a vanity number — every expected value was pulled directly from the database before the question was written, and every failure during development traced to a real bug (a `KeyError` in the SQL compiler, a stale metric registry) that got fixed, not a scorer that got loosened to pass.
+**On the eval suite:** 84/84 isn't a vanity number — every expected value was pulled directly from the database before the question was written, and every failure during development traced to a real bug (a `KeyError` in the SQL compiler, a stale metric registry, an LLM silently substituting one metric for another) that got fixed, not a scorer that got loosened to pass. The runner also gates on which model served each answer and withholds the score outright if the fallback fired, because the most dangerous eval result is a plausible one measured under conditions nobody recorded.
