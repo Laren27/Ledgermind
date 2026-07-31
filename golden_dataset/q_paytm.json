@@ -250,5 +250,21 @@
     "expected_sql_verified": false,
     "expected_error": "dsl_generation_failed",
     "notes": "EBITDA not a directly extracted metric for Paytm. Must return clean error, not hallucinate."
+  },
+  {
+    "id": "PQ018",
+    "category": "cross_examination",
+    "question": "Paytm states it has no exposure to PPBL. Is that consistent with the 207 crore impairment of loans and investments in associates recorded in FY26?",
+    "expected_path": "cross",
+    "expected_is_blocked": false,
+    "expected_contradictions": 0,
+    "expected_sql_verified": false,
+    "expected_keywords": [
+      "ppbl",
+      "190",
+      "optionally convertible debentures",
+      "march 31, 2024"
+    ],
+    "notes": "FIRST golden question targeting path=cross. Asserts a FALSE contradiction is NOT fabricated: note 4 reconciles the 207 Cr exactly as 5 (associates) + 12 (OCDs) + 190 (JV loan), none of it PPBL, which was fully impaired as of March 31 2024 -- so the 'no exposure' claim and the impairment line are consistent. The long-carried assumption that this filing contains a real PPBL contradiction is FALSE; verified 2026-07-30 by scrolling all 115 PAYTM chunks. Answering requires synthesising page 12 (PPBL note) and page 10 (note 4) in one top-5, so it also stresses retrieval diversity. Keywords chosen per the golden keyword rule: stable across two verified runs, excluding bare '5' and '12' which any wrong answer would satisfy. expected_sql_verified=false because impairment_of_loans_and_investments_in_associates is dsl_enabled=False and the Stage 0b guard refuses rather than substituting a neighbouring metric -- IF THAT METRIC IS EVER FLIPPED TO dsl_enabled=True, set expected_sql_verified=true and keep expected_contradictions=0."
   }
 ]
