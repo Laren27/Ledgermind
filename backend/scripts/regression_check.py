@@ -44,7 +44,13 @@ DOCUMENTS = [
         "filename": "TITAN_Q1FY26_PRESS_RELEASE_AND_FINANCIAL_RESULTS.pdf",
         "company": "TITAN", "ticker": "TITAN", "fiscal_year": "FY26",
         "quarter": "Q1", "doc_type": "quarterly_result",
-        "filing_date": "2025-07-31",
+        # 2025-08-07, not 2025-07-31. Confirmed against the PDF cover page.
+        # The wrong value originated from an argparse DEFAULT silently applying
+        # when --filing-date was omitted on Titan's first ingest, which also
+        # mislabelled the quarter as Q4 in Postgres until it was re-ingested.
+        # This script is read-only so the constant broke nothing, but a
+        # reference file is exactly where a wrong constant gets trusted later.
+        "filing_date": "2025-08-07",
         "min_fs_pages": 5, "max_fs_pages": 25,
         "expect_revenue_min": 1000, "expect_revenue_max": 20000,  # already covers both (13040, 14814)
     },
