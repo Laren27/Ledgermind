@@ -403,6 +403,71 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
             "actual": {"confidence_tier": result.get("confidence_tier"), "response_preview": response[:200]},
         }
 
+    # ── Cross-examination ────────────────────────────────────────────────
+    # The FIRST category to exercise path="cross". The generic path check
+    # above already asserts expected_path, so this branch owns what is
+    # specific to cross-examination.
+    #
+    # expected_contradictions is the point of the category. LedgerMind's
+    # stated value is surfacing real disagreement between narrative and
+    # verified figures; a system that FABRICATES disagreement inverts that,
+    # which is why a false positive here is worse than a missed detection.
+    # Nothing else in the golden set asserts that a non-contradiction stays
+    # unflagged — detect_magnitude_contradictions once produced eleven
+    # "severity: high" flags on a query where the top-cited chunk was the
+    # same cash-flow statement the SQL value came from.
+    #
+    # Every expectation is read from the golden entry rather than hardcoded,
+    # so a change in what the quantitative path can answer for a metric is a
+    # data edit here, not a code change.
+    if category == "cross_examination":
+        response = (result.get("response_text") or "").lower()
+        tier = result.get("confidence_tier", "low")
+        contradictions = result.get("contradictions") or []
+        sql_verified = result.get("sql_verified", False)
+
+        expected_contradictions = golden.get("expected_contradictions")
+        if expected_contradictions is not None and len(contradictions) != expected_contradictions:
+            return {
+                "pass": False,
+                "reason": f"Contradiction count mismatch: expected={expected_contradictions} "
+                          f"actual={len(contradictions)}",
+                "actual": {"contradictions": contradictions, "confidence_tier": tier},
+            }
+
+        expected_sql_verified = golden.get("expected_sql_verified")
+        if expected_sql_verified is not None and sql_verified != expected_sql_verified:
+            return {
+                "pass": False,
+                "reason": f"sql_verified mismatch: expected={expected_sql_verified} actual={sql_verified}",
+                "actual": {"sql_verified": sql_verified},
+            }
+
+        if tier == "low":
+            return {
+                "pass": False,
+                "reason": "Low confidence — the qualitative half likely missed its chunks",
+                "actual": {"confidence_tier": tier, "response_preview": response[:200]},
+            }
+
+        keywords = [k.lower() for k in golden.get("expected_keywords", [])]
+        missing = [k for k in keywords if k not in response]
+        if missing:
+            return {
+                "pass": False,
+                "reason": f"Missing keywords in response: {missing}",
+                "actual": {"confidence_tier": tier, "missing_keywords": missing,
+                           "response_preview": response[:200]},
+            }
+
+        return {
+            "pass": True,
+            "reason": f"Cross-examination correct | {len(contradictions)} contradictions, "
+                      f"{len(keywords)} keywords present, confidence={tier}",
+            "actual": {"confidence_tier": tier, "contradictions": len(contradictions),
+                       "sql_verified": sql_verified},
+        }
+
     # ── Semantic (keyword-based) ─────────────────────────────────────────
     if category.startswith("semantic_"):
         tier     = result.get("confidence_tier", "low")
