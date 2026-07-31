@@ -70,8 +70,29 @@ logger = logging.getLogger(__name__)
 # third pattern would be worse than the existing inconsistency. Consolidating
 # onto Settings is a separate, deliberate cleanup.
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+# NO DEFAULT for GEMINI_MODEL, deliberately. A plausible-but-wrong default is
+# strictly worse than a crash here: on 2026-07-31 two full eval sweeps were
+# reported under a model that never served a single call, and the environment
+# is the only thing that decides which model actually runs. The crash costs
+# five minutes; the wrong default cost ~60 calls and two unusable result files.
+#
+# Resolved at CALL time rather than import time so a missing var fails in the
+# entrypoints that actually make LLM calls, rather than crashing the startup
+# of every entrypoint that merely imports this module (the Celery worker
+# imports it transitively and may never call one).
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+
+def _resolve_gemini_model() -> str:
+    model = os.getenv("GEMINI_MODEL")
+    if not model:
+        raise RuntimeError(
+            "GEMINI_MODEL environment variable not set. Refusing to guess: the "
+            "model that served a call is recorded as evidence on every audit "
+            "row and asserted by the eval gate, so a defaulted value would "
+            "silently misattribute every downstream number."
+        )
+    return model
 
 # Milliseconds. Bounds are multiples of measured production p50 (~1s for
 # 200-token calls, ~1.3s for synthesis), tight enough that the 78s tail
@@ -214,9 +235,10 @@ def generate_text(
     timeout_ms: int = TIMEOUT_TEXT_MS,
 ) -> LLMResult:
     try:
+        gemini_model = _resolve_gemini_model()
         client = _get_gemini(timeout_ms)
         resp = _call_gemini(lambda: client.models.generate_content(
-            model=GEMINI_MODEL,
+            model=gemini_model,
             contents=user,
             config=types.GenerateContentConfig(
                 system_instruction=system,
@@ -224,7 +246,7 @@ def generate_text(
                 max_output_tokens=max_tokens,
             ),
         ))
-        return LLMResult(resp.text.strip(), "gemini", GEMINI_MODEL)
+        return LLMResult(resp.text.strip(), "gemini", gemini_model)
     except Exception as e:
         if not _should_fall_back(e):
             logger.error("Gemini text call failed (no fallback): %s", e)
@@ -266,9 +288,10 @@ def generate_structured(
     timeout_ms: int = TIMEOUT_STRUCTURED_MS,
 ) -> LLMResult:
     try:
+        gemini_model = _resolve_gemini_model()
         client = _get_gemini(timeout_ms)
         resp = _call_gemini(lambda: client.models.generate_content(
-            model=GEMINI_MODEL,
+            model=gemini_model,
             contents=user,
             config=types.GenerateContentConfig(
                 system_instruction=system,
@@ -278,7 +301,7 @@ def generate_structured(
                 response_schema=schema,
             ),
         ))
-        return LLMResult(resp.text.strip(), "gemini", GEMINI_MODEL)
+        return LLMResult(resp.text.strip(), "gemini", gemini_model)
     except Exception as e:
         if not _should_fall_back(e):
             logger.error("Gemini structured call failed (no fallback): %s", e)
