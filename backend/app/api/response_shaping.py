@@ -1,12 +1,17 @@
 """
-Shapes the QueryResponse (already built from QueryState by query.py) based
-on the requester's role. Everyone gets a correct, cited, well-formed answer;
+Shapes the raw QueryState dict returned by the graph, based on the
+requester's role. NOTE: there is no intermediate QueryResponse model —
+api/query.py passes graph.ainvoke()'s final_state directly to this function,
+so the keys read below are QueryState keys. An earlier version of this
+docstring claimed otherwise and cost a wrong prediction about where a new
+field had to be threaded (2026-07-31, llm_model). Everyone gets a correct, cited, well-formed answer;
 only analyst/admin see the machinery (DSL, SQL, raw retrieval scores) behind
 it. The graph always runs in full and audit_log always gets the complete
 record regardless of role -- only the HTTP response is filtered.
 
-Operates on the QueryResponse.model_dump() dict, so field names here must
-track api/query.py's QueryResponse model exactly.
+Field names here must therefore track app/engines/state.py's QueryState
+exactly. A key that does not exist there returns None silently — .get() will
+not tell you the field was never populated.
 """
 
 _KNOWN_ROLES = frozenset({"viewer", "analyst", "admin"})
