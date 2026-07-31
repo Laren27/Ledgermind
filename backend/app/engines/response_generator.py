@@ -27,9 +27,16 @@ a safety net for unexpected upstream gaps, not the primary mechanism.)
 """
 
 import logging
-from typing import List
+from typing import List, NamedTuple, Optional
 
-from app.engines.state import ChunkResult, Citation, ContradictionFlag, QueryState
+from app.engines.state import (
+    ChunkResult,
+    Citation,
+    ContradictionFlag,
+    QueryState,
+    clear_llm_attribution,
+    record_llm_call,
+)
 from app.llm.client import LLMUnavailable, generate_text
 from app.metrics.registry import display_label
 
@@ -273,22 +280,51 @@ def _format_chunks_for_prompt(chunks: List[ChunkResult]) -> str:
     return "\n\n".join(blocks)
 
 
+class SynthesisOutcome(NamedTuple):
+    """
+    text   — body to show the user
+    result — the LLMResult that produced it, or None when no LLM did
+    status — "ok" | "no_chunks" | "unavailable"
+
+    status is carried separately because `provider is None` conflated two
+    situations that must be reported to the user in opposite ways:
+
+      no_chunks   — retrieval returned nothing. No LLM was called. The
+                    system worked; the corpus did not hold the answer.
+      unavailable — BOTH providers failed and the raw-excerpt floor fired.
+                    The system did not work, and the user is holding an
+                    excerpt dump rather than an answer.
+
+    Measured 2026-07-31: because both cases returned None and neither set
+    error, a TOTAL LLM OUTAGE WAS INDISTINGUISHABLE FROM A REAL ANSWER —
+    confidence_tier stayed "high" (honest about retrieval, silent about
+    synthesis) and llm_provider kept whatever the router had already set.
+
+    Returning the whole LLMResult rather than just the provider string is
+    what lets record_llm_call() capture llm_model at the same time.
+    """
+    text: str
+    result: Optional[object]
+    status: str
+
+
 def _generate_semantic_response(
     query: str,
     chunks: List[ChunkResult],
     extra_instructions: str = "",
     verified_facts: str = "",
-) -> tuple:
+) -> SynthesisOutcome:
     """
-    Synthesise an answer from retrieved chunks.
-
-    Returns (text, provider). provider is None when no LLM produced the
-    text — either there were no chunks, or both providers failed and the
-    raw-excerpt floor below was used. That floor is the last resort AFTER
-    the Groq fallback, not instead of it.
+    Synthesise an answer from retrieved chunks. See SynthesisOutcome for the
+    meaning of the three status values. The raw-excerpt floor is the last
+    resort AFTER the Groq fallback, not instead of it.
     """
     if not chunks:
-        return "No relevant information was found in the available documents.", None
+        return SynthesisOutcome(
+            "No relevant information was found in the available documents.",
+            None,
+            "no_chunks",
+        )
 
     context = _format_chunks_for_prompt(chunks)
     user_message = f"Question: {query}\n\nRetrieved excerpts:\n\n{context}"
@@ -312,14 +348,16 @@ def _generate_semantic_response(
             temperature=0.2,
             max_tokens=400,
         )
-        return llm.text, llm.provider
+        return SynthesisOutcome(llm.text, llm, "ok")
     except LLMUnavailable as e:
         logger.error("Response synthesis unavailable on ALL providers: %s", e)
-        return (
+        return SynthesisOutcome(
             f"Unable to synthesise a summary due to a temporary error. "
             f"Top matching excerpt (page {chunks[0]['page_number']}): "
-            f"{chunks[0]['text'][:300].strip()}"
-        ), None
+            f"{chunks[0]['text'][:300].strip()}",
+            None,
+            "unavailable",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -411,7 +449,20 @@ CROSS_NO_VERIFIED_FIGURE_NOTE = (
 )
 
 
-def _reconcile_cross(state: QueryState, qual_body: str, chunks: list) -> tuple:
+CROSS_SYNTHESIS_UNAVAILABLE_NOTE = (
+    "The qualitative half of this cross-examination could not be produced — "
+    "language model synthesis was unavailable on all providers. The verified "
+    "figure below is unaffected: it comes directly from the extracted "
+    "financial statements and required no language model."
+)
+
+
+def _reconcile_cross(
+    state: QueryState,
+    qual_body: str,
+    chunks: list,
+    synthesis_failed: bool = False,
+) -> tuple:
     """
     Deterministic availability reconciliation for path="cross".
 
@@ -457,6 +508,29 @@ def _reconcile_cross(state: QueryState, qual_body: str, chunks: list) -> tuple:
     quant_body = ""
     if quant_available:
         quant_body = _format_quant_response(state) + _period_assumption_note(state)
+
+    # Synthesis outage is NOT an evidence-availability question, so it is
+    # answered before the quadrants rather than folded into qual_refused.
+    # Folding it in would fire CROSS_NARRATIVE_SCOPE_NOTE, which asserts the
+    # narrative does not discuss the metric — untrue during an outage, and
+    # this module does not state something false on another layer's behalf.
+    #
+    # Without this branch the floor text ("Unable to synthesise a summary...")
+    # matches NO entry in REFUSAL_PATTERNS, so qual_refused stays False and an
+    # apology string flows into Q1/Q3 to be concatenated with a ticked,
+    # SQL-verified figure as though it were real qualitative analysis. Same
+    # shape as the Q4 escape: a floor string no pattern catches.
+    if synthesis_failed:
+        if quant_available:
+            # Half the answer is intact and SQL-verified, so medium, not low.
+            capped = "medium" if current_tier == "high" else current_tier
+            return (
+                CROSS_SYNTHESIS_UNAVAILABLE_NOTE + "\n\n" + quant_body,
+                capped,
+                "synthesis_unavailable",
+                "response_generator",
+            )
+        return qual_body, "low", "synthesis_unavailable", "response_generator"
 
     # Quadrant 1 — genuine cross-examination.
     if not qual_refused and quant_available:
@@ -524,14 +598,23 @@ def response_generator_node(state: QueryState) -> QueryState:
 
 
     elif path == "semantic":
-        body, provider = _generate_semantic_response(
+        synth = _generate_semantic_response(
             query=state["query"],
             chunks=state.get("retrieved_chunks", []),
         )
-        if provider:
-            state["llm_provider"] = provider
-        state["response_text"] = body + citations_block
-        qualitative_text_for_refusal_check = body
+        if synth.result is not None:
+            record_llm_call(state, synth.result)
+        state["response_text"] = synth.text + citations_block
+        qualitative_text_for_refusal_check = synth.text
+
+        if synth.status == "unavailable":
+            # Retrieval genuinely succeeded; synthesis did not. Reporting the
+            # retrieval tier alone made an outage look like a served answer.
+            # low can never RAISE the tier, so cap-never-raise holds trivially.
+            clear_llm_attribution(state)
+            state["confidence_tier"] = "low"
+            state["error"] = "synthesis_unavailable"
+            state["error_node"] = "response_generator"
 
     elif path == "cross":
         cross_chunks = state.get("retrieved_chunks", [])
@@ -545,21 +628,29 @@ def response_generator_node(state: QueryState) -> QueryState:
         if state.get("sql_verified") and state.get("sql_result"):
             verified_facts = _format_quant_response(state)
 
-        qual_body, provider = _generate_semantic_response(
+        synth = _generate_semantic_response(
             query=state["query"],
             chunks=cross_chunks,
             extra_instructions=CROSS_SCOPE_INSTRUCTION,
             verified_facts=verified_facts,
         )
-        if provider:
-            state["llm_provider"] = provider
+        qual_body = synth.text
+        if synth.result is not None:
+            record_llm_call(state, synth.result)
+        if synth.status == "unavailable":
+            clear_llm_attribution(state)
 
         # See _reconcile_cross's AUTHORITY RULE. The generic post-generation
         # refusal detector below is deliberately NOT applied to this path:
         # it was capping SQL-verified cross answers to tier=low with
         # error="low_confidence_refusal", which the frontend renders as
         # MetricCallout status="refused" beside a ticked, correct figure.
-        body, tier, err, err_node = _reconcile_cross(state, qual_body, cross_chunks)
+        body, tier, err, err_node = _reconcile_cross(
+            state,
+            qual_body,
+            cross_chunks,
+            synthesis_failed=(synth.status == "unavailable"),
+        )
         state["response_text"] = body + citations_block + contradiction_block
         state["confidence_tier"] = tier
         state["error"] = err
@@ -599,6 +690,7 @@ def response_generator_node(state: QueryState) -> QueryState:
     # frontend can render Gemini's exact explanation inside the refusal card.
     if (
         path == "semantic"
+        and state.get("error") != "synthesis_unavailable"
         and qualitative_text_for_refusal_check
         and _is_refusal_text(qualitative_text_for_refusal_check)
     ):
