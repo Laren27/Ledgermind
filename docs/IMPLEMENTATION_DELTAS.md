@@ -43,6 +43,35 @@ As shipped (`app/llm/client.py`, sole LLM entry point for all three callers):
   response is treated as a provider failure and never reaches `validate_dsl`.
 - `llm_provider` is recorded on `QueryState`, admin-tier only.
 
+**The fallback preserves availability, not behaviour.** Added 2026-07-31 after
+Gemini's daily quota was exhausted mid-eval. The router is itself an LLM call,
+and Groq classifies differently: TQ006 ("How did Titan's Watches division
+perform in Q1FY26?") routed to `quantitative` on every Groq-served run and to
+`semantic` on all four historical Gemini runs — confirmed from `audit_log`, not
+inferred. So a Groq-served answer is not equivalent to a Gemini-served one for
+anything asserting `expected_path`, which is exactly why `eval_runner.py`
+withholds the headline score rather than annotating it.
+
+Two further observations from the same outage, both worth acting on:
+
+- When BOTH providers fail, `_generate_semantic_response` returns its
+  raw-excerpt floor and the pipeline reports `confidence_tier="high"` with
+  `error=None`. The tier is honest about RETRIEVAL, which genuinely was
+  high-confidence, but nothing in the state records that no LLM ran. A total
+  outage is therefore indistinguishable from a real answer. Fix: set
+  `error="synthesis_unavailable"` when the floor fires.
+- `llm_provider` is set by whichever call last SUCCEEDED. The router sets it,
+  then the floor returns `provider=None`, which never overwrites the stale
+  value — so floor responses were logged as `provider="gemini"` or
+  `provider="groq"`. Observed 2026-07-31: the gate reported 11/45 non-Gemini
+  when the true figure was at least 13. The gate still fired, but it is less
+  conservative than it appears.
+
+Stacked free tiers do not compose into reliability. Groq's own daily token
+limit (100k TPD) was exhausted within hours of Gemini's, leaving no provider at
+all. The failover design is sound and was exercised end-to-end; the ceiling is
+the free tier, not the architecture.
+
 ### §13 — Confidence thresholds are backend-dependent
 Blueprint gives flat cutoffs (HIGH >0.8, LOW <0.5). Reranking runs on two
 backends with incompatible score scales: Cohere Rerank returns 0–1, the local
@@ -193,6 +222,64 @@ Surfaced but not addressed: with duplicates cleared, slots 4 and 5 now hold
 chunks scoring 0.026 and 0.014 — effectively noise presented to the user as
 citations. A minimum relevance floor for citation is separate open work,
 distinct from the confidence tier thresholds in §13.
+
+### §10 — Stage 0 guards: refusing beats substituting
+Blueprint §10's DSL self-healing loop assumes an invalid metric produces an
+invalid DSL that the validator rejects. It does not. Constrained to emit some
+metric string from the AVAILABLE list, the model substitutes the nearest
+plausible neighbour, and the result is perfectly valid DSL — the validator has
+nothing to catch. Nothing downstream records what the user actually asked, so
+the only place that intent survives is the raw query text.
+
+Two guards therefore run BEFORE any DSL is generated, both reading the raw
+query against the shared registry:
+
+- **Stage 0 — derived metrics** (`metric_type="derived"`). Observed live: "What
+  was Paytm's EBITDA for FY26?" returned `total_expenses` ₹8,523 Cr with
+  `sql_verified=True`.
+- **Stage 0b — registered but not DSL-queryable** (`dsl_enabled=False`), added
+  2026-07-31. Observed live: "...the 207 crore impairment of loans and
+  investments in associates recorded in FY26?" returned
+  `metric="exceptional_items"` and appended a ticked `₹-186 Cr` for a metric
+  nobody asked about.
+
+Stage 0b matches canonical names with underscores expanded, not only alias
+tuples — load-bearing, since every stored alias for that metric uses a slash
+("loans/investment") while both the query and the canonical name use "and".
+A four-word floor is the false-positive guard: `dsl_enabled=False` covers
+aliases like "cash", "equity", "others" and "india", and scanning those would
+fire on nearly any query. 44 phrases survive the floor, all unambiguous
+financial-statement language. It fails toward NOT firing.
+
+The guard records a partial `dsl_object` before returning, so the cross path's
+reconciliation can tell "a metric was identified but produced no verified
+figure" from "no figure was ever requested" — without it, a refused query looks
+identical to a purely qualitative one and the user is never told the system
+declined to verify the figure they named.
+
+### Cleanup lags correction — fixing a rule does not repair what it wrote
+Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
+naming because none of them were caught by any existing check.
+
+- The `audit_log` CHECK constraint admitted `cross_examination` while the code
+  emitted `cross`. `init.sql` had already been corrected; one live database
+  predated the edit, and `CREATE TABLE IF NOT EXISTS` makes re-running it a
+  no-op. Every cross audit row was rejected for that database's lifetime.
+- `META_RE` matched only round brackets until 2026-07-11, so a Paytm line item
+  reading `[refer note 4]` kept its footnote suffix and was stored under the
+  key `provision_for_impainnent_ofloans/investments_in_subsidiary/associate_[refer_note_4]`.
+  The pattern was later widened to accept either bracket style; the two rows
+  written under the old one survived until deleted by hand on 2026-07-31. The
+  values were correct duplicates of correctly-named rows, so nothing was lost.
+- Q052 and Q048 both required golden-dataset corrections after the code they
+  asserted against changed meaning.
+
+Nothing in the test suite compares LIVE DATA against CURRENT CODE.
+`regression_check.py` re-runs extraction on source PDFs and would pass with
+corrupt rows sitting in the database; `check_migrations.py` diffs migration
+filenames against `schema_migrations` and cannot see a constraint definition at
+all. Both are correct at what they do. The gap is real and currently unowned;
+recorded here rather than papered over with a new component.
 
 ---
 
