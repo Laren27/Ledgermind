@@ -9,12 +9,10 @@ import os
 import re
 from typing import Literal, Optional
 from app.ingestion.entity_resolver import COMPANY_REGISTRY as COMPANY_PROFILES, resolve_ticker
-from google import genai
-from google.genai import types
 from pydantic import BaseModel
 
 from app.engines.dsl_compiler import METRIC_ALIASES, METRIC_REGISTRY
-from app.engines.state import QueryState
+from app.engines.state import QueryState, record_llm_call
 from app.llm.client import LLMUnavailable, generate_structured
 
 logger = logging.getLogger(__name__)
@@ -29,29 +27,12 @@ class RouterResponse(BaseModel):
     route_reason: str
 
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
-
-# Logged at import so every run records which model produced its results.
-# Eval scores are only meaningful relative to a known model, and a silently
-# missing GEMINI_MODEL would otherwise swap the model with no trace — the
-# same silent-fallback class as the old user_id="anonymous" default.
-if not os.getenv("GEMINI_MODEL"):
-    logger.warning(
-        "GEMINI_MODEL not set in environment — falling back to %s", GEMINI_MODEL
-    )
-else:
-    logger.info("Gemini model: %s", GEMINI_MODEL)
-_gemini_client: Optional[genai.Client] = None
-
-
-def _get_gemini_client() -> genai.Client:
-    global _gemini_client
-    if _gemini_client is None:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY environment variable not set")
-        _gemini_client = genai.Client(api_key=api_key)
-    return _gemini_client
+# Model resolution and client construction live ONLY in app/llm/client.py.
+# This module previously kept its own GEMINI_MODEL (defaulting to 2.5) and its
+# own genai client, both dead since generate_structured landed — but a stale
+# default is worse than dead code: it is a second, wrong answer to "which
+# model actually runs", one grep away from the real one. Same failure class as
+# this project's two formula copies and three metric registries.
 
 
 _KNOWN_TICKERS = sorted({p.ticker for p in COMPANY_PROFILES})
@@ -100,7 +81,9 @@ Return ONLY a valid JSON object matching the requested schema. No explanation.
 
 
 def _classify_query(query: str) -> dict:
-    provider = None
+    # The whole LLMResult is carried out, not just .provider, so the
+    # caller can record provider AND model in one attributed write.
+    llm_result = None
     try:
         llm = generate_structured(
             system=ROUTER_SYSTEM_PROMPT,
@@ -109,7 +92,7 @@ def _classify_query(query: str) -> dict:
             temperature=0.0,
             max_tokens=200,
         )
-        provider = llm.provider
+        llm_result = llm
         raw_text = llm.text
         try:
             result = json.loads(raw_text)
@@ -154,7 +137,7 @@ def _classify_query(query: str) -> dict:
             "financial_type": financial_type,
             "path": path,
             "route_reason": result.get("route_reason", ""),
-            "llm_provider": provider,
+            "llm_result": llm_result,
         }
 
     except LLMUnavailable as e:
@@ -174,7 +157,7 @@ def _classify_query(query: str) -> dict:
         "financial_type": "consolidated",
         "path": "semantic",
         "route_reason": "FALLBACK_ERROR: classification failed on all providers",
-        "llm_provider": None,
+        "llm_result": None,
     }
 
 
@@ -203,7 +186,8 @@ def router_node(state: QueryState) -> QueryState:
     state["fiscal_year"]    = result["fiscal_year"]
     state["quarter"]        = result["quarter"]
     state["financial_type"] = result["financial_type"]
-    state["llm_provider"]   = result.get("llm_provider")
+    if result.get("llm_result") is not None:
+        record_llm_call(state, result["llm_result"])
     state["resolved_query"] = _build_resolved_query(
         original_query=state["query"],
         company=result["company"],
