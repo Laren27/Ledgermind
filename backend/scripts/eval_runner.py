@@ -86,7 +86,8 @@ parser.add_argument("--categories", default=None,
                          "baseline for the full dataset.")
 parser.add_argument("--model", required=True,
                     help="REQUIRED. The GEMINI_MODEL the target API is running "
-                         "(e.g. gemini-3.5-flash-lite). Not auto-detected on purpose: "
+                         "(e.g. gemini-3.1-flash-lite). Asserted against the llm_model the API
+                         actually reports, not merely printed: "
                          "a score is meaningless without a stated model, and TQ010 is "
                          "a live example of a question that passes on one and fails on "
                          "another. Verify with: docker compose exec backend printenv "
