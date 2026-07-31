@@ -74,6 +74,16 @@ parser.add_argument("--delay",    type=float, default=25.0,
                     help="Seconds between requests (Gemini 5 RPM = 12s minimum; default 15)")
 parser.add_argument("--category", default=None,
                     help="Run only this category (e.g. adversarial)")
+# Scoped sweeps exist because a change's blast radius is usually a subset of
+# the golden set, and a full re-run costs ~170 Gemini calls against a 500/day
+# bucket. Kept SEPARATE from --category rather than replacing it: the singular
+# form is in shell history and the README, and silently repurposing an
+# argument name is how a run gets scored against the wrong subset.
+parser.add_argument("--categories", default=None,
+                    help="Comma-separated categories to run (e.g. "
+                         "semantic_risk,semantic_audit). A run using this flag "
+                         "is marked scoped=true in the output and is NOT a "
+                         "baseline for the full dataset.")
 parser.add_argument("--model", required=True,
                     help="REQUIRED. The GEMINI_MODEL the target API is running "
                          "(e.g. gemini-3.5-flash-lite). Not auto-detected on purpose: "
@@ -520,12 +530,36 @@ def print_report(results: list[dict], model: str):
     n_blocked = len(results) - len(scored)
     contaminated = {p for p in providers if p not in ("gemini",)}
 
+    # Model integrity gate — SEPARATE from the provider gate above, not merged
+    # into it. A mixed-provider run and a wrong-model run are different faults
+    # with different remedies (wait for quota vs. fix the environment and
+    # re-run), and one combined message means reading the wrong instruction at
+    # the worst possible moment.
+    models = Counter(
+        (r.get("api_response") or {}).get("llm_model") or "unknown"
+        for r in scored
+    )
+    model_mismatch = {m for m in models if m != model}
+
     print(f"\n{'='*60}")
     print(f"LedgerMind Eval Report — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"Model (stated): {model}")
     print(f"Providers: {dict(providers)}"
           + (f"  (+{n_blocked} blocked, no LLM call)" if n_blocked else ""))
     print(f"{'='*60}")
+
+    print(f"Models served: {dict(models)}")
+
+    if model_mismatch:
+        print(f"\n  *** SCORE WITHHELD — MODEL MISMATCH ***")
+        print(f"  --model says '{model}', but calls were served by: "
+              f"{sorted(m for m in models if m != model)}")
+        print(f"  Verify with: docker compose exec -T backend printenv GEMINI_MODEL")
+        print(f"  'unknown' means llm_model was absent — either the run was not "
+              f"authenticated as admin (--email admin@alpha.ledgermind.test), or "
+              f"synthesis fell through to the raw-excerpt floor on ALL providers, "
+              f"which clears attribution deliberately.")
+        print(f"  Raw tally (DO NOT publish): {passed}/{total}")
 
     if contaminated:
         print(f"\n  *** SCORE WITHHELD — NOT A VALID BASELINE ***")
@@ -538,7 +572,7 @@ def print_report(results: list[dict], model: str):
             print(f"  'groq' means the fallback fired (rate limit / timeout). "
                   f"Wait for quota and re-run.")
         print(f"  Raw tally (DO NOT publish): {passed}/{total}")
-    else:
+    elif not model_mismatch:
         print(f"Total:  {total}  |  Pass: {passed}  |  Fail: {failed}  |  Score: {passed/total*100:.1f}%")
 
     from collections import defaultdict
@@ -568,9 +602,28 @@ def main():
     with open(args.dataset) as f:
         golden_questions = json.load(f)
 
+    dataset_total = len(golden_questions)
+    scoped = False
+
     if args.category:
         golden_questions = [q for q in golden_questions if q["category"] == args.category]
         print(f"Filtered to category '{args.category}': {len(golden_questions)} questions")
+        scoped = True
+
+    if args.categories:
+        wanted = {c.strip() for c in args.categories.split(",") if c.strip()}
+        unknown = wanted - {q["category"] for q in golden_questions}
+        if unknown:
+            print(f"ERROR: unknown categories: {sorted(unknown)}")
+            sys.exit(1)
+        golden_questions = [q for q in golden_questions if q["category"] in wanted]
+        print(f"Filtered to categories {sorted(wanted)}: "
+              f"{len(golden_questions)}/{dataset_total} questions")
+        scoped = True
+
+    if not golden_questions:
+        print("ERROR: no questions selected.")
+        sys.exit(1)
 
     token = get_token(args.email, args.password)
     print(f"Stated model: {args.model}")
@@ -607,6 +660,12 @@ def main():
                 # Admin-tier field. None here means either the run was not
                 # authenticated as admin, or no LLM produced the text.
                 "llm_provider":    result.get("llm_provider") if result else None,
+                # Admin-tier. What ACTUALLY served the call, asserted below
+                # against --model. Before this existed --model was only a
+                # label: on 2026-07-31 two sweeps ran with 3.5 in the command
+                # while the container was on 3.1, and both result files named
+                # a model that never served a single call.
+                "llm_model":       result.get("llm_model") if result else None,
             } if result else None,
         })
 
@@ -615,8 +674,21 @@ def main():
             time.sleep(args.delay)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    payload = {
+        "meta": {
+            "stated_model": args.model,
+            "dataset": args.dataset,
+            "dataset_total": dataset_total,
+            "questions_run": len(all_results),
+            "scoped": scoped,
+            "category_filter": args.category,
+            "categories_filter": args.categories,
+            "run_at": datetime.now().isoformat(timespec="seconds"),
+        },
+        "results": all_results,
+    }
     with open(args.out, "w") as f:
-        json.dump(all_results, f, indent=2, default=str)
+        json.dump(payload, f, indent=2, default=str)
     print(f"\nFull results saved to {args.out}")
 
     print_report(all_results, args.model)
