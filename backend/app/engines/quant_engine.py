@@ -41,7 +41,7 @@ from app.engines.dsl_compiler import (
     compile_dsl,
     validate_dsl,
 )
-from app.engines.state import DSLObject, QueryState
+from app.engines.state import DSLObject, QueryState, record_llm_call
 from app.llm.client import LLMUnavailable, generate_structured
 from app.metrics.registry import (
     derived_metric_aliases,
@@ -189,15 +189,18 @@ def _generate_dsl(
     """
     Generate and validate a DSL object, with up to MAX_DSL_ATTEMPTS retries.
 
-    Returns: (dsl_object, attempts_used, error_message, llm_provider)
+    Returns: (dsl_object, attempts_used, error_message, llm_result)
       - dsl_object is None on failure
       - error_message describes what went wrong (for user-facing response)
-      - llm_provider is whichever provider served the successful call
+      - llm_result is the LLMResult from the last call made, or None if no
+        provider answered. The whole result is carried rather than just the
+        provider string so the caller can attribute provider AND model in a
+        single write via record_llm_call().
     """
     repair_hint: Optional[str] = None
     attempts = 0
     last_error: Optional[str] = None
-    provider: Optional[str] = None
+    llm_result = None
 
     while attempts < MAX_DSL_ATTEMPTS:
         attempts += 1
@@ -220,7 +223,7 @@ def _generate_dsl(
                 temperature=0.0,
                 max_tokens=200,
             )
-            provider = llm.provider
+            llm_result = llm
             raw_text = llm.text
             logger.debug("DSL raw response (attempt %d): %s", attempts, raw_text)
 
@@ -269,7 +272,7 @@ def _generate_dsl(
                 "DSL valid on attempt %d | metric=%s operation=%s",
                 attempts, validation.dsl_object["metric"], validation.dsl_object["operation"],
             )
-            return validation.dsl_object, attempts, None, provider
+            return validation.dsl_object, attempts, None, llm_result
 
         # Invalid — check if it's recoverable
         logger.warning(
@@ -281,7 +284,7 @@ def _generate_dsl(
         if validation.repair_hint is None:
             # Non-recoverable (e.g., metric registered but unavailable)
             # Return the error as a clean user message — no retry
-            return None, attempts, validation.error, provider
+            return None, attempts, validation.error, llm_result
 
         repair_hint = validation.repair_hint
 
@@ -292,7 +295,7 @@ def _generate_dsl(
         f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts. "
         f"Last error: {last_error}" if last_error else
         f"Could not generate a valid DSL after {MAX_DSL_ATTEMPTS} attempts.",
-        provider,
+        llm_result,
     )
 
 
@@ -699,7 +702,7 @@ def quant_engine_node(state: QueryState) -> QueryState:
         return state
 
     # ── Stage 1: DSL generation ────────────────────────────────────────────
-    dsl, attempts, dsl_error, dsl_provider = _generate_dsl(
+    dsl, attempts, dsl_error, dsl_llm = _generate_dsl(
         query=query,
         company=company,
         fiscal_year=fiscal_year,
@@ -708,8 +711,8 @@ def quant_engine_node(state: QueryState) -> QueryState:
     )
 
     state["dsl_attempts"] = attempts
-    if dsl_provider:
-        state["llm_provider"] = dsl_provider
+    if dsl_llm is not None:
+        record_llm_call(state, dsl_llm)
 
     if dsl is None:
         logger.error("DSL generation failed after %d attempts: %s", attempts, dsl_error)
