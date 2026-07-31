@@ -80,5 +80,12 @@ def role_filtered_response(response: dict, role: str) -> dict:
         # Groq-served answer is a different artifact from a Gemini one and
         # cannot be allowed to look identical in the record.
         "llm_provider": response.get("llm_provider"),
+        # Which MODEL served it, e.g. "gemini-3.1-flash-lite". Admin-tier for
+        # the same reason as llm_provider, and required by the eval gate:
+        # scripts/eval_runner.py asserts this against its --model argument
+        # rather than trusting the label. On 2026-07-31 two full sweeps were
+        # reported under a model that never served a single call, because
+        # --model was only ever a label and nothing recorded the truth.
+        "llm_model": response.get("llm_model"),
     })
     return base
