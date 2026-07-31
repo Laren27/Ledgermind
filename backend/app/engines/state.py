@@ -129,6 +129,12 @@ class QueryState(TypedDict):
     # from one produced by the primary and must not be indistinguishable in
     # the audit log. Admin-tier only.
     llm_provider: Optional[str]
+    # Which model actually served the LLM calls, e.g. "gemini-3.1-flash-lite".
+    # Written ONLY via record_llm_call(). The eval runner asserts this against
+    # its --model argument rather than trusting the label: on 2026-07-31 two
+    # full sweeps were reported under a model that never served a single call.
+    # Admin-tier only.
+    llm_model: Optional[str]
     tokens_used: int
     cache_hit: bool
     latency_ms: int
@@ -191,7 +197,63 @@ def make_initial_state(
         error_node=None,
 
         llm_provider=None,
+        llm_model=None,
         tokens_used=0,
         cache_hit=False,
         latency_ms=0,
     )
+
+
+# ---------------------------------------------------------------------------
+# LLM attribution
+# ---------------------------------------------------------------------------
+# Never assign state["llm_provider"] or state["llm_model"] directly. Both are
+# evidence about which artifact the user actually received, and both have
+# already been wrong in production:
+#
+#   - llm_provider was set by whichever call last SUCCEEDED. The synthesis
+#     floor returns provider=None, which overwrote nothing, so floor responses
+#     logged as "gemini". Measured 2026-07-31: the eval provider gate reported
+#     11/45 non-Gemini when the true figure was >= 13.
+#   - --model was only ever a label. Nothing in the pipeline recorded what
+#     actually served the call.
+#
+# PRECEDENCE, NOT LAST-WRITER-WINS. A semantic query makes two calls (router,
+# synthesis). If either is served by the fallback, the ANSWER is a fallback
+# artifact regardless of call order. So attribution only ever moves in the
+# direction of "more degraded" within a single query.
+
+_PROVIDER_TAINT = {"gemini": 0, "groq": 1}
+
+
+def record_llm_call(state: QueryState, result) -> None:
+    """
+    Record which provider/model served an LLM call. Safe to call from every
+    call site; the worst provider seen wins.
+
+    `result` is an app.llm.client.LLMResult. Deliberately untyped here so that
+    state.py does not import the LLM module — the dependency runs one way,
+    engines -> state and engines -> client, never client -> state.
+    """
+    incoming = getattr(result, "provider", None)
+    if not incoming:
+        return
+
+    current = state.get("llm_provider")
+    if current is not None:
+        if _PROVIDER_TAINT.get(incoming, 99) <= _PROVIDER_TAINT.get(current, 99):
+            return
+
+    state["llm_provider"] = incoming
+    state["llm_model"] = getattr(result, "model", None)
+
+
+def clear_llm_attribution(state: QueryState) -> None:
+    """
+    Called when a response was NOT produced by an LLM — currently only the
+    semantic synthesis floor, which returns raw excerpts after both providers
+    failed. Leaving the router's earlier attribution in place would report a
+    total outage as a normally-served answer.
+    """
+    state["llm_provider"] = None
+    state["llm_model"] = None
