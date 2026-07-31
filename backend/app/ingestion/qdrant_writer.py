@@ -256,7 +256,11 @@ if __name__ == "__main__":
     from pathlib import Path
 
     # Load .env
-    env_path = Path.home() / ".env"
+    # Same convention as pipeline.py: the repo root is ~/ledgermind, so a
+    # bare Path.home() / ".env" resolves to ~/.env, which does not exist.
+    # Only affects standalone CLI invocation of this module, which is why
+    # it survived after the identical bug was fixed in pipeline.py.
+    env_path = Path.home() / "ledgermind" / ".env"
     if env_path.exists():
         for line in env_path.read_text().splitlines():
             line = line.strip()
