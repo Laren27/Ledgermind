@@ -248,8 +248,8 @@
     "expected_is_blocked": false,
     "expected_confidence_tier": "low",
     "expected_sql_verified": false,
-    "expected_error": "dsl_generation_failed",
-    "notes": "EBITDA not a directly extracted metric for Paytm. Must return clean error, not hallucinate."
+    "expected_error": "metric_not_computable",
+    "notes": "EBITDA is metric_type='derived' in the registry, so quant_engine's Stage 0 guard refuses BEFORE any DSL is generated — the previous expected_error of 'dsl_generation_failed' named a path this query can no longer reach. It passed regardless because the out_of_corpus scorer accepts a low tier OR a matching error, so this was stale documentation rather than a broken test. Asserting the specific guard records WHICH mechanism owns the refusal, so a future change that moves it fails loudly instead of passing quietly."
   },
   {
     "id": "PQ018",
