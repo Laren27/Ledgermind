@@ -430,8 +430,22 @@ generation detection entirely. The generic detector is now scoped to
 
 ### §1 / §21 — Corpus
 Shipped corpus is Eternal (formerly Zomato), Titan, and Paytm — not the ten
-companies §1 lists. 83 golden questions across three datasets, above the
-blueprint's 50.
+companies §1 lists. 84 golden questions across three datasets (Eternal 52,
+Titan 14, Paytm 18), above the blueprint's 50.
+
+Baseline as of 2026-08-02, provider-clean and model-clean on
+gemini-3.1-flash-lite: **83/84** — Eternal 52/52, Titan 14/14, Paytm 17/18.
+Do not read the 83 as the question count; the two numbers coinciding is an
+accident of one open failure. The single failure is PQ012, which asserts
+expected_path="semantic" while the current model routes it to "cross"; the
+cross path then appends an unrelated SQL-verified figure ("Exceptional Items
+for FY26 was ₹-186 Cr") to a question about PPBL exposure. Left failing
+deliberately — editing the assertion to match observed behaviour would hide a
+real substitution bug. Tracked as the lead backlog item.
+
+The earlier 84/84 is VOID and must not be quoted: it predates the five
+extraction fixes and the token-set coverage floor of 2026-08-01, which changed
+metric resolution corpus-wide.
 
 ### §11 — Truth Resolution: SPEC HONORED
 Recorded here because it is frequently assumed unbuilt. `db_loader.py`
