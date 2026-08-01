@@ -311,6 +311,12 @@ def _should_skip_row(description: str, values: list) -> bool:
         return True
     if re.match(r"^(i{1,3}|iv|v|vi{1,3}|ix|x)$", desc_lower):
         return True
+    # "Subtotal (VIII)", "Subtotal (X)" — a roman-numeral-labelled running
+    # subtotal, not a named metric. The bare-numeral guard above requires the
+    # WHOLE label to be a numeral, so these were stored as metrics named
+    # subtotal_(x) / subtotal_(xi) / subtotal_(viii) / subtotal_(ix).
+    if re.match(r"^sub\s?total\s*\((?:i|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii|xiii|xiv|xv|xvi|xvii|xviii|xix|xx)\)$", desc_lower):
+        return True
     if re.match(r"^\d+\s+[£₹a-z]", desc_lower):
         return True
     max_val = max((abs(v) for v in values if v is not None), default=0)
