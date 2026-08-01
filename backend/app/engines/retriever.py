@@ -47,6 +47,14 @@ COLLECTION_NAME = "ledgermind_chunks"
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 
+# An unbounded call to an external service in the request path is the same
+# structural defect fixed for Gemini on 2026-07-29: without a timeout, a
+# fallback keyed on exceptions can never fire, so a stall stays a stall.
+# Warm queries measured at 0.36-0.41s against Qdrant Cloud (2026-08-01), so
+# 10s is ~25x headroom -- it will not fire on a healthy call, and it converts
+# a hang into hybrid_search's existing except branch: logged, fast, returns [].
+QDRANT_TIMEOUT_SECONDS = 10
+
 TOP_K_RETRIEVAL = 20
 TOP_K_RERANK = 5
 
@@ -116,7 +124,11 @@ def _get_qdrant_client() -> QdrantClient:
         if not qdrant_url:
             raise RuntimeError("QDRANT_URL environment variable not set")
         logger.info("Connecting to Qdrant: %s", qdrant_url)
-        _qdrant_client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+        _qdrant_client = QdrantClient(
+            url=qdrant_url,
+            api_key=qdrant_api_key,
+            timeout=QDRANT_TIMEOUT_SECONDS,
+        )
     return _qdrant_client
 
 
