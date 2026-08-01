@@ -30,6 +30,21 @@ for _profile in COMPANY_REGISTRY:
     for _alias in _profile.aliases:
         _ALIAS_INDEX[_alias.lower().strip()] = _profile
 
+# Rejoins a first letter that the PDF typeset as its own text run.
+# ZOMATO FY24's cash-flow and OCI tables render as "I nterest expense",
+# "L oan given", "P ayment of principal portion" — pdfplumber faithfully
+# reports the space. This MUST run before PREFIX_RE: after casefolding,
+# a bare leading "i " or "l " is a legal roman numeral, so PREFIX_RE
+# stripped it and produced metrics named `nterest_expense` / `oan_given`.
+#
+# The {2,} lookahead means a genuine "(i) ..." or "i. ..." prefix is
+# untouched (both carry punctuation and are handled by PREFIX_RE).
+# KNOWN AMBIGUITY: a BARE single-char roman prefix ("V Total income")
+# is indistinguishable from a split initial and would be rejoined
+# wrongly. Accepted because this corpus uses multi-char ("VII", "IX")
+# or parenthesised forms; regression_check is the guard.
+SPLIT_INITIAL_RE = re.compile(r"^([a-z])\s+(?=[a-z]{2,})")
+
 PREFIX_RE = re.compile(r"^(?:\(?\d+\)?|\(?[ivxlcdm]+\)?|\([a-z]\)|[a-z][.)])[.:-]?\s+", re.IGNORECASE | re.VERBOSE)
 # after — accept either bracket style
 META_RE = re.compile(r"[\(\[]\s*(?:unaudited|audited|standalone|consolidated|restated|continuing\s+operations|refer\s+note.*?|note.*?|(?:₹|rs\.?|inr).*?|in\s+(?:crores?|millions?|lakhs?|thousands?))\s*[\)\]]", re.IGNORECASE | re.VERBOSE)
@@ -79,6 +94,7 @@ def normalize_metric_label(raw_label: str) -> str:
     if not raw_label: return ""
     label = unicodedata.normalize("NFKC", raw_label).casefold()
     label = label.replace("\ufeff", "").replace("\u200b", "").replace("\xa0", " ")
+    label = SPLIT_INITIAL_RE.sub(r"\1", label)
     label = PREFIX_RE.sub("", label)
     label = META_RE.sub("", label)
     label = UNITS_OUTSIDE_PARENS_RE.sub("", label)
