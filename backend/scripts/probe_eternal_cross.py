@@ -31,7 +31,7 @@ def probe(label, **kw):
     r = _get_cohere_client().rerank(
         model="rerank-english-v3.0", query=Q,
         documents=[c["text"] for c in cands], top_n=len(cands))
-    for i, hit in enumerate(sorted(r.results, key=lambda h: -h.relevance_score)[:8], 1):
+    for i, hit in enumerate(sorted(r.results, key=lambda h: -h.relevance_score), 1):
         c = cands[hit.index]
         print(f"  {i}. {hit.relevance_score:.4f}  p{c['page_number']:<4} "
               f"{c['chunk_type']:<22} {c['text'][:88].replace(chr(10),' ')}")
