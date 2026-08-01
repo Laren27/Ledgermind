@@ -15,6 +15,7 @@ Checks two independent layers:
 Read-only. No DB writes, no Qdrant calls.
 """
 
+import logging
 import os
 import sys
 from collections import Counter
@@ -85,6 +86,32 @@ DOCUMENTS = [
 ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
 
 
+class _DerivationCapture(logging.Handler):
+    """
+    Collects _compute_derived_totals' overwrite warnings for one document.
+
+    These are NOT asserted on. A count-pinned gate would fail on
+    improvements as readily as regressions — this session shrank one
+    divergence from 2212 Cr to 11 Cr, which a pinned count would have
+    reported as a failure. A gate that goes red on good news gets
+    switched off.
+
+    The real failure mode was that these warnings scrolled past in a
+    400-line log. Surfacing them as a labelled block after the PASS/FAIL
+    lines makes a changed derivation chain visible without inventing a
+    new way for the build to break.
+    """
+
+    def __init__(self):
+        super().__init__(level=logging.WARNING)
+        self.messages: list[str] = []
+
+    def emit(self, record):
+        msg = record.getMessage()
+        if "disagrees with computed" in msg:
+            self.messages.append(msg)
+
+
 def run_one(doc: dict) -> bool:
     pdf_path = RAW_DIR / doc["filename"]
     if not pdf_path.exists():
@@ -117,11 +144,17 @@ def run_one(doc: dict) -> bool:
     # --- Layer 2: extracted record sanity ---
     # --- Layer 2: extracted record sanity ---
     doc_id_map = {s.financial_type: f"diagnostic-{s.financial_type}" for s in sections}
-    records = extract_all_financial_records(
-        blocks=blocks, pdf_path=str(pdf_path), tenant_id=ALPHA_TENANT,
-        company=doc["company"], ticker=doc["ticker"],
-        filing_date=doc["filing_date"], doc_id_map=doc_id_map,
-    )
+    _cap = _DerivationCapture()
+    _ext_log = logging.getLogger("app.ingestion.financial_extractor")
+    _ext_log.addHandler(_cap)
+    try:
+        records = extract_all_financial_records(
+            blocks=blocks, pdf_path=str(pdf_path), tenant_id=ALPHA_TENANT,
+            company=doc["company"], ticker=doc["ticker"],
+            filing_date=doc["filing_date"], doc_id_map=doc_id_map,
+        )
+    finally:
+        _ext_log.removeHandler(_cap)
     print(f"\n  Records extracted: {len(records)}")
 
     # Golden comparison always targets the ANNUAL figure (quarter=None),
@@ -153,6 +186,10 @@ def run_one(doc: dict) -> bool:
                   f"{'✓' if in_range else '✗ OUT OF RANGE'}")
     print(f"  [{'PASS' if revenue_ok else 'FAIL'}] annual revenue in expected range "
           f"({doc['expect_revenue_min']}-{doc['expect_revenue_max']} cr)")
+
+    print(f"\n  Derivation overwrites: {len(_cap.messages)}")
+    for m in _cap.messages:
+        print(f"    {m}")
 
     records_ok = len(records) > 0
     overall = fs_ok and records_ok and revenue_ok
