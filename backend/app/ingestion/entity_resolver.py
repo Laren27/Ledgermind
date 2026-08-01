@@ -55,6 +55,8 @@ SPLIT_INITIAL_RE = re.compile(r"^([A-Z])\s+(?=[a-z]{2,})")
 # Guard: fires only when the label STARTS lowercase, i.e. the initial is
 # genuinely missing from the front. A normal label ending in a capital is
 # untouched.
+STRAY_TRAILING_MARKER_RE = re.compile(r"(?<=[a-z\)])\s+I$")
+
 TRAILING_INITIAL_RE = re.compile(r"^([a-z].*?)\s+([A-Z])$")
 
 PREFIX_RE = re.compile(r"^(?:\(?\d+\)?|\(?[ivxlcdm]+\)?|\([a-z]\)|[a-z][.)])[.:-]?\s+", re.IGNORECASE | re.VERBOSE)
@@ -113,6 +115,15 @@ def normalize_metric_label(raw_label: str) -> str:
     # destroying a PREFIX_RE match and losing
     # profit_before_exceptional_items from the derivation chain.
     raw_label = SPLIT_INITIAL_RE.sub(r"\1", raw_label)
+    # A bare trailing "I" on a label that already starts with a capital
+    # is a stray roman column marker the positional extractor sorted to
+    # the end ("Revenue from operations I", "Income taxes (paid) refund
+    # (net) I") — NOT a displaced initial, which TRAILING_INITIAL_RE
+    # handles above and which leaves the label starting lowercase.
+    # Scoped to exactly one "I": a scan of all FINANCIAL_STATEMENT pages
+    # across all three source PDFs found 13 trailing-capital labels, and
+    # the only legitimate one is TITAN's "...through OCI" (3 chars).
+    raw_label = STRAY_TRAILING_MARKER_RE.sub("", raw_label)
     label = unicodedata.normalize("NFKC", raw_label).casefold()
     label = label.replace("\ufeff", "").replace("\u200b", "").replace("\xa0", " ")
     label = PREFIX_RE.sub("", label)
