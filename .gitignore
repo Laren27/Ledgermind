@@ -20,3 +20,4 @@ backend/render-cli/
 backend/render.zip
 frontend/tsconfig.tsbuildinfo
 golden_dataset/eval_*.json
+backend/measurements/
