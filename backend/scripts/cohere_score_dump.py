@@ -62,7 +62,9 @@ QUERIES = [
     ("ETERNAL", "How does Eternal's board compose its audit committee?", "poor"),
 ]
 
-OUT = "/mnt/user-data/outputs/cohere_score_dump.json"
+# Written inside the container; copy out with:
+#   docker compose exec -T backend cat /app/measurements/cohere_score_dump.json > docs/measurements/<name>.json
+OUT = "/app/measurements/cohere_score_dump.json"
 
 
 def spread(scores):
