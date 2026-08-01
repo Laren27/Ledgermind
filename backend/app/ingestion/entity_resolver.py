@@ -45,6 +45,18 @@ for _profile in COMPANY_REGISTRY:
 # or parenthesised forms; regression_check is the guard.
 SPLIT_INITIAL_RE = re.compile(r"^([a-z])\s+(?=[a-z]{2,})")
 
+# The POSITIONAL row extractor (extract_financials_positional) sorts words
+# by x-coordinate, and a capital "I" is narrow enough that it sorts AFTER
+# the rest of its own label: 'nterest expense I', 'nvestment in mutual fund
+# units I'. Measured on ZOMATO FY24 p176 — only "I" does this; every wider
+# capital (P, S, C, L, B, T, A, N) stays in front and is handled above.
+# Applied to the RAW label before casefolding, so the trailing capital is
+# still distinguishable from an ordinary word.
+# Guard: fires only when the label STARTS lowercase, i.e. the initial is
+# genuinely missing from the front. A normal label ending in a capital is
+# untouched.
+TRAILING_INITIAL_RE = re.compile(r"^([a-z].*?)\s+([A-Z])$")
+
 PREFIX_RE = re.compile(r"^(?:\(?\d+\)?|\(?[ivxlcdm]+\)?|\([a-z]\)|[a-z][.)])[.:-]?\s+", re.IGNORECASE | re.VERBOSE)
 # after — accept either bracket style
 META_RE = re.compile(r"[\(\[]\s*(?:unaudited|audited|standalone|consolidated|restated|continuing\s+operations|refer\s+note.*?|note.*?|(?:₹|rs\.?|inr).*?|in\s+(?:crores?|millions?|lakhs?|thousands?))\s*[\)\]]", re.IGNORECASE | re.VERBOSE)
@@ -92,6 +104,7 @@ OCR_FIXES = {
 
 def normalize_metric_label(raw_label: str) -> str:
     if not raw_label: return ""
+    raw_label = TRAILING_INITIAL_RE.sub(r"\2\1", raw_label.strip())
     label = unicodedata.normalize("NFKC", raw_label).casefold()
     label = label.replace("\ufeff", "").replace("\u200b", "").replace("\xa0", " ")
     label = SPLIT_INITIAL_RE.sub(r"\1", label)
