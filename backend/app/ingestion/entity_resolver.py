@@ -43,7 +43,7 @@ for _profile in COMPANY_REGISTRY:
 # is indistinguishable from a split initial and would be rejoined
 # wrongly. Accepted because this corpus uses multi-char ("VII", "IX")
 # or parenthesised forms; regression_check is the guard.
-SPLIT_INITIAL_RE = re.compile(r"^([a-z])\s+(?=[a-z]{2,})")
+SPLIT_INITIAL_RE = re.compile(r"^([A-Z])\s+(?=[a-z]{2,})")
 
 # The POSITIONAL row extractor (extract_financials_positional) sorts words
 # by x-coordinate, and a capital "I" is narrow enough that it sorts AFTER
@@ -105,9 +105,16 @@ OCR_FIXES = {
 def normalize_metric_label(raw_label: str) -> str:
     if not raw_label: return ""
     raw_label = TRAILING_INITIAL_RE.sub(r"\2\1", raw_label.strip())
+    # MUST run on RAW text, before casefold. Case is the only thing
+    # distinguishing a split initial from a roman-numeral prefix:
+    # "I nterest expense" (initial + lowercase remainder) vs "V Profit
+    # before..." (numeral + capitalised word). Casefolding first made
+    # them identical, and this rule glued "v profit" -> "vprofit",
+    # destroying a PREFIX_RE match and losing
+    # profit_before_exceptional_items from the derivation chain.
+    raw_label = SPLIT_INITIAL_RE.sub(r"\1", raw_label)
     label = unicodedata.normalize("NFKC", raw_label).casefold()
     label = label.replace("\ufeff", "").replace("\u200b", "").replace("\xa0", " ")
-    label = SPLIT_INITIAL_RE.sub(r"\1", label)
     label = PREFIX_RE.sub("", label)
     label = META_RE.sub("", label)
     label = UNITS_OUTSIDE_PARENS_RE.sub("", label)
