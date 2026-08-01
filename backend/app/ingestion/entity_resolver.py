@@ -175,6 +175,24 @@ def resolve_metric(raw: str) -> str:
         alias_words = set(_WORD_SPLIT_RE.split(alias)) - {""}
         if not alias_words:
             continue
+        # COVERAGE FLOOR. `alias_words <= normalized_words` alone let a
+        # one-word alias swallow a seven-word label: "cash" matched inside
+        # "net cash generated from/(used in) investing activities", and
+        # "equity" inside "proceeds from issue of equity shares" — four
+        # distinct cash-flow lines collapsing onto `cash`/`equity` with
+        # wrong values in a queryable metric.
+        #
+        # Measured on ZOMATO FY24 pages 169/170/176/292 (2026-08-01): every
+        # coincidental match scored <=0.43 coverage, every genuine paraphrase
+        # >=0.60. 0.5 sits in the empty band with ~0.07 margin either side.
+        # Raw ratios recorded in docs/measurements/.
+        #
+        # Applies ONLY to the alias-inside-label direction. The reverse
+        # (label is a fragment of a longer alias) has coverage >1 by
+        # construction and is a different, working case.
+        if alias_words <= normalized_words:
+            if len(alias_words) / len(normalized_words) < 0.5:
+                continue
         if alias_words <= normalized_words or normalized_words <= alias_words:
             # Prefer the alias with the most words (most specific match),
             # same intent as the old longest-string-first rule but now
