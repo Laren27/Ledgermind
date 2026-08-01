@@ -26,7 +26,25 @@ from app.ingestion.section_classifier import classify_blocks, get_blocks_by_type
 from app.ingestion.financial_extractor import extract_all_financial_records
 from app.ingestion.models import BlockType
 
-RAW_DIR = Path.home() / "ledgermind/docs/raw"
+def _resolve_raw_dir() -> Path:
+    """
+    Source-PDF directory, resolved for whichever environment this runs in.
+
+    Path.home() is /root inside the container but /home/<user> on the host,
+    so a home-relative constant silently resolved to a nonexistent path
+    under `docker compose exec` — every document SKIPPED, which the summary
+    then reported as a failure (correctly, but for the wrong reason).
+    """
+    env = os.getenv("LEDGERMIND_RAW_DIR")
+    if env:
+        return Path(env)
+    container = Path("/app/docs/raw")
+    if container.is_dir():
+        return container
+    return Path.home() / "ledgermind/docs/raw"
+
+
+RAW_DIR = _resolve_raw_dir()
 
 # One entry per reference document. min_fs / max_fs bound the expected
 # FINANCIAL_STATEMENT page count — catches both under- and over-classification
