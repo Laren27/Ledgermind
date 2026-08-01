@@ -58,6 +58,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./docs/raw:/app/docs/raw:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -92,6 +93,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./docs/raw:/app/docs/raw:ro
 
   scheduler:
     build: ./backend
@@ -106,6 +108,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./docs/raw:/app/docs/raw:ro
 
 volumes:
   postgres_data:
