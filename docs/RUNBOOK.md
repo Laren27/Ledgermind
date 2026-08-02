@@ -55,7 +55,13 @@ committed to git is not deployed to Render.
     cd ~/ledgermind/backend && python scripts/eval_runner.py \
       --model gemini-3.1-flash-lite \
       --dataset ../golden_dataset/q_paytm.json \
-      --delay 25 --out ../golden_dataset/eval_paytm.json
+      --delay 25 --out ../eval_results/eval_paytm.json
+
+**Outputs go to `eval_results/`, never `golden_dataset/`.** That directory holds
+ONLY the three `q*.json` inputs. It once accumulated 79 files against those 3,
+many predating the `{meta, results}` format change — a glob over it crashed an
+anchor scan on `'str' object has no attribute 'get'` and produced a phantom
+category discrepancy that cost a round of diagnosis. Cleaned 2026-08-02.
 
 ---
 
