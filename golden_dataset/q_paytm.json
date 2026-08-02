@@ -267,5 +267,16 @@
             "march 31, 2024"
         ],
         "notes": "FIRST golden question targeting path=cross. Asserts a FALSE contradiction is NOT fabricated: note 4 reconciles the 207 Cr exactly as 5 (associates) + 12 (OCDs) + 190 (JV loan), none of it PPBL, which was fully impaired as of March 31 2024 -- so the 'no exposure' claim and the impairment line are consistent. The long-carried assumption that this filing contains a real PPBL contradiction is FALSE; verified 2026-07-30 by scrolling all 115 PAYTM chunks. Answering requires synthesising page 12 (PPBL note) and page 10 (note 4) in one top-5, so it also stresses retrieval diversity. Keywords chosen per the golden keyword rule: stable across two verified runs, excluding bare '5' and '12' which any wrong answer would satisfy. expected_sql_verified=false because impairment_of_loans_and_investments_in_associates is dsl_enabled=False and the Stage 0b guard refuses rather than substituting a neighbouring metric -- IF THAT METRIC IS EVER FLIPPED TO dsl_enabled=True, set expected_sql_verified=true and keep expected_contradictions=0."
+    },
+    {
+        "id": "PQ019",
+        "category": "cross_examination",
+        "question": "Is Paytm's stated workforce strategy consistent with its financial exposure to attrition?",
+        "expected_path": "cross",
+        "expected_is_blocked": false,
+        "expected_contradictions": 0,
+        "expected_sql_verified": false,
+        "expected_keywords": [],
+        "notes": "Targets _reconcile_cross QUADRANT 2 (qualitative half found nothing usable, quantitative half produced no verified figure) -- previously recorded as unexercised. Verified 2026-08-02 across THREE consecutive gemini-3.1-flash-lite runs: path=cross, tier=medium, sql_verified=false, dsl_object=None, error=None, 1 citation, every run opening with a scoped negative about the absent workforce strategy. dsl_object is None because the query names no metric anchor phrase, so cross_engine's Stage 0c guard correctly declines to manufacture one -- that is what keeps CROSS_NO_VERIFIED_FIGURE_NOTE silent and is the specific behaviour this entry protects. NO KEYWORDS BY DESIGN: the answer is a scoped negative with no stable vocabulary, and asserting on refusal phrasing is exactly the brittleness the golden keyword rule warns against; expected_path + tier + sql_verified + contradictions already pin every field that matters. NOTE the model does transcribe an employee benefits expense figure from a retrieved chunk as adjacent context -- unticked and sql_verified=false, so not a correctness defect, but if a future change makes that number appear verified this entry should start failing. This question was authored while attempting QUADRANT 4 and landed in Quadrant 2; see IMPLEMENTATION_DELTAS for why Quadrant 4 is not reachable as cross at COHERE_MEDIUM=0.15."
     }
 ]
