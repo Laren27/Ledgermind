@@ -117,9 +117,11 @@ DOCUMENTS = [
 ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
 
 
-class _DerivationCapture(logging.Handler):
+class _ExtractorCapture(logging.Handler):
     """
-    Collects _compute_derived_totals' overwrite warnings for one document.
+    Collects two kinds of extractor WARNING for one document:
+    _compute_derived_totals' overwrite messages (printed, NOT asserted) and
+    validate_financial_identities' [IDENTITY FAIL] lines (ASSERTED).
 
     These are NOT asserted on. A count-pinned gate would fail on
     improvements as readily as regressions — this session shrank one
@@ -136,11 +138,14 @@ class _DerivationCapture(logging.Handler):
     def __init__(self):
         super().__init__(level=logging.WARNING)
         self.messages: list[str] = []
+        self.identity_failures: list[str] = []
 
     def emit(self, record):
         msg = record.getMessage()
         if "disagrees with computed" in msg:
             self.messages.append(msg)
+        elif "[IDENTITY FAIL]" in msg:
+            self.identity_failures.append(msg.strip())
 
 
 def run_one(doc: dict) -> bool:
@@ -175,7 +180,7 @@ def run_one(doc: dict) -> bool:
     # --- Layer 2: extracted record sanity ---
     # --- Layer 2: extracted record sanity ---
     doc_id_map = {s.financial_type: f"diagnostic-{s.financial_type}" for s in sections}
-    _cap = _DerivationCapture()
+    _cap = _ExtractorCapture()
     _ext_log = logging.getLogger("app.ingestion.financial_extractor")
     _ext_log.addHandler(_cap)
     try:
@@ -222,8 +227,24 @@ def run_one(doc: dict) -> bool:
     for m in _cap.messages:
         print(f"    {m}")
 
+    # ASSERTED, unlike derivation overwrites. A failing identity means the
+    # extracted numbers contradict each other (e.g. pat != pbt - tax), which
+    # is unambiguously wrong -- there is no "improvement" that raises this
+    # count, so pinning it cannot go red on good news.
+    #
+    # These were INVISIBLE before 2026-08-02. This handler is attached around
+    # the extraction call, which satisfies Python's handler search, so
+    # logging.lastResort never fired and every WARNING the extractor emitted
+    # during extraction -- including [IDENTITY FAIL] -- was discarded. Three
+    # real PAYTM PAT failures sat behind a green 4/4 gate as a result.
+    identity_ok = not _cap.identity_failures
+    print(f"\n  Identity failures: {len(_cap.identity_failures)}")
+    for m in _cap.identity_failures:
+        print(f"    {m}")
+    print(f"  [{'PASS' if identity_ok else 'FAIL'}] all financial identities hold")
+
     records_ok = len(records) > 0
-    overall = fs_ok and records_ok and revenue_ok
+    overall = fs_ok and records_ok and revenue_ok and identity_ok
     print(f"\n  OVERALL: {'✅ PASS' if overall else '❌ FAIL'}")
     return overall
 
