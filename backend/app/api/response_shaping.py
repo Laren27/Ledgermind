@@ -92,5 +92,55 @@ def role_filtered_response(response: dict, role: str) -> dict:
         # reported under a model that never served a single call, because
         # --model was only ever a label and nothing recorded the truth.
         "llm_model": response.get("llm_model"),
+        # WHICH RERANKER SCORED THE CITATIONS. Admin-tier, same reasoning as
+        # llm_provider: an operational fact that must be visible SOMEWHERE
+        # because it changes what the numbers beside it MEAN.
+        #
+        # citations carry reranker_score with no unit. Cohere returns 0-1;
+        # the local ONNX cross-encoder returns raw logits (~-12 to +2). The
+        # confidence thresholds are split accordingly (COHERE 0.5/0.15,
+        # LOCAL -4.5/-7.5, see _score_confidence) so the TIER is correct on
+        # either backend -- but the SCORE was being handed to the reader with
+        # nothing saying which scale it was on.
+        #
+        # This is not hypothetical. Cohere is primary with local ONNX as an
+        # automatic fallback on API failure, and on 2026-08-02 that fallback
+        # fired mid-session from WSL2 network flap (raw socket connects to
+        # api.cohere.com succeeded 5 of 8 attempts, failing at random). The
+        # same query returned tier=medium on one run and tier=high on another
+        # purely because a different backend scored it. Reading -3.39 as a
+        # Cohere score rather than an ONNX logit then produced a wrong
+        # conclusion about threshold calibration that reached this repo's
+        # documentation before it was caught. scripts/cohere_score_dump.py has
+        # a hard abort for exactly this mistake; the query response had
+        # nothing.
+        #
+        # Derived from retrieved_chunks rather than recomputed: retriever.py
+        # tags every chunk at the point of scoring, and a second derivation
+        # here would be one more copy of a fact that already exists -- the
+        # failure class behind the three metric registries and the two
+        # independent formula copies.
+        #
+        # Reports what is actually TAGGED, and None when nothing is. That is
+        # deliberately NOT _score_confidence's `.get("reranker_backend",
+        # "local")` default: there, "local" is a safety choice (assume the
+        # stricter scale when unsure). Here it would be an observation, and
+        # reporting an assumption as an observation is how this went wrong in
+        # the first place. None on a blocked or pure-quantitative query is
+        # correct -- nothing was reranked.
+        "reranker_backend": _reranker_backend(response),
     })
     return base
+
+
+def _reranker_backend(response: dict):
+    """Backend that scored the citations, or None if nothing was reranked.
+
+    One rerank call per query, so one backend for the whole set -- this is a
+    response-level fact, not a per-citation one, and attaching it to each
+    citation would imply a variability that does not exist.
+    """
+    chunks = response.get("retrieved_chunks") or []
+    if not chunks:
+        return None
+    return chunks[0].get("reranker_backend")
