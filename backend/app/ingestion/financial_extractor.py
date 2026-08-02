@@ -563,7 +563,10 @@ def extract_all_financial_records(
 
     all_records: list[FinancialRecord] = []
     processed_pages: set[int] = set()
-    seen_keys = set()
+    # key -> (retained value, page it came from). Was a bare set; the value is
+    # kept so a DESTRUCTIVE collision can be told from a benign one. See the
+    # discard block below.
+    seen_keys: dict[tuple, tuple[float, int]] = {}
 
     for block in financial_blocks:
         page_number = block.page_number
@@ -599,8 +602,36 @@ def extract_all_financial_records(
         for r in records:
             key = (r.financial_type, r.fiscal_year, r.quarter, r.metric)
             if key not in seen_keys:
-                seen_keys.add(key)
+                seen_keys[key] = (r.value, page_number)
                 all_records.append(r)
+            else:
+                kept_value, kept_page = seen_keys[key]
+                # Same value = a genuine repeat of the same line across pages
+                # (ZOMATO restates whole statements; first-wins is correct and
+                # this fires constantly). Say nothing.
+                #
+                # DIFFERENT value = two DISTINCT source rows resolved to one
+                # canonical metric, and first-wins silently threw one away.
+                # This is a real defect every time, and it was invisible until
+                # 2026-08-02: PAYTM's 'Deferred tax expense/ (credit)' resolved
+                # to tax_expense on a coverage tie, won the slot by appearing
+                # first on page 8, and the genuine 'Total Tax expense' row was
+                # discarded here without a trace -- leaving consolidated
+                # tax_expense holding the deferred figure (FY26 annual 10 vs
+                # the true 30) and three standing PAT identity failures.
+                #
+                # NOT changed to last-wins or a merge: which row is correct is
+                # a per-document judgement, and the fix for a collision is
+                # normally an alias in registry.py so the two rows stop
+                # colliding at all. This makes the collision VISIBLE; it does
+                # not guess. The log names the canonical metric, not the raw
+                # label -- FinancialRecord does not carry the source text.
+                if r.value != kept_value:
+                    logger.warning(
+                        "  [DISCARDED ROW] %s — kept %s (page %s), dropped %s (page %s). "
+                        "Two source rows resolved to the same metric; check registry.py aliases.",
+                        key, kept_value, kept_page, r.value, page_number,
+                    )
 
     # Force mathematical compliance before validation
     all_records = _compute_derived_totals(all_records)
