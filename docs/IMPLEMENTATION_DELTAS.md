@@ -89,8 +89,29 @@ raw JSON under `docs/measurements/`). The prior belief that Cohere scores were
 "flat" was an artefact of only ever inspecting the post-dedup top-5 of
 well-retrieving queries. Across full candidate sets the separation is two orders
 of magnitude with ZERO overlap: good queries top out at 0.329–0.999, poor ones
-at 0.003–0.032. `COHERE_HIGH=0.5` is correct and should not be moved — no poor
-query cleared it, the highest reaching 0.0323, fifteen times below. A single
+at 0.003–0.032. `COHERE_HIGH=0.5` was read as correct and unmovable — no poor
+query cleared it, the highest reaching 0.0323, fifteen times below.
+
+**That margin is SUPERSEDED as of 2026-08-02.** A second measurement (17
+queries, `docs/measurements/cohere_band_stress_2026-08-02.json`) found a poor
+query at **0.4834** — "How does Eternal's board compose its audit committee?",
+a topic this corpus does not contain. `poor` now spans 0.0012–0.4834. The
+margin under `COHERE_HIGH=0.5` is therefore **0.017, not fifteenfold**.
+
+The threshold is not moved on this: one query at 0.4834 against nine below
+0.03 is an outlier, not a distribution, and raising `COHERE_HIGH` would change
+confidence on every semantic query in the corpus. But the recorded confidence
+in that threshold was overstated and the number should not be quoted as
+fifteenfold again. A third measurement targeting the 0.03–0.5 region
+specifically is the way to settle it.
+
+Also measured and DISCONFIRMED in the same run: the hypothesis that cross-style
+framing ("does X align with its financial exposure to Y") lifts scores by
+matching the financial-statement frame rather than the subject. Seven such
+queries on absent topics scored 0.0002–0.0725, and the three controlled pairs —
+same topic, bare versus cross-framed — went the WRONG way (audit committee
+0.4834 bare against 0.0725 cross-framed). Framing is not the separating
+variable. Recorded so it is not re-attempted. A single
 0.584 cover-letter datapoint had suggested the opposite; ten points overruled
 it. Note the median candidate on a GOOD query still scores ~0.006–0.08: Cohere
 pushes nearly everything to the floor and lifts only real matches, which is what
@@ -586,42 +607,39 @@ attempts (finance costs, depreciation, Paytm exceptional items) each found the
 opposite, because the financial statements are themselves retrievable text and
 Cohere ranks them 0.99 for a metric-named query.
 
-*Quadrant 4 (both halves empty) is blocked on threshold calibration, not on
-question authorship.* The scorer gap this paragraph originally described is
-CLOSED — `expected_tier_low` was added 2026-08-02 as an inversion rather than a
-skip, so a genuine no-answer can now be asserted. The blocker moved.
+*Quadrant 4 (both halves empty) — blocker UNKNOWN. An earlier claim here is
+RETRACTED.*
 
-Four cross-routed candidates were measured that day; all four returned
-tier=**medium**. The cleanest is *"Does Eternal's disclosed approach to
-franchisee dispute resolution align with its financial exposure to those
-disputes?"* — a topic the corpus does not contain in any form, narrative or line
-item. Three identical gemini-3.1-flash-lite runs: `path=cross`, `dsl=None`
-(Stage 0c fired), and a response stating the documents contain neither the
-qualitative approach nor the financial exposure, transcribing no figure. By
-content it is exactly Quadrant 4. It scored `confidence_score=0.3227`, citation
-reranker scores **0.3211 / 0.1734**.
+Written and pushed earlier on 2026-08-02: that Quadrant 4 was blocked on
+`COHERE_MEDIUM=0.15`, on the evidence of a genuine no-answer cross query
+returning citation scores of 0.3211 / 0.1734 and tier=medium. **That was
+wrong.** Those were not Cohere scores. The Cohere API had failed on that
+request and the local ONNX cross-encoder served it instead — the numbers were
+raw logits, on which 0.32 is unremarkable. The same query scored 0.0002
+through `cohere_score_dump.py`, which aborts on a non-Cohere backend and was
+therefore right while the API reading was wrong.
 
-`COHERE_MEDIUM=0.15`, so those clear the medium floor twofold. This is the first
-real data in the **0.15–0.5 band recorded as unstressed** in §13 above. That
-calibration was good-versus-poor: poor topped out at 0.032, good ran 0.329–0.999,
-and nothing landed between. This query is a third class the calibration lacked —
-right company, right document, plausible framing, topic genuinely absent — where
-retrieval returns the least-irrelevant available chunk, an order of magnitude
-above true noise and below real evidence.
+Nothing about `COHERE_MEDIUM` is established by that evidence. The real
+blocker is open: Quadrant 4 requires empty `retrieved_chunks`, which arises
+from `semantic_engine`'s hard refusal and not from chunks that were retrieved
+and turned out useless. Whether a cross-routed genuine no-answer can reach
+tier=low is unmeasured on EITHER scale. Re-measuring requires pinning the
+backend, which is now possible: `reranker_backend` is exposed at admin tier
+(section A).
 
-Quadrant 4 requires empty `retrieved_chunks`, which arises from
-`semantic_engine`'s hard refusal, not from chunks that were retrieved and turned
-out useless. So no question reaches it while the medium floor sits at 0.15.
+Four cross-routed candidates were authored that day and all returned
+tier=medium, so the question-authoring difficulty is real. The cleanest is
+*"Does Eternal's disclosed approach to franchisee dispute resolution align
+with its financial exposure to those disputes?"* — three runs, `path=cross`,
+`dsl=None`, and a response stating the documents contain neither half,
+transcribing no figure. By content it is Quadrant 4. Reuse it when
+re-measuring.
 
-**Do not move `COHERE_MEDIUM` on this datapoint.** One point is what produced the
-wrong prediction from the 0.584 cover-letter anomaly that ten later measurements
-overruled, and the current baseline was established at this value. The next step
-is a deliberate stressing of the 0.15–0.5 band: reuse
-`scripts/cohere_score_dump.py` against roughly ten corpus-silent-but-plausible
-queries (franchisee disputes, gold hedging, data-privacy policy and
-audit-committee composition are four verified anchor-free candidates), zero
-Gemini calls, same method as the original calibration. If they cluster near 0.3,
-the floor has an evidence-backed value to move to.
+WHY THIS WAS NOT CAUGHT: the query response exposed `reranker_score` with no
+indication of which backend produced it, and §13 of this file states plainly
+that the two scales are incompatible. The check was one field away and was not
+made. That gap is now closed, but the lesson is the reason this entry is
+written out rather than quietly deleted.
 
 Still true as of 2026-07-30, though the cross branch has since been rewritten
 (see Trap 7 in section C) and verified by hand across repeated runs. Golden
@@ -801,3 +819,30 @@ than the docstring implies, which makes authoring anchor-free queries harder tha
 expected. **Trigger:** if word-boundary matching is ever introduced it would
 NARROW the set and could unguard queries currently caught, so it must be measured
 against the full golden set first, exactly as the Stage 0c verification was.
+
+### §9 / §13 — The reranker backend switches silently under network flap
+Cohere is the primary reranker with the local ONNX cross-encoder as an
+automatic fallback on API failure. The fallback is correct and necessary — it
+is what keeps the 512MB tier serving when the API is unreachable. The latent
+risk is that it changes the SCALE of every score in the response, and until
+2026-08-02 nothing in the response said so.
+
+Measured that day: raw socket connects from the backend container to
+`api.cohere.com:443` succeeded 5 of 8 attempts, failing at random with
+`TimeoutError` and `[Errno 111] Connection refused`; `api.cohere.ai:443`
+behaved the same way, so it is not a hostname issue. This is the WSL2 network
+flakiness family, same as the DNS work recorded elsewhere. One fallback
+appeared in the whole log, so it is rare — but rare and silent is the
+dangerous combination.
+
+Consequence observed: the same query returned tier=medium on one run and
+tier=high on another, purely because a different backend scored it. Both tiers
+were CORRECT for their scale — `_score_confidence` selects thresholds by
+backend and did its job. The defect was that the reader could not tell.
+
+Closed by exposing `reranker_backend` at admin tier (section A). **Standing
+rule: a `reranker_score` read from the API is meaningless without the backend
+read from the same response.** Do not compare scores across runs without
+checking it, and do not compare API scores against
+`cohere_score_dump.py` output without checking it — that script has a hard
+abort for non-Cohere backends and the API does not.
