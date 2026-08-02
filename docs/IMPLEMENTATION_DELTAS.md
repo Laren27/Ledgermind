@@ -574,6 +574,48 @@ row in the live table has ever traversed it. Its correctness is currently an
 argument from reading the SQL, not a measurement. Treat any first restatement as
 an unproven code path and measure it, do not assume it.
 
+SUPERSEDED SAME DAY, in the row counts only. The 1377 = 1377 set equality above
+was true when measured and is now stale: the `(I)` -> `(1)` OCR fix in
+`pdf_parser._ocr_one_to_digit` moved the produced-set to **1392** against 1377
+live is_latest rows. Both reasoning grounds survive intact -- ground 2 never
+depended on a row count, and ground 1's conclusion (live is a SUBSET of
+produced, so no purge silently removed a still-producible row) is unchanged and
+in fact reinforced: produced now EXCEEDS live by exactly the 15 recovered
+values. What is no longer true is the stronger claim of set EQUALITY, and with
+it the statement that a re-ingest "reproduces exactly the current 1377 rows".
+
+Per-document: ETERNAL Q4FY26 442 -> 449, TITAN 269 -> 269, PAYTM 424 -> 432,
+ZOMATO 242 -> 242. TITAN and ZOMATO are unmoved, which is the expected shape --
+neither prints the wrapped-`I` form. The 15 are printed figures that
+`clean_financial_number` previously converted to None after the column had
+already been claimed.
+
+CONSEQUENCE, recorded as an OPEN obligation and deliberately not acted on.
+`financials` now holds 1377 rows against an extractor that produces 1392, so the
+database is stale by 15 values, PAYTM FY25 annual consolidated `deferred_tax`
+and `adjustment_of_tax_relating_to_earlier_years` among them. Closing that gap
+means `backfill_financials` (Stage 7 only, doc_ids READ from the documents
+table), which is a §1 operation requiring explicit approval and has NOT been
+run. Until it is:
+- the DB-side tax matrix earlier in this entry under-reports evaluability by one
+  group -- extraction now makes PAYTM FY25 annual consolidated fully evaluable
+  and it reconciles exactly (20 + (-1) + (-1) = 18), but the table does not yet
+  hold the components;
+- a `purge_orphaned_metrics` dry run remains SAFE to run and will still report
+  zero orphans (live is still a subset of produced); it simply will no longer
+  demonstrate equality.
+
+MEASURED, not assumed: `regression_check` 2026-08-03, 4/4 PASS, zero identity
+failures, zero discarded rows, and identities NOT EVALUATED 10 / 8 / 7 / 4
+(ETERNAL Q4FY26 / TITAN / PAYTM / ZOMATO) = 29, down from 30. The single group
+that moved is the PAYTM one named above. Every other NOT EVALUATED verdict in
+the corpus is still an absent `adjustment_of_tax_relating_to_earlier_years`,
+which three of the four documents genuinely do not print -- TITAN prints only
+Current/Deferred/Total, ZOMATO the same, and ETERNAL Q4FY26 prints no total-tax
+row at all. Only PAYTM prints the adjustment line. The identity was NOT
+reshaped; that remains an open proposal, and reshaping it now would paper over
+extraction gaps rather than record them.
+
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
 naming because none of them were caught by any existing check.
