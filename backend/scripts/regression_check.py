@@ -119,9 +119,10 @@ ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
 
 class _ExtractorCapture(logging.Handler):
     """
-    Collects two kinds of extractor WARNING for one document:
-    _compute_derived_totals' overwrite messages (printed, NOT asserted) and
-    validate_financial_identities' [IDENTITY FAIL] lines (ASSERTED).
+    Collects three kinds of extractor WARNING for one document:
+    _compute_derived_totals' overwrite messages (printed, NOT asserted),
+    validate_financial_identities' [IDENTITY FAIL] lines (ASSERTED), and its
+    [IDENTITY NOT EVALUATED] lines (printed, NOT asserted).
 
     These are NOT asserted on. A count-pinned gate would fail on
     improvements as readily as regressions — this session shrank one
@@ -139,6 +140,13 @@ class _ExtractorCapture(logging.Handler):
         super().__init__(level=logging.WARNING)
         self.messages: list[str] = []
         self.identity_failures: list[str] = []
+        # Third bucket, added 2026-08-03 alongside the tax composition check.
+        # An identity whose components are not all present is neither a pass
+        # nor a failure, and collapsing it into either one loses the only
+        # information it carries: WHICH component the extractor did not
+        # produce for WHICH period. Reported, never asserted -- see the print
+        # block in run_one().
+        self.not_evaluated: list[str] = []
 
     def emit(self, record):
         msg = record.getMessage()
@@ -146,6 +154,8 @@ class _ExtractorCapture(logging.Handler):
             self.messages.append(msg)
         elif "[IDENTITY FAIL]" in msg:
             self.identity_failures.append(msg.strip())
+        elif "[IDENTITY NOT EVALUATED]" in msg:
+            self.not_evaluated.append(msg.strip())
 
 
 def run_one(doc: dict) -> bool:
@@ -242,6 +252,21 @@ def run_one(doc: dict) -> bool:
     for m in _cap.identity_failures:
         print(f"    {m}")
     print(f"  [{'PASS' if identity_ok else 'FAIL'}] all financial identities hold")
+
+    # NOT ASSERTED, and deliberately absent from `overall` below. These are
+    # identities whose components the extractor did not all produce for a
+    # given period. That is a coverage gap, not a contradiction: the numbers
+    # present do not disagree with each other, there are simply not enough of
+    # them to check. Failing the gate on it would make an extraction gap
+    # indistinguishable from a wrong number, and pinning the count would go
+    # red the day extraction IMPROVES and a component starts being produced.
+    #
+    # Printed after the PASS/FAIL lines for the same reason the derivation
+    # overwrites are: the failure mode being addressed is a real signal
+    # scrolling past unread in a 400-line log.
+    print(f"\n  Identities NOT EVALUATED (missing components): {len(_cap.not_evaluated)}")
+    for m in _cap.not_evaluated:
+        print(f"    {m}")
 
     records_ok = len(records) > 0
     overall = fs_ok and records_ok and revenue_ok and identity_ok
