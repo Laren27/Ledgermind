@@ -83,6 +83,23 @@ as-is storage path, not errors.
 
 ---
 
+## Applying an extraction fix to existing documents
+
+An extraction change alters what the extractor PRODUCES; the database still
+holds what the previous version wrote. Do NOT re-run `pipeline.py` for this —
+stages 1-6 (chunk, embed, Qdrant) produce byte-identical output for an
+unchanged document, and rewriting Qdrant payloads is how the PAYTM FY99
+metadata drift happened.
+
+    docker compose exec -T backend python -m scripts.backfill_financials --company PAYTM
+    docker compose exec -T backend python -m scripts.backfill_financials --company PAYTM --apply
+
+Stage 7 only. doc_ids are read from the documents table, never minted. Dry-run
+by default. Then re-run `purge_orphaned_metrics` (dry) and verify every
+candidate has a replacement at identical values before `--apply`.
+
+---
+
 ## WSL2 DNS
 
 The WSL2 DNS proxy (`nameserver 10.255.255.254`) intermittently fails to answer,
