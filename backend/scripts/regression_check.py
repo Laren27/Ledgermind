@@ -58,6 +58,22 @@ DOCUMENTS = [
         "filing_date": "2026-04-28",
         "min_fs_pages": 5, "max_fs_pages": 30,
         "expect_revenue_min": 10000, "expect_revenue_max": 70000,  # covers standalone (10899) + consolidated (54364)
+        # EXACT-VALUE assertion, unlike the revenue BANDS above. Added
+        # 2026-08-03. Until now this figure survived in a commit message and
+        # nowhere executable, which is the same as not being verified at all.
+        #
+        # A band would not earn its place here: total_income is DERIVED, not
+        # read off the page -- _compute_derived_totals recomputes it as
+        # revenue + other_income (+ other_operating_revenue) and OVERWRITES
+        # whatever OCR produced. What needs pinning is therefore the exact
+        # output of that derivation chain, and 54364 + 1396 = 55760 confirms
+        # the components it was built from. Any silent change to the chain
+        # moves this by an amount a range would absorb.
+        #
+        # Consolidated only: standalone FY26 is 12702 (10899 + 1803) and is a
+        # different derivation instance, not a second reading of this one.
+        "expect_total_income": 55760.0,
+        "expect_total_income_type": "consolidated",
     },
     {
         "filename": "TITAN_Q1FY26_PRESS_RELEASE_AND_FINANCIAL_RESULTS.pdf",
@@ -233,6 +249,34 @@ def run_one(doc: dict) -> bool:
     print(f"  [{'PASS' if revenue_ok else 'FAIL'}] annual revenue in expected range "
           f"({doc['expect_revenue_min']}-{doc['expect_revenue_max']} cr)")
 
+    # Exact-value assertion on the derived total_income, for documents that
+    # declare one. Scoped to a single financial_type because standalone and
+    # consolidated are separate derivation instances, not two readings of the
+    # same number. Compared with a tolerance of 0.01 rather than `==` only
+    # because the value is a float that has been through round(); the intent
+    # is exact equality, not a band.
+    total_income_ok = True
+    if "expect_total_income" in doc:
+        want = doc["expect_total_income"]
+        want_type = doc["expect_total_income_type"]
+        ti_records = [
+            r for r in records
+            if r.metric == "total_income" and r.fiscal_year == doc["fiscal_year"]
+            and r.quarter == target_quarter and r.financial_type == want_type
+        ]
+        if not ti_records:
+            total_income_ok = False
+            print(f"    total_income ({label}) | {want_type:13s} | "
+                  f"{'MISSING':>10} ✗ expected {want:.1f} cr")
+        else:
+            for r in ti_records:
+                hit = abs(r.value - want) < 0.01
+                total_income_ok = total_income_ok and hit
+                print(f"    total_income ({label}) | {r.financial_type:13s} | "
+                      f"{r.value:>10.1f} cr {'✓' if hit else f'✗ expected {want:.1f}'}")
+        print(f"  [{'PASS' if total_income_ok else 'FAIL'}] total_income exactly "
+              f"{want:.1f} cr ({want_type})")
+
     print(f"\n  Derivation overwrites: {len(_cap.messages)}")
     for m in _cap.messages:
         print(f"    {m}")
@@ -269,7 +313,7 @@ def run_one(doc: dict) -> bool:
         print(f"    {m}")
 
     records_ok = len(records) > 0
-    overall = fs_ok and records_ok and revenue_ok and identity_ok
+    overall = fs_ok and records_ok and revenue_ok and identity_ok and total_income_ok
     print(f"\n  OVERALL: {'✅ PASS' if overall else '❌ FAIL'}")
     return overall
 
