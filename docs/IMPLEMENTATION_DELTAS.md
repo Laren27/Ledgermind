@@ -440,6 +440,46 @@ payables`, and so on) or a component summing into a preserved total
 = `tax_expense`, verified arithmetically for all four periods). 464 -> 420,
 second run idempotent, every golden value unchanged.
 
+TAX COMPOSITION EVALUABILITY, measured 2026-08-03 against live `is_latest` rows.
+The premise that this identity "reconciles on every PAYTM period" is FALSE as a
+statement about the data: 2 of 10 period groups carry all four rows. The formula
+is not what is in question — both complete groups reconcile exactly (18+10+2=30,
+6+(-3)+2=5, diff 0.00) — what is missing is components, not agreement.
+
+Zero-coalescing those absences would have manufactured a FALSE FAILURE. FY25
+annual consolidated holds `current_tax` 20.00 against `tax_expense` 18.00 with
+`deferred_tax` ABSENT, which `.get(m, 0)` renders as an 11.11% identity breach
+when the true statement is that a component was never extracted. That is why
+`validate_financial_identities` check 4 asserts only on complete groups and
+routes the rest to `[IDENTITY NOT EVALUATED]` — the same third outcome
+`purge_orphaned_metrics` gives period groups no source document produces.
+
+```
+fy     q    type          current_tax deferred_tax  adjustment tax_expense  evaluable?
+--------------------------------------------------------------------------------------
+FY25   Q4   consolidated        1.00       2.00     ABSENT       3.00  NO   missing: adjustment_of_tax_relating_to_earlier_years
+FY25   Q4   standalone        ABSENT     ABSENT     ABSENT       0.00  NO   missing: current_tax, deferred_tax, adjustment_of_tax_relating_to_earlier_years
+FY25   —    consolidated       20.00     ABSENT     ABSENT      18.00  NO   missing: deferred_tax, adjustment_of_tax_relating_to_earlier_years
+FY25   —    standalone        ABSENT     ABSENT     ABSENT       0.00  NO   missing: current_tax, deferred_tax, adjustment_of_tax_relating_to_earlier_years
+FY26   Q3   consolidated        6.00      -3.00       2.00       5.00  YES  sum=5.00 vs 5.00 diff=0.00
+FY26   Q3   standalone        ABSENT     ABSENT     ABSENT       0.00  NO   missing: current_tax, deferred_tax, adjustment_of_tax_relating_to_earlier_years
+FY26   Q4   consolidated       -2.00      13.00     ABSENT      11.00  NO   missing: adjustment_of_tax_relating_to_earlier_years
+FY26   Q4   standalone        ABSENT     ABSENT     ABSENT       0.00  NO   missing: current_tax, deferred_tax, adjustment_of_tax_relating_to_earlier_years
+FY26   —    consolidated       18.00      10.00       2.00      30.00  YES  sum=30.00 vs 30.00 diff=0.00
+FY26   —    standalone        ABSENT     ABSENT     ABSENT       0.00  NO   missing: current_tax, deferred_tax, adjustment_of_tax_relating_to_earlier_years
+
+groups total: 10   fully evaluable: 2   not evaluable: 8
+```
+
+NOT RECONCILED with the "verified arithmetically for all four periods" claim
+directly above. That verification ran at purge time against the 464-row table;
+this measurement is against the 420-row post-purge state, and which four periods
+were checked then was not recorded. The two are therefore not directly
+comparable and the earlier claim is neither confirmed nor retracted here.
+Recorded as an open discrepancy — whether the purge removed component rows that
+would otherwise make more groups evaluable is unmeasured, and worth one dry run
+to settle before the next extraction change.
+
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
 naming because none of them were caught by any existing check.
