@@ -23,12 +23,14 @@ modules automatically benefits Path 3.
 """
 
 import logging
+import re
 from typing import Optional
 
 from app.engines.contradiction import detect_contradictions
 from app.engines.quant_engine import quant_engine_node
 from app.engines.semantic_engine import semantic_engine_node
 from app.engines.state import QueryState
+from app.metrics.registry import metric_anchor_phrases
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,45 @@ def resolve_parent_entity(entity: Optional[str]) -> Optional[str]:
     if entity is None:
         return None
     return SUBSIDIARY_TO_PARENT.get(entity, entity)
+
+
+
+# ---------------------------------------------------------------------------
+# Stage 0c — no-metric-anchor guard
+# ---------------------------------------------------------------------------
+# GeminiDSLResponse.metric is a REQUIRED field. A cross-routed query that
+# names no metric therefore cannot produce "no metric" -- the model invents
+# one, it compiles, it executes, and it is appended with sql_verified=True.
+# See registry.metric_anchor_phrases() for the measured case (PQ012).
+#
+# Sibling of quant_engine's Stage 0 / Stage 0b, same discipline: deterministic
+# regex over the RAW query, before any LLM call, because the raw query is the
+# only place the user's actual intent still exists.
+#
+# SCOPED TO THE CROSS PATH BY PLACEMENT, NOT BY A CONDITIONAL. On path=
+# quantitative the router has already asserted the user wants a number, and
+# refusing there would risk legitimate queries phrased outside registry
+# vocabulary. Here the quant half is an ADJUNCT to a qualitative answer, so
+# suppressing it degrades to qualitative-only -- a case _reconcile_cross
+# already handles as Quadrant 3. Living in this module means Path 2 is
+# untouched by construction rather than by a check someone could later move.
+#
+# Word boundaries are (?<!\w)...(?!\w), NOT \b: many phrases end or begin
+# with non-word characters ("d&a", "impairment of loans/investment in
+# associates") where \b asserts the opposite of what is wanted.
+
+_ANCHOR_RE = re.compile(
+    "|".join(
+        rf"(?<!\w){re.escape(p)}(?!\w)"
+        for p in sorted(metric_anchor_phrases(), key=len, reverse=True)
+    ),
+    re.IGNORECASE,
+)
+
+
+def _query_lacks_metric_anchor(query: str) -> bool:
+    """True if the raw query names no known metric in any vocabulary."""
+    return not _ANCHOR_RE.search(query or "")
 
 
 # ---------------------------------------------------------------------------
@@ -112,11 +153,24 @@ def cross_engine_node(state: QueryState) -> QueryState:
     # quant_engine_node already handles "could not interpret" gracefully via
     # its own error path — we treat that as "no quantitative side available"
     # rather than a hard failure for the whole cross-examination.
-    quant_state = dict(state)
-    quant_state["company"] = resolved_entity
-    quant_result = quant_engine_node(QueryState(**quant_state))
-
-    quant_succeeded = quant_result.get("error") is None and quant_result.get("sql_verified")
+    # Stage 0c: no metric named => nothing for the quant half to verify.
+    # quant_result stays {} so the dsl_object copy below yields None, which is
+    # what tells _reconcile_cross this query never asked for a figure (say
+    # nothing) rather than that a metric was identified but unverifiable
+    # (disclose the gap). Emitting CROSS_NO_VERIFIED_FIGURE_NOTE here would be
+    # false: no metric was identified.
+    if _query_lacks_metric_anchor(state["query"]):
+        logger.info(
+            "CrossEngine Stage 0c: query names no known metric — skipping "
+            "quant half, qualitative-only result"
+        )
+        quant_result: dict = {}
+        quant_succeeded = False
+    else:
+        quant_state = dict(state)
+        quant_state["company"] = resolved_entity
+        quant_result = quant_engine_node(QueryState(**quant_state))
+        quant_succeeded = quant_result.get("error") is None and quant_result.get("sql_verified")
 
     # Copied UNCONDITIONALLY. dsl_object presence is how response_generator's
     # cross reconciliation tells "a metric was identified but produced no
