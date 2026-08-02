@@ -1,0 +1,5893 @@
+{
+  "meta": {
+    "run_at": "2026-08-02T20:40:28",
+    "tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "retrieval_top_k": 20,
+    "rerank_top_k": 5,
+    "dedup_threshold": 0.7,
+    "cohere_model": "rerank-english-v3.0",
+    "note": "fiscal_year=None on every query -- widest honest candidate pool."
+  },
+  "queries": [
+    {
+      "company": "TITAN",
+      "query": "How does Titan's board evaluate the performance of its independent directors?",
+      "expectation": "absent",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.2195,
+        "top5": 0.0005,
+        "median": 0.0001,
+        "min": 0.0,
+        "stdev": 0.0671,
+        "top1_minus_top5": 0.219,
+        "top1_minus_median": 0.2194
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.2195,
+        "top5": 0.0,
+        "median": 0.0002,
+        "min": 0.0,
+        "stdev": 0.0981,
+        "top1_minus_top5": 0.2195,
+        "top1_minus_median": 0.2193
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 2,
+          "page_a": 11,
+          "page_b": 11,
+          "score_a": 0.2195,
+          "score_b": 0.2195,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 3,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.2195,
+          "score_b": 0.0202,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 4,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.2195,
+          "score_b": 0.0202,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 5,
+          "page_a": 11,
+          "page_b": 12,
+          "score_a": 0.2195,
+          "score_b": 0.0005,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 6,
+          "page_a": 11,
+          "page_b": 12,
+          "score_a": 0.2195,
+          "score_b": 0.0005,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 3,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.2195,
+          "score_b": 0.0202,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 4,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.2195,
+          "score_b": 0.0202,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 5,
+          "page_a": 11,
+          "page_b": 12,
+          "score_a": 0.2195,
+          "score_b": 0.0005,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 6,
+          "page_a": 11,
+          "page_b": 12,
+          "score_a": 0.2195,
+          "score_b": 0.0005,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 4,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0202,
+          "score_b": 0.0202,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 5,
+          "page_a": 5,
+          "page_b": 12,
+          "score_a": 0.0202,
+          "score_b": 0.0005,
+          "overlap": 0.8916,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 6,
+          "page_a": 5,
+          "page_b": 12,
+          "score_a": 0.0202,
+          "score_b": 0.0005,
+          "overlap": 0.8916,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 11,
+          "page_a": 5,
+          "page_b": 6,
+          "score_a": 0.0202,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 12,
+          "page_a": 5,
+          "page_b": 6,
+          "score_a": 0.0202,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 5,
+          "page_a": 5,
+          "page_b": 12,
+          "score_a": 0.0202,
+          "score_b": 0.0005,
+          "overlap": 0.8916,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 6,
+          "page_a": 5,
+          "page_b": 12,
+          "score_a": 0.0202,
+          "score_b": 0.0005,
+          "overlap": 0.8916,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 11,
+          "page_a": 5,
+          "page_b": 6,
+          "score_a": 0.0202,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 12,
+          "page_a": 5,
+          "page_b": 6,
+          "score_a": 0.0202,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 6,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.0005,
+          "score_b": 0.0005,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 8,
+          "page_a": 1,
+          "page_b": 1,
+          "score_a": 0.0005,
+          "score_b": 0.0005,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 10,
+          "page_a": 18,
+          "page_b": 18,
+          "score_a": 0.0002,
+          "score_b": 0.0002,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 14,
+          "rank_b": 15,
+          "page_a": 2,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 18,
+          "page_a": 13,
+          "page_b": 13,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 3,
+          "page_b": 3,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.2195,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.75,
+          "survives_dedup_topk": true,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 2,
+          "score": 0.2195,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.53333,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 3,
+          "score": 0.0202,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.75,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 4,
+          "score": 0.0202,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.53333,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 5,
+          "score": 0.0005,
+          "page": 12,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited 6. Based on our review conducted and procedures performed as stated in paragraph 3 above, nothing has come to"
+        },
+        {
+          "rank": 6,
+          "score": 0.0005,
+          "page": 12,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited 6. Based on our review conducted and procedures performed as stated in paragraph 3 above, nothing has come to"
+        },
+        {
+          "rank": 7,
+          "score": 0.0005,
+          "page": 1,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": true,
+          "preview": "\u2666 TIT/\\.N COMP/\\NY SEC 58 I 2025-26 7th August 2025 BSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers Exchange Plaza, C-1, Block G Dalal Street Bandra "
+        },
+        {
+          "rank": 8,
+          "score": 0.0005,
+          "page": 1,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07692,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\.N COMP/\\NY SEC 58 I 2025-26 7th August 2025 BSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers Exchange Plaza, C-1, Block G Dalal Street Bandra "
+        },
+        {
+          "rank": 9,
+          "score": 0.0002,
+          "page": 18,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.27778,
+          "survives_dedup_topk": true,
+          "preview": "TITAN COMPANY LIMITED CJN : L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOSUR 635 126. Notes (Contd.): 5 The Board had approved the Performance Based Stock Unit Scheme (PSU"
+        },
+        {
+          "rank": 10,
+          "score": 0.0002,
+          "page": 18,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.26786,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CJN : L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOSUR 635 126. Notes (Contd.): 5 The Board had approved the Performance Based Stock Unit Scheme (PSU"
+        },
+        {
+          "rank": 11,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": true,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited contains any material misstatement. For B S R & Co. LLP Chartered Accountants Firm's Registration No.:101248W"
+        },
+        {
+          "rank": 12,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07692,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited contains any material misstatement. For B S R & Co. LLP Chartered Accountants Firm's Registration No.:101248W"
+        },
+        {
+          "rank": 13,
+          "score": 0.0,
+          "page": 16,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07143,
+          "survives_dedup_topk": true,
+          "preview": "TITAN COMPANY LIMITED CJN: L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOS UR 635 126. ADDITIONAL DISCLOSURES AS PER REGULATION 52(4) OF SEBI (LISTING OBLIGATIONS AND DISCL"
+        },
+        {
+          "rank": 14,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2381,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMPANY Titan Company Delivers 21% Revenue Growth in Q1FY26 Watches business records one of its best-ever quarters Chennai, 7th August 2025 Titan Company Limited ('Titan')"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.20952,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMPANY Titan Company Delivers 21% Revenue Growth in Q1FY26 Watches business records one of its best-ever quarters Chennai, 7th August 2025 Titan Company Limited ('Titan')"
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "lopment Corporation (TIDCO), commenced its operations in 1987 under the name Titan Watches Limited. In 1994, Titan diversified into Jewellery (Tanishq) and subsequently into EyeCar"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 13,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.15882,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited Annexure I List of entities included in unaudited consolidated financial results. Sr. No Name of component Re"
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 13,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.15341,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited Annexure I List of entities included in unaudited consolidated financial results. Sr. No Name of component Re"
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TITAN COMP/\\NY Watches: Business had an exceptional quarter recording a growth of 24% over Q1FY25 achieving a Total Income of \"1,273 crores EBIT came in at \"287 crores clocking 2"
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TITAN COMP/\\NY Watches: Business had an exceptional quarter recording a growth of 24% over Q1FY25 achieving a Total Income of \"1,273 crores EBIT came in at \"287 crores clocking 2"
+        }
+      ]
+    },
+    {
+      "company": "TITAN",
+      "query": "What is Titan's policy on related party transaction approvals?",
+      "expectation": "absent",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.0004,
+        "top5": 0.0003,
+        "median": 0.0001,
+        "min": 0.0,
+        "stdev": 0.0002,
+        "top1_minus_top5": 0.0001,
+        "top1_minus_median": 0.0003
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.0004,
+        "top5": 0.0001,
+        "median": 0.0003,
+        "min": 0.0001,
+        "stdev": 0.0001,
+        "top1_minus_top5": 0.0003,
+        "top1_minus_median": 0.0001
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 2,
+          "page_a": 1,
+          "page_b": 1,
+          "score_a": 0.0004,
+          "score_b": 0.0004,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 7,
+          "page_a": 1,
+          "page_b": 4,
+          "score_a": 0.0004,
+          "score_b": 0.0002,
+          "overlap": 0.5281,
+          "suppressed": false
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 8,
+          "page_a": 1,
+          "page_b": 4,
+          "score_a": 0.0004,
+          "score_b": 0.0002,
+          "overlap": 0.5281,
+          "suppressed": false
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 7,
+          "page_a": 1,
+          "page_b": 4,
+          "score_a": 0.0004,
+          "score_b": 0.0002,
+          "overlap": 0.5281,
+          "suppressed": false
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 8,
+          "page_a": 1,
+          "page_b": 4,
+          "score_a": 0.0004,
+          "score_b": 0.0002,
+          "overlap": 0.5281,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 4,
+          "page_a": 18,
+          "page_b": 18,
+          "score_a": 0.0004,
+          "score_b": 0.0004,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 6,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0003,
+          "score_b": 0.0003,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 19,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0003,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 20,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0003,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 19,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0003,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 20,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0003,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 8,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0002,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 9,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0001,
+          "overlap": 0.7753,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 10,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0001,
+          "overlap": 0.7753,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 11,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0001,
+          "overlap": 0.5422,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 12,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0001,
+          "overlap": 0.5422,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 9,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0001,
+          "overlap": 0.7753,
+          "suppressed": true
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 10,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0001,
+          "overlap": 0.7753,
+          "suppressed": true
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 11,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0001,
+          "overlap": 0.5422,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 12,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0002,
+          "score_b": 0.0001,
+          "overlap": 0.5422,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 10,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 11,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 12,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 11,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 12,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 13,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5783,
+          "suppressed": false
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 14,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5783,
+          "suppressed": false
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 13,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5783,
+          "suppressed": false
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 14,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5783,
+          "suppressed": false
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 14,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 15,
+          "rank_b": 16,
+          "page_a": 13,
+          "page_b": 13,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 18,
+          "page_a": 11,
+          "page_b": 11,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 19,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 20,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 19,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 20,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.0004,
+          "page": 1,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.57692,
+          "survives_dedup_topk": true,
+          "preview": "\u2666 TIT/\\.N COMP/\\NY SEC 58 I 2025-26 7th August 2025 BSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers Exchange Plaza, C-1, Block G Dalal Street Bandra "
+        },
+        {
+          "rank": 2,
+          "score": 0.0004,
+          "page": 1,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.41667,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\.N COMP/\\NY SEC 58 I 2025-26 7th August 2025 BSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers Exchange Plaza, C-1, Block G Dalal Street Bandra "
+        },
+        {
+          "rank": 3,
+          "score": 0.0004,
+          "page": 18,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.21591,
+          "survives_dedup_topk": true,
+          "preview": "TITAN COMPANY LIMITED CJN : L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOSUR 635 126. Notes (Contd.): 5 The Board had approved the Performance Based Stock Unit Scheme (PSU"
+        },
+        {
+          "rank": 4,
+          "score": 0.0004,
+          "page": 18,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.21111,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CJN : L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOSUR 635 126. Notes (Contd.): 5 The Board had approved the Performance Based Stock Unit Scheme (PSU"
+        },
+        {
+          "rank": 5,
+          "score": 0.0003,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": true,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited contains any material misstatement. For B S R & Co. LLP Chartered Accountants Firm's Registration No.:101248W"
+        },
+        {
+          "rank": 6,
+          "score": 0.0003,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited contains any material misstatement. For B S R & Co. LLP Chartered Accountants Firm's Registration No.:101248W"
+        },
+        {
+          "rank": 7,
+          "score": 0.0002,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": true,
+          "preview": "nd Indian dress wear (Taneira) and thoughtfully designed Women Bags (IRTH). Titan is widely known for transforming the watch and jewellery industry in India and for shaping India's"
+        },
+        {
+          "rank": 8,
+          "score": 0.0002,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "nd Indian dress wear (Taneira) and thoughtfully designed Women Bags (IRTH). Titan is widely known for transforming the watch and jewellery industry in India and for shaping India's"
+        },
+        {
+          "rank": 9,
+          "score": 0.0001,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25758,
+          "survives_dedup_topk": false,
+          "preview": " Over the last three decades, Titan has expanded into underpenetrated markets and created lifestyle brands across different product categories including fragrances (SKINN), accesso"
+        },
+        {
+          "rank": 10,
+          "score": 0.0001,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.24286,
+          "survives_dedup_topk": false,
+          "preview": " Over the last three decades, Titan has expanded into underpenetrated markets and created lifestyle brands across different product categories including fragrances (SKINN), accesso"
+        },
+        {
+          "rank": 11,
+          "score": 0.0001,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": true,
+          "preview": "lopment Corporation (TIDCO), commenced its operations in 1987 under the name Titan Watches Limited. In 1994, Titan diversified into Jewellery (Tanishq) and subsequently into EyeCar"
+        },
+        {
+          "rank": 12,
+          "score": 0.0001,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": false,
+          "preview": "lopment Corporation (TIDCO), commenced its operations in 1987 under the name Titan Watches Limited. In 1994, Titan diversified into Jewellery (Tanishq) and subsequently into EyeCar"
+        },
+        {
+          "rank": 13,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.12698,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMP/\\NY Conference Call: The earnings conference call is scheduled on August 7, 2025, at 6:30 PM. The call details are available at https://www.titancompany.in/investors/"
+        },
+        {
+          "rank": 14,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1193,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMP/\\NY Conference Call: The earnings conference call is scheduled on August 7, 2025, at 6:30 PM. The call details are available at https://www.titancompany.in/investors/"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 13,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.54762,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited Annexure I List of entities included in unaudited consolidated financial results. Sr. No Name of component Re"
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 13,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.38333,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited Annexure I List of entities included in unaudited consolidated financial results. Sr. No Name of component Re"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.30263,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25556,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11765,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        }
+      ]
+    },
+    {
+      "company": "PAYTM",
+      "query": "What vigil mechanism does Paytm maintain for whistleblower complaints?",
+      "expectation": "absent",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.0,
+        "top5": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.0,
+        "top1_minus_top5": 0.0,
+        "top1_minus_median": 0.0
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.0,
+        "top5": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.0,
+        "top1_minus_top5": 0.0,
+        "top1_minus_median": 0.0
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 2,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.699,
+          "suppressed": false
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 3,
+          "page_a": 12,
+          "page_b": 21,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6852,
+          "suppressed": false
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 3,
+          "page_a": 12,
+          "page_b": 21,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.9612,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 10,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8689,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 14,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.614,
+          "suppressed": false
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 6,
+          "page_a": 14,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 11,
+          "page_a": 14,
+          "page_b": 14,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8519,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 12,
+          "page_a": 14,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8519,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 11,
+          "page_a": 2,
+          "page_b": 14,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8519,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 12,
+          "page_a": 2,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8519,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 8,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6271,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 9,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8197,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 13,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.55,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 14,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5614,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 9,
+          "page_a": 5,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5593,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 10,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6102,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 13,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7797,
+          "suppressed": true
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 14,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7544,
+          "suppressed": true
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 16,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.661,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 13,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.55,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 16,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5574,
+          "suppressed": false
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 14,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8421,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 14,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 14,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5614,
+          "suppressed": false
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 16,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8667,
+          "suppressed": true
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 19,
+          "page_a": 14,
+          "page_b": 14,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8795,
+          "suppressed": true
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 20,
+          "page_a": 14,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8313,
+          "suppressed": true
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 14,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6988,
+          "suppressed": false
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.0,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.54762,
+          "survives_dedup_topk": true,
+          "preview": "uded in the SCN. Based on an independent legal opinion and management's assessment, the Group has recorded provision for related compounding fees on best estimates. Pending the fin"
+        },
+        {
+          "rank": 2,
+          "score": 0.0,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": true,
+          "preview": "through a press release, cancelled the banking license of Paytm Payments Bank Limited (\"PPBL\"), an associate company of the Company and on 25 April 2026 the shareholders of PPBL ap"
+        },
+        {
+          "rank": 3,
+          "score": 0.0,
+          "page": 21,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": false,
+          "preview": "One 97 Communications Limited Notes to the Standalone Audited Financial Results 7. On November 21, 2025, the Government of India notified provisions of the Code on Wages, 2019, the"
+        },
+        {
+          "rank": 4,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.14354,
+          "survives_dedup_topk": true,
+          "preview": "November 28, 2025) 13. Paytm Financial Services Limited (from November 28, 2025) 14. Foster Payment Networks Private Limited (from October 10, 2025) 15. Admirable Software Limited "
+        },
+        {
+          "rank": 5,
+          "score": 0.0,
+          "page": 14,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": true,
+          "preview": "asonably be expected to influence the economic decisions of users taken on the basis of the Statement. As part of an audit in accordance with SAs, we exercise professional judgment"
+        },
+        {
+          "rank": 6,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": "asonably be expected to influence the economic decisions of users taken on the basis of the Statement. As part of an audit in accordance with SAs, we exercise professional judgment"
+        },
+        {
+          "rank": 7,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": true,
+          "preview": "suretech Private Limited (till November 28,2025) 3. Paytm Intelligence Limited [formerly known as Paytm Emerging Tech Limited and earlier Paytm General lnsurance Limited] (till Oct"
+        },
+        {
+          "rank": 8,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": false,
+          "preview": "ivate Limited ('Urja') 4. Little Internet Private Limited ('Little') 5. Paytm Cloud Technologies Limited ('PCTL ') [Formerly Paytm Entertainment Limited] 6. Paytm Money Limited 7. "
+        },
+        {
+          "rank": 9,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "S.R. LLP BATLIBOl&ASSOCIATES Chartered Accountants III. Associates (Direct) 1. Paytm Payments Bank Limited 2. Paytm lnsuretech Private Limited (till November 28,2025) 3. Paytm Inte"
+        },
+        {
+          "rank": 10,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": " General Insurance Limited] (from October 30, 2025) 11. Paytm Assure Tech Limited [formerly known as Paytm Life Insurance Limited] (from October 30, 2025) 12. Paytm Insuretech Priv"
+        },
+        {
+          "rank": 11,
+          "score": 0.0,
+          "page": 14,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "tatements can arise from fraud or error and are considered material if, individually or in the aggregate, they could reasonably be expected to influence the economic decisions of u"
+        },
+        {
+          "rank": 12,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "tatements can arise from fraud or error and are considered material if, individually or in the aggregate, they could reasonably be expected to influence the economic decisions of u"
+        },
+        {
+          "rank": 13,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": "irect) I. OCL Tech Platfo1ms Limited [formerly known as One 97 Communications India Limited] 2. Mobiquest Mobile Technologies Private Limited ('MQ') 3. Urja Money Private Limited ("
+        },
+        {
+          "rank": 14,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "Services Private Limited 8. Paytm Payments Services Limited 9. Paytm Insurance Broking Private Limited 10. Paytm Intelligence Limited [formerly known as Paytm Emerging Tech Limited"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": false,
+          "preview": "One 97 Communications Limited Notes to the Consolidated Audited Financial Results 6. Details of utilisation of net IPO Proceeds ofINR 8, I 19 crores, are as follows: (Amount in INR"
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.39286,
+          "survives_dedup_topk": false,
+          "preview": "S.R. LLP BATLIBOI & ASSOCIATES Chartered Accountants Annexure-A List of Entities I. Subsidiaries (Direct) I. OCL Tech Platfo1ms Limited [formerly known as One 97 Communications Ind"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 8,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.5,
+          "survives_dedup_topk": false,
+          "preview": "One 97 Communications Limited CIN: L 72200DL2000PLC108985 Registered Office: First Floor Devika Tower Nehru Place New Delhi 110019 India; Tel: +91 11 2628 0280; Website: www.paytm."
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 14,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": false,
+          "preview": " cease operations, or has no realistic alternative but to do so. The Board of Directors are also responsible for overseeing the Company's financial reporting process. Auditor's Res"
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 14,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": false,
+          "preview": " using the going concern basis of accounting unless the Board of Directors either intends to liquidate the Company or to cease operations, or has no realistic alternative but to do"
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "s included in the Group and of its associates and joint ventures are also responsible for overseeing the financial reporting process of their respective companies. Auditor's Respon"
+        }
+      ]
+    },
+    {
+      "company": "TITAN",
+      "query": "How does Titan determine sitting fees for non-executive directors?",
+      "expectation": "absent",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.0,
+        "top5": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.0,
+        "top1_minus_top5": 0.0,
+        "top1_minus_median": 0.0
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.0,
+        "top5": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.0,
+        "top1_minus_top5": 0.0,
+        "top1_minus_median": 0.0
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 2,
+          "page_a": 16,
+          "page_b": 16,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 4,
+          "page_a": 11,
+          "page_b": 11,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 7,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 8,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 7,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 8,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 6,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 7,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 8,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 7,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 8,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 8,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 10,
+          "page_a": 1,
+          "page_b": 1,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 18,
+          "page_b": 18,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 14,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 15,
+          "rank_b": 16,
+          "page_a": 13,
+          "page_b": 13,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 18,
+          "page_a": 15,
+          "page_b": 15,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 3,
+          "page_b": 3,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.0,
+          "page": 16,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.6,
+          "survives_dedup_topk": true,
+          "preview": "TITAN COMPANY LIMITED CJN: L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOS UR 635 126. ADDITIONAL DISCLOSURES AS PER REGULATION 52(4) OF SEBI (LISTING OBLIGATIONS AND DISCL"
+        },
+        {
+          "rank": 2,
+          "score": 0.0,
+          "page": 16,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.42424,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CJN: L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOS UR 635 126. ADDITIONAL DISCLOSURES AS PER REGULATION 52(4) OF SEBI (LISTING OBLIGATIONS AND DISCL"
+        },
+        {
+          "rank": 3,
+          "score": 0.0,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.41667,
+          "survives_dedup_topk": true,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 4,
+          "score": 0.0,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.34286,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 5,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": true,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited contains any material misstatement. For B S R & Co. LLP Chartered Accountants Firm's Registration No.:101248W"
+        },
+        {
+          "rank": 6,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07692,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited contains any material misstatement. For B S R & Co. LLP Chartered Accountants Firm's Registration No.:101248W"
+        },
+        {
+          "rank": 7,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.41667,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 8,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.34286,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 9,
+          "score": 0.0,
+          "page": 1,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07143,
+          "survives_dedup_topk": true,
+          "preview": "\u2666 TIT/\\.N COMP/\\NY SEC 58 I 2025-26 7th August 2025 BSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers Exchange Plaza, C-1, Block G Dalal Street Bandra "
+        },
+        {
+          "rank": 10,
+          "score": 0.0,
+          "page": 1,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.06667,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\.N COMP/\\NY SEC 58 I 2025-26 7th August 2025 BSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers Exchange Plaza, C-1, Block G Dalal Street Bandra "
+        },
+        {
+          "rank": 11,
+          "score": 0.0,
+          "page": 18,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.61111,
+          "survives_dedup_topk": true,
+          "preview": "TITAN COMPANY LIMITED CJN : L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOSUR 635 126. Notes (Contd.): 5 The Board had approved the Performance Based Stock Unit Scheme (PSU"
+        },
+        {
+          "rank": 12,
+          "score": 0.0,
+          "page": 18,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.45833,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CJN : L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOSUR 635 126. Notes (Contd.): 5 The Board had approved the Performance Based Stock Unit Scheme (PSU"
+        },
+        {
+          "rank": 13,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07143,
+          "survives_dedup_topk": false,
+          "preview": "company.in/investors/investor-relations/quarterly-results About Titan: Titan Company Limited (\"Titan\"), a joint venture between the Tata Group and the Tamilnadu Industrial Developm"
+        },
+        {
+          "rank": 14,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.06667,
+          "survives_dedup_topk": false,
+          "preview": "company.in/investors/investor-relations/quarterly-results About Titan: Titan Company Limited (\"Titan\"), a joint venture between the Tata Group and the Tamilnadu Industrial Developm"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 13,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited Annexure I List of entities included in unaudited consolidated financial results. Sr. No Name of component Re"
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 13,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07692,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited Annexure I List of entities included in unaudited consolidated financial results. Sr. No Name of component Re"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 15,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CfN: L74999TZ1984PLC001456 3, SlPCOT fNDUSTRJAL COMPLEX, HOSUR 635 126. STATEMENT OF CONSOLIDATED UNAUDITED FINANCIAL RESULTS FOR THE QUARTER ENDED 30 JUNE 20"
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 15,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CfN: L74999TZ1984PLC001456 3, SlPCOT fNDUSTRJAL COMPLEX, HOSUR 635 126. STATEMENT OF CONSOLIDATED UNAUDITED FINANCIAL RESULTS FOR THE QUARTER ENDED 30 JUNE 20"
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.175,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TITAN COMP/\\NY Watches: Business had an exceptional quarter recording a growth of 24% over Q1FY25 achieving a Total Income of \"1,273 crores EBIT came in at \"287 crores clocking 2"
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.15873,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TITAN COMP/\\NY Watches: Business had an exceptional quarter recording a growth of 24% over Q1FY25 achieving a Total Income of \"1,273 crores EBIT came in at \"287 crores clocking 2"
+        }
+      ]
+    },
+    {
+      "company": "PAYTM",
+      "query": "What is Paytm's stated approach to CSR expenditure allocation?",
+      "expectation": "absent",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.0001,
+        "top5": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.0,
+        "top1_minus_top5": 0.0001,
+        "top1_minus_median": 0.0001
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.0001,
+        "top5": 0.0,
+        "median": 0.0001,
+        "min": 0.0,
+        "stdev": 0.0,
+        "top1_minus_top5": 0.0001,
+        "top1_minus_median": 0.0001
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 2,
+          "rank_b": 4,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.7525,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 14,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.7474,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 7,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.699,
+          "suppressed": false
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 14,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5053,
+          "suppressed": false
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 15,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8689,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 20,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.614,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 10,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5574,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 13,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7049,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 17,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5593,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 18,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8197,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 19,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.55,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 9,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8281,
+          "suppressed": true
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 16,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6875,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 16,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8806,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 20,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5088,
+          "suppressed": false
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 17,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.661,
+          "suppressed": false
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 19,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8667,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.9355,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 13,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5968,
+          "suppressed": false
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 13,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6667,
+          "suppressed": false
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 17,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5424,
+          "suppressed": false
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 18,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.871,
+          "suppressed": true
+        },
+        {
+          "rank_a": 15,
+          "rank_b": 17,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6102,
+          "suppressed": false
+        },
+        {
+          "rank_a": 15,
+          "rank_b": 20,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8421,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 18,
+          "page_a": 5,
+          "page_b": 6,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6271,
+          "suppressed": false
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 19,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7797,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 20,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7544,
+          "suppressed": true
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 19,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.55,
+          "suppressed": false
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 20,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5614,
+          "suppressed": false
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5614,
+          "suppressed": false
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.0001,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.38333,
+          "survives_dedup_topk": true,
+          "preview": "One 97 Communications Limited Notes to the Consolidated Audited Financial Results 6. Details of utilisation of net IPO Proceeds ofINR 8, I 19 crores, are as follows: (Amount in INR"
+        },
+        {
+          "rank": 2,
+          "score": 0.0001,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": true,
+          "preview": "85 crores are in compliance with applicable laws. During the quarter and year ended March 31, 2026, the RBI has compounded the matters having aggregate value of approximately INR 3"
+        },
+        {
+          "rank": 3,
+          "score": 0.0001,
+          "page": 8,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.64286,
+          "survives_dedup_topk": true,
+          "preview": "One 97 Communications Limited CIN: L 72200DL2000PLC108985 Registered Office: First Floor Devika Tower Nehru Place New Delhi 110019 India; Tel: +91 11 2628 0280; Website: www.paytm."
+        },
+        {
+          "rank": 4,
+          "score": 0.0,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": false,
+          "preview": "uded in the SCN. Based on an independent legal opinion and management's assessment, the Group has recorded provision for related compounding fees on best estimates. Pending the fin"
+        },
+        {
+          "rank": 5,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.20168,
+          "survives_dedup_topk": true,
+          "preview": "November 28, 2025) 13. Paytm Financial Services Limited (from November 28, 2025) 14. Foster Payment Networks Private Limited (from October 10, 2025) 15. Admirable Software Limited "
+        },
+        {
+          "rank": 6,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": true,
+          "preview": "S.R. LLP BATLIBOl&ASSOCIATES Chartered Accountants III. Associates (Direct) 1. Paytm Payments Bank Limited 2. Paytm lnsuretech Private Limited (till November 28,2025) 3. Paytm Inte"
+        },
+        {
+          "rank": 7,
+          "score": 0.0,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "through a press release, cancelled the banking license of Paytm Payments Bank Limited (\"PPBL\"), an associate company of the Company and on 25 April 2026 the shareholders of PPBL ap"
+        },
+        {
+          "rank": 8,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": false,
+          "preview": " Benin SA (subsidiary ofOCSPL) 7. Paytm Labs Inc. (subsidiary ofOCSPL) 8. One97 Communications Malaysia Sdn. Bhd. (subsidiary ofOCSPL) 9. One Nine Seven Communication Nepal Private"
+        },
+        {
+          "rank": 9,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "even Communication Nepal Private Limited (subsidia1y ofOCSPL) 10. One Nine Seven Digital Solutions Limited (subsidiary ofOCSPL) 11. One Nine Seven Communications Saudi Arabia For C"
+        },
+        {
+          "rank": 10,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.375,
+          "survives_dedup_topk": false,
+          "preview": "S.R. LLP BATLIBOI & ASSOCIATES Chartered Accountants Annexure-A List of Entities I. Subsidiaries (Direct) I. OCL Tech Platfo1ms Limited [formerly known as One 97 Communications Ind"
+        },
+        {
+          "rank": 11,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.13942,
+          "survives_dedup_topk": false,
+          "preview": " November 28, 2025) 3. Seven Technology LLC, Delaware (from February 13, 2025, associate of PCTL) 4. Dinie Con-espondente Bancario e Meios de Pagamento Ltda, Brazil (from February "
+        },
+        {
+          "rank": 12,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.12143,
+          "survives_dedup_topk": false,
+          "preview": "tworks Private Limited (subsidiary of PFSL) (till October I 0, 2025) 2. Admirable Software Limited (subsidiary of PFSL) (till November 28, 2025) 3. Seven Technology LLC, Delaware ("
+        },
+        {
+          "rank": 13,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.12222,
+          "survives_dedup_topk": false,
+          "preview": "ited] (till October 30, 2025) 4. Paytm Assure Tech Limited [formerly known as Paytm Life Insurance Limited] (till October 30, 2025) 5. Paytm Financial Services Limited ('PFSL') (ti"
+        },
+        {
+          "rank": 14,
+          "score": 0.0,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": " included in the SCN is approximately INR 611 crores. Till December 31, 2025, the RBI has compounded the matters having aggregate value of approximately INR 21 crores relating to N"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.22222,
+          "survives_dedup_topk": false,
+          "preview": " General Insurance Limited] (from October 30, 2025) 11. Paytm Assure Tech Limited [formerly known as Paytm Life Insurance Limited] (from October 30, 2025) 12. Paytm Insuretech Priv"
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.14762,
+          "survives_dedup_topk": false,
+          "preview": "en Communications Saudi Arabia For Communication and Infotmation Technology (subsidiary ofOCSPL) 12. Nearbuy India Private Limited (subsidiary of Little) 13. Fincollect Services Pr"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.5,
+          "survives_dedup_topk": false,
+          "preview": "ivate Limited ('Urja') 4. Little Internet Private Limited ('Little') 5. Paytm Cloud Technologies Limited ('PCTL ') [Formerly Paytm Entertainment Limited] 6. Paytm Money Limited 7. "
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "suretech Private Limited (till November 28,2025) 3. Paytm Intelligence Limited [formerly known as Paytm Emerging Tech Limited and earlier Paytm General lnsurance Limited] (till Oct"
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": false,
+          "preview": "irect) I. OCL Tech Platfo1ms Limited [formerly known as One 97 Communications India Limited] 2. Mobiquest Mobile Technologies Private Limited ('MQ') 3. Urja Money Private Limited ("
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.26667,
+          "survives_dedup_topk": false,
+          "preview": "Services Private Limited 8. Paytm Payments Services Limited 9. Paytm Insurance Broking Private Limited 10. Paytm Intelligence Limited [formerly known as Paytm Emerging Tech Limited"
+        }
+      ]
+    },
+    {
+      "company": "TITAN",
+      "query": "How does Titan's risk management committee define its charter?",
+      "expectation": "absent",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.0001,
+        "top5": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.0,
+        "top1_minus_top5": 0.0001,
+        "top1_minus_median": 0.0001
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.0001,
+        "top5": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.0001,
+        "top1_minus_top5": 0.0001,
+        "top1_minus_median": 0.0001
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 2,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 13,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 14,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 13,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 14,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5135,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 4,
+          "page_a": 16,
+          "page_b": 16,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 6,
+          "page_a": 11,
+          "page_b": 11,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 9,
+          "page_a": 11,
+          "page_b": 12,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 10,
+          "page_a": 11,
+          "page_b": 12,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 13,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 14,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 9,
+          "page_a": 11,
+          "page_b": 12,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 10,
+          "page_a": 11,
+          "page_b": 12,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7831,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 13,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 14,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 8,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 10,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 13,
+          "page_a": 12,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8916,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 14,
+          "page_a": 12,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8916,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 13,
+          "page_a": 12,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8916,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 14,
+          "page_a": 12,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8916,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 18,
+          "page_b": 18,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 14,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 15,
+          "rank_b": 16,
+          "page_a": 13,
+          "page_b": 13,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 18,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 3,
+          "page_b": 3,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 1.0,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.0001,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.22549,
+          "survives_dedup_topk": true,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited contains any material misstatement. For B S R & Co. LLP Chartered Accountants Firm's Registration No.:101248W"
+        },
+        {
+          "rank": 2,
+          "score": 0.0001,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.20536,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited contains any material misstatement. For B S R & Co. LLP Chartered Accountants Firm's Registration No.:101248W"
+        },
+        {
+          "rank": 3,
+          "score": 0.0,
+          "page": 16,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": true,
+          "preview": "TITAN COMPANY LIMITED CJN: L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOS UR 635 126. ADDITIONAL DISCLOSURES AS PER REGULATION 52(4) OF SEBI (LISTING OBLIGATIONS AND DISCL"
+        },
+        {
+          "rank": 4,
+          "score": 0.0,
+          "page": 16,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CJN: L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOS UR 635 126. ADDITIONAL DISCLOSURES AS PER REGULATION 52(4) OF SEBI (LISTING OBLIGATIONS AND DISCL"
+        },
+        {
+          "rank": 5,
+          "score": 0.0,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.36111,
+          "survives_dedup_topk": true,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 6,
+          "score": 0.0,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.325,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 7,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.10556,
+          "survives_dedup_topk": true,
+          "preview": " Over the last three decades, Titan has expanded into underpenetrated markets and created lifestyle brands across different product categories including fragrances (SKINN), accesso"
+        },
+        {
+          "rank": 8,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.10025,
+          "survives_dedup_topk": false,
+          "preview": " Over the last three decades, Titan has expanded into underpenetrated markets and created lifestyle brands across different product categories including fragrances (SKINN), accesso"
+        },
+        {
+          "rank": 9,
+          "score": 0.0,
+          "page": 12,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited 6. Based on our review conducted and procedures performed as stated in paragraph 3 above, nothing has come to"
+        },
+        {
+          "rank": 10,
+          "score": 0.0,
+          "page": 12,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited 6. Based on our review conducted and procedures performed as stated in paragraph 3 above, nothing has come to"
+        },
+        {
+          "rank": 11,
+          "score": 0.0,
+          "page": 18,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.61111,
+          "survives_dedup_topk": true,
+          "preview": "TITAN COMPANY LIMITED CJN : L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOSUR 635 126. Notes (Contd.): 5 The Board had approved the Performance Based Stock Unit Scheme (PSU"
+        },
+        {
+          "rank": 12,
+          "score": 0.0,
+          "page": 18,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.45833,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CJN : L74999TZ1984PLC001456 3, SIPCOT INDUSTRIAL COMPLEX, HOSUR 635 126. Notes (Contd.): 5 The Board had approved the Performance Based Stock Unit Scheme (PSU"
+        },
+        {
+          "rank": 13,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.57692,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 14,
+          "score": 0.0,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.41667,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 13,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited Annexure I List of entities included in unaudited consolidated financial results. Sr. No Name of component Re"
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 13,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.21978,
+          "survives_dedup_topk": false,
+          "preview": "BS R & Co. LLP Limited Review Report (Continued) Titan Company Limited Annexure I List of entities included in unaudited consolidated financial results. Sr. No Name of component Re"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1125,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMP/\\NY Conference Call: The earnings conference call is scheduled on August 7, 2025, at 6:30 PM. The call details are available at https://www.titancompany.in/investors/"
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.10317,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMP/\\NY Conference Call: The earnings conference call is scheduled on August 7, 2025, at 6:30 PM. The call details are available at https://www.titancompany.in/investors/"
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TITAN COMP/\\NY Watches: Business had an exceptional quarter recording a growth of 24% over Q1FY25 achieving a Total Income of \"1,273 crores EBIT came in at \"287 crores clocking 2"
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TITAN COMP/\\NY Watches: Business had an exceptional quarter recording a growth of 24% over Q1FY25 achieving a Total Income of \"1,273 crores EBIT came in at \"287 crores clocking 2"
+        }
+      ]
+    },
+    {
+      "company": "ETERNAL",
+      "query": "What does Zomato disclose about its employee stock option plans?",
+      "expectation": "genuine",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.9987,
+        "top5": 0.9947,
+        "median": 0.9867,
+        "min": 0.9262,
+        "stdev": 0.0198,
+        "top1_minus_top5": 0.004,
+        "top1_minus_median": 0.012
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.9987,
+        "top5": 0.9928,
+        "median": 0.9964,
+        "min": 0.9928,
+        "stdev": 0.0024,
+        "top1_minus_top5": 0.0059,
+        "top1_minus_median": 0.0023
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 2,
+          "rank_b": 5,
+          "page_a": 53,
+          "page_b": 53,
+          "score_a": 0.9983,
+          "score_b": 0.9947,
+          "overlap": 0.8194,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 13,
+          "page_a": 53,
+          "page_b": 53,
+          "score_a": 0.9983,
+          "score_b": 0.984,
+          "overlap": 0.6528,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 7,
+          "page_a": 338,
+          "page_b": 66,
+          "score_a": 0.9964,
+          "score_b": 0.9928,
+          "overlap": 0.5,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 9,
+          "page_a": 338,
+          "page_b": 229,
+          "score_a": 0.9964,
+          "score_b": 0.9927,
+          "overlap": 0.9261,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 10,
+          "page_a": 338,
+          "page_b": 66,
+          "score_a": 0.9964,
+          "score_b": 0.9875,
+          "overlap": 0.5227,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 16,
+          "page_a": 338,
+          "page_b": 66,
+          "score_a": 0.9964,
+          "score_b": 0.9802,
+          "overlap": 0.5,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 18,
+          "page_a": 338,
+          "page_b": 47,
+          "score_a": 0.9964,
+          "score_b": 0.9615,
+          "overlap": 0.5366,
+          "suppressed": false
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 6,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9951,
+          "score_b": 0.9931,
+          "overlap": 0.7867,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 8,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9951,
+          "score_b": 0.9927,
+          "overlap": 0.8765,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 15,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9951,
+          "score_b": 0.9818,
+          "overlap": 0.5781,
+          "suppressed": false
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 17,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9951,
+          "score_b": 0.9715,
+          "overlap": 0.5143,
+          "suppressed": false
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 13,
+          "page_a": 53,
+          "page_b": 53,
+          "score_a": 0.9947,
+          "score_b": 0.984,
+          "overlap": 0.8333,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 8,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9931,
+          "score_b": 0.9927,
+          "overlap": 0.9067,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 15,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9931,
+          "score_b": 0.9818,
+          "overlap": 0.75,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 17,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9931,
+          "score_b": 0.9715,
+          "overlap": 0.6143,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 9,
+          "page_a": 66,
+          "page_b": 229,
+          "score_a": 0.9928,
+          "score_b": 0.9927,
+          "overlap": 0.5,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 10,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9928,
+          "score_b": 0.9875,
+          "overlap": 0.9318,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 11,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9928,
+          "score_b": 0.9859,
+          "overlap": 0.7609,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 12,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9928,
+          "score_b": 0.9857,
+          "overlap": 0.6739,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 14,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9928,
+          "score_b": 0.9829,
+          "overlap": 0.8261,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 16,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9928,
+          "score_b": 0.9802,
+          "overlap": 0.9524,
+          "suppressed": true
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 15,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9927,
+          "score_b": 0.9818,
+          "overlap": 0.6719,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 17,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9927,
+          "score_b": 0.9715,
+          "overlap": 0.5571,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 10,
+          "page_a": 229,
+          "page_b": 66,
+          "score_a": 0.9927,
+          "score_b": 0.9875,
+          "overlap": 0.5227,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 16,
+          "page_a": 229,
+          "page_b": 66,
+          "score_a": 0.9927,
+          "score_b": 0.9802,
+          "overlap": 0.5,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 18,
+          "page_a": 229,
+          "page_b": 47,
+          "score_a": 0.9927,
+          "score_b": 0.9615,
+          "overlap": 0.5366,
+          "suppressed": false
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 11,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9875,
+          "score_b": 0.9859,
+          "overlap": 0.8409,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 12,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9875,
+          "score_b": 0.9857,
+          "overlap": 0.75,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 14,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9875,
+          "score_b": 0.9829,
+          "overlap": 0.9091,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 16,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9875,
+          "score_b": 0.9802,
+          "overlap": 0.8571,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9859,
+          "score_b": 0.9857,
+          "overlap": 0.9444,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 14,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9859,
+          "score_b": 0.9829,
+          "overlap": 0.9455,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 16,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9859,
+          "score_b": 0.9802,
+          "overlap": 0.7143,
+          "suppressed": true
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 14,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9857,
+          "score_b": 0.9829,
+          "overlap": 0.8727,
+          "suppressed": true
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 16,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9857,
+          "score_b": 0.9802,
+          "overlap": 0.619,
+          "suppressed": false
+        },
+        {
+          "rank_a": 14,
+          "rank_b": 16,
+          "page_a": 66,
+          "page_b": 66,
+          "score_a": 0.9829,
+          "score_b": 0.9802,
+          "overlap": 0.7857,
+          "suppressed": true
+        },
+        {
+          "rank_a": 15,
+          "rank_b": 17,
+          "page_a": 143,
+          "page_b": 143,
+          "score_a": 0.9818,
+          "score_b": 0.9715,
+          "overlap": 0.8906,
+          "suppressed": true
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 19,
+          "page_a": 47,
+          "page_b": 47,
+          "score_a": 0.9615,
+          "score_b": 0.9352,
+          "overlap": 0.8537,
+          "suppressed": true
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 20,
+          "page_a": 47,
+          "page_b": 47,
+          "score_a": 0.9615,
+          "score_b": 0.9262,
+          "overlap": 0.878,
+          "suppressed": true
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 47,
+          "page_b": 47,
+          "score_a": 0.9352,
+          "score_b": 0.9262,
+          "overlap": 0.7209,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.9987,
+          "page": 53,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.06667,
+          "survives_dedup_topk": true,
+          "preview": "er may send an email to the Company Prohibition and Redressal) Act, 2013 Secretary and Compliance Officer of the Company at companysecretary@zomato.com in this regard. The Company "
+        },
+        {
+          "rank": 2,
+          "score": 0.9983,
+          "page": 53,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.47619,
+          "survives_dedup_topk": true,
+          "preview": "Company Overview Statutory Reports: Board Report Financial Statements (a) Management reviews and self-assessments; ii) Zomato Employee Stock Option Plan 2018; (b) Continuous contro"
+        },
+        {
+          "rank": 3,
+          "score": 0.9964,
+          "page": 338,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.55556,
+          "survives_dedup_topk": true,
+          "preview": "Company Overview Statutory Reports Financial Statements: Standalone Notes to the Standalone Financial Statements for the year ended March 31, 2024 CIN : L93030DL2010PLC198141 The Z"
+        },
+        {
+          "rank": 4,
+          "score": 0.9951,
+          "page": 143,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.07692,
+          "survives_dedup_topk": true,
+          "preview": "4.518 implementation of Zomato Employee Stock Option Plan 2024 for grant of employee stock options to the employees of subsidiaries of the Company under this plan iii. Person who c"
+        },
+        {
+          "rank": 5,
+          "score": 0.9947,
+          "page": 53,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.175,
+          "survives_dedup_topk": false,
+          "preview": "b) Continuous controls monitoring by the Governance, iii) Zomato Employee Stock Option Plan 2021; and Risk and Compliance Function; and iv) Zomato Employee Stock Option Plan 2022. "
+        },
+        {
+          "rank": 6,
+          "score": 0.9931,
+          "page": 143,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": "f votes % 1. Approval for formulation, adoption and 6,72,64,30,453 5,07,72,40,418 75.482 1,64,91,90,035 24.518 implementation of Zomato Employee Stock Option Plan 2024 for grant of"
+        },
+        {
+          "rank": 7,
+          "score": 0.9928,
+          "page": 66,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.39286,
+          "survives_dedup_topk": true,
+          "preview": "lue of Re. 1/- Plan 2018 & Zomato Employee Stock Option Plan 2021 July 31, 2023 2,52,59,179 Equity Pursuant to exercise of options by the employees of the Shares having a company a"
+        },
+        {
+          "rank": 8,
+          "score": 0.9927,
+          "page": 143,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.13095,
+          "survives_dedup_topk": false,
+          "preview": "tions to the employees of the Company under this plan 2. Approval for formulation, adoption and 6,72,64,29,367 5,07,72,31,646 75.482 1,64,91,97,721 24.518 implementation of Zomato "
+        },
+        {
+          "rank": 9,
+          "score": 0.9927,
+          "page": 229,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.16234,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Notes to the Consolidated Financial Statements for the year ended March 31, 2024 CIN : L93030DL2010PLC198141 3"
+        },
+        {
+          "rank": 10,
+          "score": 0.9875,
+          "page": 66,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.58333,
+          "survives_dedup_topk": false,
+          "preview": "ercise of options by the employees of the shares having a Company and its subsidiaries Zomato Employee Stock Option face value of Re. 1/- Plan 2018 & Zomato Employee Stock Option P"
+        },
+        {
+          "rank": 11,
+          "score": 0.9859,
+          "page": 66,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": " under review were carried out in compliance with the guidelines, standards, etc.: provisions of the Act. (i) The Company\u2019s capital structure was changed on various intervals due t"
+        },
+        {
+          "rank": 12,
+          "score": 0.9857,
+          "page": 66,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.07692,
+          "survives_dedup_topk": false,
+          "preview": "tion of the following major events have happened in pursuance Board of Directors that took place during the period of the above referred laws, rules, regulations, under review were"
+        },
+        {
+          "rank": 13,
+          "score": 0.984,
+          "page": 53,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": "ign and operational testing by the Subsequently, the Company formulated Zomato Statutory and Secretarial Auditors. Employee Stock Option Plan 2024 (\u201cESOP 2024\u201d) pursuant to the res"
+        },
+        {
+          "rank": 14,
+          "score": 0.9829,
+          "page": 66,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.31111,
+          "survives_dedup_topk": false,
+          "preview": " various intervals due to allotment of equity shares pursuant to following events: Date Particular Manner of Allotment April 25, 2023 2,56,77,266 Equity Pursuant to exercise of opt"
+        },
+        {
+          "rank": 15,
+          "score": 0.9818,
+          "page": 143,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "passed through Postal Ballot is as under: Sr. Subject matter of No. of votes Votes cast in favour Votes cast against No. the resolution polled No. of votes % No. of votes % 1. Appr"
+        },
+        {
+          "rank": 16,
+          "score": 0.9802,
+          "page": 66,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.7,
+          "survives_dedup_topk": false,
+          "preview": "g a company and its subsidiaries under Zomato Employee Stock face value of INR 1/- Option Plan 2018 and Zomato Employee Stock Option Plan 2021. November 03, 2023 10,64,69,448 Equit"
+        },
+        {
+          "rank": 17,
+          "score": 0.9715,
+          "page": 143,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": false,
+          "preview": "on was passed through postal ballot. However, the Company passed 2 (two) special resolutions through postal ballot on June 29, 2024 (\u201cPostal Ballot\u201d). The details of special resolu"
+        },
+        {
+          "rank": 18,
+          "score": 0.9615,
+          "page": 47,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.21591,
+          "survives_dedup_topk": false,
+          "preview": "xercise of options granted under Zomato 78,72,5001 Employee Stock Option Plan 2018 (\u201cESOP 2018\u201d) 2. April 25, 2023 Allotment against exercise of options granted under Zomato 1,78,0"
+        },
+        {
+          "rank": 19,
+          "score": 0.9352,
+          "page": 47,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.12406,
+          "survives_dedup_topk": false,
+          "preview": "ercise of options granted under Zomato 1,78,04,766 Employee Stock Option Plan 2021 (\u201cESOP 2021\u201d) 3. July 31, 2023 Allotment against exercise of options granted under ESOP 2018 48,0"
+        },
+        {
+          "rank": 20,
+          "score": 0.9262,
+          "page": 47,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.1625,
+          "survives_dedup_topk": false,
+          "preview": "ls of allotment of Equity Shares allotted by the Company are given below: Sr. Date of allotment Brief details No. of Equity No. of Equity Shares Shares 1 April 25, 2023 Allotment a"
+        }
+      ]
+    },
+    {
+      "company": "ETERNAL",
+      "query": "How are lease liabilities treated in Zomato's cash flow statement?",
+      "expectation": "genuine",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.8868,
+        "top5": 0.0848,
+        "median": 0.0088,
+        "min": 0.0,
+        "stdev": 0.2174,
+        "top1_minus_top5": 0.802,
+        "top1_minus_median": 0.8781
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.8868,
+        "top5": 0.0289,
+        "median": 0.1689,
+        "min": 0.0289,
+        "stdev": 0.3575,
+        "top1_minus_top5": 0.8579,
+        "top1_minus_median": 0.718
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 11,
+          "page_a": 33,
+          "page_b": 176,
+          "score_a": 0.8868,
+          "score_b": 0.0034,
+          "overlap": 0.5377,
+          "suppressed": false
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 14,
+          "page_a": 33,
+          "page_b": 175,
+          "score_a": 0.8868,
+          "score_b": 0.0011,
+          "overlap": 0.5086,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 4,
+          "page_a": 341,
+          "page_b": 232,
+          "score_a": 0.1689,
+          "score_b": 0.1253,
+          "overlap": 0.7278,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 6,
+          "page_a": 185,
+          "page_b": 299,
+          "score_a": 0.0848,
+          "score_b": 0.065,
+          "overlap": 0.9624,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 10,
+          "page_a": 347,
+          "page_b": 239,
+          "score_a": 0.0289,
+          "score_b": 0.0141,
+          "overlap": 0.9309,
+          "suppressed": true
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 17,
+          "page_a": 151,
+          "page_b": 151,
+          "score_a": 0.0031,
+          "score_b": 0.0006,
+          "overlap": 0.8333,
+          "suppressed": true
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 15,
+          "page_a": 89,
+          "page_b": 89,
+          "score_a": 0.0016,
+          "score_b": 0.0008,
+          "overlap": 0.908,
+          "suppressed": true
+        },
+        {
+          "rank_a": 16,
+          "rank_b": 18,
+          "page_a": 308,
+          "page_b": 195,
+          "score_a": 0.0008,
+          "score_b": 0.0004,
+          "overlap": 0.9388,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.8868,
+          "page": 33,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": true,
+          "preview": "Eternal Limited (Formerly known as Zomato Limited) Consolidated Statement of Cash Flows (INR crore) Year ended Particulars March 31, 2026 March 31, 2025 Audited Audited A) Cash flo"
+        },
+        {
+          "rank": 2,
+          "score": 0.4864,
+          "page": 309,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.5,
+          "survives_dedup_topk": true,
+          "preview": "Company Overview Statutory Reports Financial Statements: Standalone Material Accounting Policies to the Standalone Financial Statements for the year ended March 31, 2024 CIN : L930"
+        },
+        {
+          "rank": 3,
+          "score": 0.1689,
+          "page": 341,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": true,
+          "preview": "Company Overview Statutory Reports Financial Statements: Standalone Notes to the Standalone Financial Statements for the year ended March 31, 2024 CIN : L93030DL2010PLC198141 The f"
+        },
+        {
+          "rank": 4,
+          "score": 0.1253,
+          "page": 232,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Notes to the Consolidated Financial Statements for the year ended March 31, 2024 CIN : L93030DL2010PLC198141 T"
+        },
+        {
+          "rank": 5,
+          "score": 0.0848,
+          "page": 185,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": true,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Material Accounting Policies to the Consolidated Financial Statements for the year ended March 31, 2024 CIN : "
+        },
+        {
+          "rank": 6,
+          "score": 0.065,
+          "page": 299,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Standalone Material Accounting Policies to the Standalone Financial Statements for the year ended March 31, 2024 CIN : L930"
+        },
+        {
+          "rank": 7,
+          "score": 0.0289,
+          "page": 347,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": true,
+          "preview": "Company Overview Statutory Reports Financial Statements: Standalone Notes to the Standalone Financial Statements for the year ended March 31, 2024 CIN : L93030DL2010PLC198141 net o"
+        },
+        {
+          "rank": 8,
+          "score": 0.0191,
+          "page": 155,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports: CGR Financial Statements ANNEXURE \u2013 VII To, Board of directors Zomato Limited (\u201cCompany\u201d) Ground Floor 12A, 94 Meghdoot, Nehru Place, New Delhi "
+        },
+        {
+          "rank": 9,
+          "score": 0.0172,
+          "page": 294,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Standalone Material Accounting Policies to the Standalone Financial Statements for the year ended March 31, 2024 CIN : L930"
+        },
+        {
+          "rank": 10,
+          "score": 0.0141,
+          "page": 239,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Notes to the Consolidated Financial Statements for the year ended March 31, 2024 CIN : L93030DL2010PLC198141 T"
+        },
+        {
+          "rank": 11,
+          "score": 0.0034,
+          "page": 176,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Consolidated Statement of Cash Flows (Contd.) for the year ended March 31, 2024 CIN : L93030DL2010PLC198141 (I"
+        },
+        {
+          "rank": 12,
+          "score": 0.0031,
+          "page": 151,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports: CGR Financial Statements xvi. Code of Conduct \u2022 Procedures to be followed while dealing in the The Company has adopted the code of conduct for t"
+        },
+        {
+          "rank": 13,
+          "score": 0.0016,
+          "page": 89,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.5,
+          "survives_dedup_topk": false,
+          "preview": "ns & advances 0.00% 100% given to related parties / Total loans & advances) d. I nvestments (Investments in related 41.71% 51.85% parties / Total Investments made) *The data report"
+        },
+        {
+          "rank": 14,
+          "score": 0.0011,
+          "page": 175,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Consolidated Statement of Cash Flows for the year ended March 31, 2024 CIN : L93030DL2010PLC198141 (INR crores"
+        },
+        {
+          "rank": 15,
+          "score": 0.0008,
+          "page": 89,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "tal Purchases) b. S ales (Sales to related parties / Total 0.53% 0.36% Sales) c. L oans & advances (Loans & advances 0.00% 100% given to related parties / Total loans & advances) d"
+        },
+        {
+          "rank": 16,
+          "score": 0.0008,
+          "page": 308,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Standalone Material Accounting Policies to the Standalone Financial Statements for the year ended March 31, 2024 CIN : L930"
+        },
+        {
+          "rank": 17,
+          "score": 0.0006,
+          "page": 151,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": false,
+          "preview": " shares of the Company; Board and senior management personnel (\u201cCode\u201d). \u2022 Handling of Unpublished Price Sensitive The same has been uploaded on the Company\u2019s Information; website a"
+        },
+        {
+          "rank": 18,
+          "score": 0.0004,
+          "page": 195,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Material Accounting Policies to the Consolidated Financial Statements for the year ended March 31, 2024 CIN : "
+        },
+        {
+          "rank": 19,
+          "score": 0.0002,
+          "page": 192,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Material Accounting Policies to the Consolidated Financial Statements for the year ended March 31, 2024 CIN : "
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 66,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": " under review were carried out in compliance with the guidelines, standards, etc.: provisions of the Act. (i) The Company\u2019s capital structure was changed on various intervals due t"
+        }
+      ]
+    },
+    {
+      "company": "ETERNAL",
+      "query": "What does Eternal report about store count changes in the quarter?",
+      "expectation": "genuine",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.3752,
+        "top5": 0.0029,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.094,
+        "top1_minus_top5": 0.3724,
+        "top1_minus_median": 0.3752
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.3752,
+        "top5": 0.0014,
+        "median": 0.0556,
+        "min": 0.0014,
+        "stdev": 0.1625,
+        "top1_minus_top5": 0.3738,
+        "top1_minus_median": 0.3196
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 3,
+          "rank_b": 4,
+          "page_a": 36,
+          "page_b": 25,
+          "score_a": 0.0556,
+          "score_b": 0.043,
+          "overlap": 0.8915,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 10,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8791,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 12,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5165,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 13,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7473,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 12,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6264,
+          "suppressed": false
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 13,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8681,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8571,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 13,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6044,
+          "suppressed": false
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 13,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7473,
+          "suppressed": true
+        },
+        {
+          "rank_a": 16,
+          "rank_b": 17,
+          "page_a": 56,
+          "page_b": 56,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.75,
+          "suppressed": true
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 39,
+          "page_b": 28,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8122,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.3752,
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2625,
+          "survives_dedup_topk": true,
+          "preview": "... Eternal Limited (Formerly known as Zomato Limited) Notes to the stand:donc financial results I The statement of standalone financial results of Eternal Limited (Formerly known "
+        },
+        {
+          "rank": 2,
+          "score": 0.2155,
+          "page": 31,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.5,
+          "survives_dedup_topk": true,
+          "preview": "Eternal Limited (Formerly known as Zomato Limited) CIN: L93030DL20JOPLCl9814I Registered office-Ground Floor. 12A. 94 Meghdoot, Nehru Place. New Delhi-110019, Delhi, India Telephon"
+        },
+        {
+          "rank": 3,
+          "score": 0.0556,
+          "page": 36,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.41667,
+          "survives_dedup_topk": true,
+          "preview": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91"
+        },
+        {
+          "rank": 4,
+          "score": 0.043,
+          "page": 25,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.41667,
+          "survives_dedup_topk": false,
+          "preview": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91"
+        },
+        {
+          "rank": 5,
+          "score": 0.0029,
+          "page": 44,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": true,
+          "preview": "eternal eternal.com info@eternal.com Department of Corporate Services, Listing Department, SSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers, Dalal Str"
+        },
+        {
+          "rank": 6,
+          "score": 0.0014,
+          "page": 32,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": true,
+          "preview": "Eternal Limited (Formerly known as Zomato Limited) Consolidated Balance Sheet (INR crore) As at As at Particulars March 31, 2026 March 31, 2025 Audited Audited Assets Non-current a"
+        },
+        {
+          "rank": 7,
+          "score": 0.0013,
+          "page": 7,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.24359,
+          "survives_dedup_topk": false,
+          "preview": "In the letter below, we address the key questions that we think investors might have. Please refer to Annexure A for the key financial and operating metrics data. Q1. How was the b"
+        },
+        {
+          "rank": 8,
+          "score": 0.0003,
+          "page": 40,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "inkit store network scaled to 526 stores by Mar-24 from 377 stores in Mar-23. Depreciation and amortization expense increased by INR 89 crore (20% YoY) to INR 526 crore in FY24. Th"
+        },
+        {
+          "rank": 9,
+          "score": 0.0,
+          "page": 10,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "ages, weather, or anything else - we typically see demand redistribute across the platform rather than it going away. The breadth of restaurant selection across cuisines, price poi"
+        },
+        {
+          "rank": 10,
+          "score": 0.0,
+          "page": 10,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": false,
+          "preview": " going away. The breadth of restaurant selection across cuisines, price points, and geographies means customers have alternatives within the app. Some restaurants in affected pocke"
+        },
+        {
+          "rank": 11,
+          "score": 0.0,
+          "page": 10,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "% YoY for the full year FY26, and we'd encourage looking at the annual number rather than individual quarters. This is an inherently lumpy business - Q3 is events-heavy, Q1 is IPL-"
+        },
+        {
+          "rank": 12,
+          "score": 0.0,
+          "page": 10,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": false,
+          "preview": "compared to 20% YoY in the previous quarter. What drove this acceleration? Akshant: Going-out NOV grew 42% YoY for the full year FY26, and we'd encourage looking at the annual numb"
+        },
+        {
+          "rank": 13,
+          "score": 0.0,
+          "page": 10,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": false,
+          "preview": "omers have alternatives within the app. Some restaurants in affected pockets did see temporary disruption, but platform-level throughput wasn\u2019t impacted. Q9. NOV growth in District"
+        },
+        {
+          "rank": 14,
+          "score": 0.0,
+          "page": 100,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.5,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports: Board Report Financial Statements Stakeholder Whether Channels of communication Frequency of Purpose and scope of group identified as (Email, SM"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 66,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": false,
+          "preview": "of the company to monitor We further report that and ensure compliance with applicable laws, rules, The Board of Directors of the Company is duly regulations and guidelines. consti"
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 56,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "h 31, 2024 in terms of Section 92 and Section 134 of the Act is available on the website viii. Corporate governance report of the Company at www.zomato.com. The Company has complie"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 56,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "ndent assurance provider. not applicable on the Company. In accordance with this requirement, the Company has appointed Deloitte Haskins & Sells LLP as the iii. Annual return assur"
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 197,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview Statutory Reports Financial Statements: Consolidated Material Accounting Policies to the Consolidated Financial Statements for the year ended March 31, 2024 CIN : "
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 39,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": false,
+          "preview": "Deloitte Haskins & Sells We also performed procedures in accordance with the circular issued by the SEBI under Regulation 33(8) of the SEBI (Listing Obligations and Disclosure Requ"
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 28,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "Deloitte Haskins & Sells (b) Review of the Consolidated Financial Results for the quarter ended March 31, 2026 We conducted our review of the Consolidated Financial Results for the"
+        }
+      ]
+    },
+    {
+      "company": "TITAN",
+      "query": "What does Titan report for its Watches segment this quarter?",
+      "expectation": "genuine",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.9872,
+        "top5": 0.9839,
+        "median": 0.9432,
+        "min": 0.0326,
+        "stdev": 0.4347,
+        "top1_minus_top5": 0.0033,
+        "top1_minus_median": 0.044
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.9872,
+        "top5": 0.9496,
+        "median": 0.9839,
+        "min": 0.9496,
+        "stdev": 0.0162,
+        "top1_minus_top5": 0.0377,
+        "top1_minus_median": 0.0033
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 2,
+          "page_a": 15,
+          "page_b": 15,
+          "score_a": 0.9872,
+          "score_b": 0.9872,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 4,
+          "page_a": 3,
+          "page_b": 3,
+          "score_a": 0.9863,
+          "score_b": 0.9863,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 6,
+          "page_a": 2,
+          "page_b": 2,
+          "score_a": 0.9839,
+          "score_b": 0.9839,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 8,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.968,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 11,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.9369,
+          "overlap": 0.747,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 12,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.9369,
+          "overlap": 0.747,
+          "suppressed": true
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 17,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.0372,
+          "overlap": 0.6386,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 18,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.0372,
+          "overlap": 0.6386,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 11,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.9369,
+          "overlap": 0.747,
+          "suppressed": true
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 12,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.9369,
+          "overlap": 0.747,
+          "suppressed": true
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 17,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.0372,
+          "overlap": 0.6386,
+          "suppressed": false
+        },
+        {
+          "rank_a": 8,
+          "rank_b": 18,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.968,
+          "score_b": 0.0372,
+          "overlap": 0.6386,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 10,
+          "page_a": 17,
+          "page_b": 17,
+          "score_a": 0.9496,
+          "score_b": 0.9496,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.9369,
+          "score_b": 0.9369,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 14,
+          "page_a": 11,
+          "page_b": 11,
+          "score_a": 0.1979,
+          "score_b": 0.1979,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 15,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.1979,
+          "score_b": 0.1716,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 13,
+          "rank_b": 16,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.1979,
+          "score_b": 0.1716,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 14,
+          "rank_b": 15,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.1979,
+          "score_b": 0.1716,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 14,
+          "rank_b": 16,
+          "page_a": 11,
+          "page_b": 5,
+          "score_a": 0.1979,
+          "score_b": 0.1716,
+          "overlap": 0.8562,
+          "suppressed": true
+        },
+        {
+          "rank_a": 15,
+          "rank_b": 16,
+          "page_a": 5,
+          "page_b": 5,
+          "score_a": 0.1716,
+          "score_b": 0.1716,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 18,
+          "page_a": 4,
+          "page_b": 4,
+          "score_a": 0.0372,
+          "score_b": 0.0372,
+          "overlap": 1.0,
+          "suppressed": true
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 1,
+          "page_b": 1,
+          "score_a": 0.0326,
+          "score_b": 0.0326,
+          "overlap": 1.0,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.9872,
+          "page": 15,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.30952,
+          "survives_dedup_topk": true,
+          "preview": "TITAN COMPANY LIMITED CfN: L74999TZ1984PLC001456 3, SlPCOT fNDUSTRJAL COMPLEX, HOSUR 635 126. STATEMENT OF CONSOLIDATED UNAUDITED FINANCIAL RESULTS FOR THE QUARTER ENDED 30 JUNE 20"
+        },
+        {
+          "rank": 2,
+          "score": 0.9872,
+          "page": 15,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.30952,
+          "survives_dedup_topk": false,
+          "preview": "TITAN COMPANY LIMITED CfN: L74999TZ1984PLC001456 3, SlPCOT fNDUSTRJAL COMPLEX, HOSUR 635 126. STATEMENT OF CONSOLIDATED UNAUDITED FINANCIAL RESULTS FOR THE QUARTER ENDED 30 JUNE 20"
+        },
+        {
+          "rank": 3,
+          "score": 0.9863,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.45,
+          "survives_dedup_topk": true,
+          "preview": "\u2666 TITAN COMP/\\NY Watches: Business had an exceptional quarter recording a growth of 24% over Q1FY25 achieving a Total Income of \"1,273 crores EBIT came in at \"287 crores clocking 2"
+        },
+        {
+          "rank": 4,
+          "score": 0.9863,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.45,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TITAN COMP/\\NY Watches: Business had an exceptional quarter recording a growth of 24% over Q1FY25 achieving a Total Income of \"1,273 crores EBIT came in at \"287 crores clocking 2"
+        },
+        {
+          "rank": 5,
+          "score": 0.9839,
+          "page": 2,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.56667,
+          "survives_dedup_topk": true,
+          "preview": "\u2666 TIT/\\N COMPANY Titan Company Delivers 21% Revenue Growth in Q1FY26 Watches business records one of its best-ever quarters Chennai, 7th August 2025 Titan Company Limited ('Titan')"
+        },
+        {
+          "rank": 6,
+          "score": 0.9839,
+          "page": 2,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.40476,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMPANY Titan Company Delivers 21% Revenue Growth in Q1FY26 Watches business records one of its best-ever quarters Chennai, 7th August 2025 Titan Company Limited ('Titan')"
+        },
+        {
+          "rank": 7,
+          "score": 0.968,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": true,
+          "preview": "company.in/investors/investor-relations/quarterly-results About Titan: Titan Company Limited (\"Titan\"), a joint venture between the Tata Group and the Tamilnadu Industrial Developm"
+        },
+        {
+          "rank": 8,
+          "score": 0.968,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "company.in/investors/investor-relations/quarterly-results About Titan: Titan Company Limited (\"Titan\"), a joint venture between the Tata Group and the Tamilnadu Industrial Developm"
+        },
+        {
+          "rank": 9,
+          "score": 0.9496,
+          "page": 17,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.5,
+          "survives_dedup_topk": true,
+          "preview": "TITA N COMPA NY LIMITED \u2666 CIN: L74999TZ1984PLC001456 \"T\"I \"'T\"/'.. N r;r1<.trAt.J\"V 3, SfPCOT INDUSTRJAL COMPLEX, HOSUR 635 126. Notes: The consolidated unaudited financial results"
+        },
+        {
+          "rank": 10,
+          "score": 0.9496,
+          "page": 17,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": false,
+          "preview": "TITA N COMPA NY LIMITED \u2666 CIN: L74999TZ1984PLC001456 \"T\"I \"'T\"/'.. N r;r1<.trAt.J\"V 3, SfPCOT INDUSTRJAL COMPLEX, HOSUR 635 126. Notes: The consolidated unaudited financial results"
+        },
+        {
+          "rank": 11,
+          "score": 0.9369,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.21591,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMP/\\NY Conference Call: The earnings conference call is scheduled on August 7, 2025, at 6:30 PM. The call details are available at https://www.titancompany.in/investors/"
+        },
+        {
+          "rank": 12,
+          "score": 0.9369,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.21111,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\N COMP/\\NY Conference Call: The earnings conference call is scheduled on August 7, 2025, at 6:30 PM. The call details are available at https://www.titancompany.in/investors/"
+        },
+        {
+          "rank": 13,
+          "score": 0.1979,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.13095,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 14,
+          "score": 0.1979,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.12692,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 15,
+          "score": 0.1716,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.12406,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 16,
+          "score": 0.1716,
+          "page": 5,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.12222,
+          "survives_dedup_topk": false,
+          "preview": "Embassy Golf Links Business Park BS R & Co. LLP Pebble Beach, B Block, 3rd Floor No. 13/2, off Intermediate Ring Road Chartered Accountants Bengaluru -560 071, India Telephone: +91"
+        },
+        {
+          "rank": 17,
+          "score": 0.0372,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": " Over the last three decades, Titan has expanded into underpenetrated markets and created lifestyle brands across different product categories including fragrances (SKINN), accesso"
+        },
+        {
+          "rank": 18,
+          "score": 0.0372,
+          "page": 4,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": " Over the last three decades, Titan has expanded into underpenetrated markets and created lifestyle brands across different product categories including fragrances (SKINN), accesso"
+        },
+        {
+          "rank": 19,
+          "score": 0.0326,
+          "page": 1,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11806,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\.N COMP/\\NY SEC 58 I 2025-26 7th August 2025 BSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers Exchange Plaza, C-1, Block G Dalal Street Bandra "
+        },
+        {
+          "rank": 20,
+          "score": 0.0326,
+          "page": 1,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11146,
+          "survives_dedup_topk": false,
+          "preview": "\u2666 TIT/\\.N COMP/\\NY SEC 58 I 2025-26 7th August 2025 BSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers Exchange Plaza, C-1, Block G Dalal Street Bandra "
+        }
+      ]
+    },
+    {
+      "company": "PAYTM",
+      "query": "What does Paytm disclose about impairment of loans to associates?",
+      "expectation": "genuine",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.5019,
+        "top5": 0.0132,
+        "median": 0.0001,
+        "min": 0.0,
+        "stdev": 0.1457,
+        "top1_minus_top5": 0.4887,
+        "top1_minus_median": 0.5018
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.5019,
+        "top5": 0.0013,
+        "median": 0.1142,
+        "min": 0.0013,
+        "stdev": 0.2335,
+        "top1_minus_top5": 0.5006,
+        "top1_minus_median": 0.3877
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 3,
+          "page_a": 10,
+          "page_b": 19,
+          "score_a": 0.5019,
+          "score_b": 0.2297,
+          "overlap": 0.7186,
+          "suppressed": true
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 17,
+          "page_a": 10,
+          "page_b": 2,
+          "score_a": 0.5019,
+          "score_b": 0.0,
+          "overlap": 0.5846,
+          "suppressed": false
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 5,
+          "page_a": 12,
+          "page_b": 21,
+          "score_a": 0.409,
+          "score_b": 0.0132,
+          "overlap": 0.9612,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 6,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.409,
+          "score_b": 0.0088,
+          "overlap": 0.699,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 17,
+          "page_a": 19,
+          "page_b": 2,
+          "score_a": 0.2297,
+          "score_b": 0.0,
+          "overlap": 0.5692,
+          "suppressed": false
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 6,
+          "page_a": 21,
+          "page_b": 12,
+          "score_a": 0.0132,
+          "score_b": 0.0088,
+          "overlap": 0.6852,
+          "suppressed": false
+        },
+        {
+          "rank_a": 5,
+          "rank_b": 7,
+          "page_a": 21,
+          "page_b": 12,
+          "score_a": 0.0132,
+          "score_b": 0.0023,
+          "overlap": 0.5248,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 7,
+          "page_a": 12,
+          "page_b": 12,
+          "score_a": 0.0088,
+          "score_b": 0.0023,
+          "overlap": 0.7525,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 11,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0004,
+          "score_b": 0.0001,
+          "overlap": 0.7049,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 13,
+          "page_a": 6,
+          "page_b": 5,
+          "score_a": 0.0004,
+          "score_b": 0.0001,
+          "overlap": 0.5574,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 18,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0004,
+          "score_b": 0.0,
+          "overlap": 0.8197,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 11,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 0.7846,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 12,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 0.8065,
+          "suppressed": true
+        },
+        {
+          "rank_a": 10,
+          "rank_b": 18,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.5161,
+          "suppressed": false
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 12,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0001,
+          "score_b": 0.0001,
+          "overlap": 0.5968,
+          "suppressed": false
+        },
+        {
+          "rank_a": 11,
+          "rank_b": 18,
+          "page_a": 6,
+          "page_b": 6,
+          "score_a": 0.0001,
+          "score_b": 0.0,
+          "overlap": 0.871,
+          "suppressed": true
+        },
+        {
+          "rank_a": 15,
+          "rank_b": 17,
+          "page_a": 3,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5385,
+          "suppressed": false
+        },
+        {
+          "rank_a": 19,
+          "rank_b": 20,
+          "page_a": 2,
+          "page_b": 2,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8434,
+          "suppressed": true
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.5019,
+          "page": 10,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.33333,
+          "survives_dedup_topk": true,
+          "preview": "One 97 Communications Limited Notes to the Consolidated Audited Financial Results I. The Statement of Consolidated Audited Financial Results has been prepared in accordance with th"
+        },
+        {
+          "rank": 2,
+          "score": 0.409,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.83333,
+          "survives_dedup_topk": true,
+          "preview": "through a press release, cancelled the banking license of Paytm Payments Bank Limited (\"PPBL\"), an associate company of the Company and on 25 April 2026 the shareholders of PPBL ap"
+        },
+        {
+          "rank": 3,
+          "score": 0.2297,
+          "page": 19,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": false,
+          "preview": "One 97 Communications Limited Notes to the Standalone Audited Financial Results I. The Statement of Standalone Audited Financial Results has been prepared in accordance with the re"
+        },
+        {
+          "rank": 4,
+          "score": 0.1142,
+          "page": 9,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": true,
+          "preview": "One 97 Communications Limited Consolidated Statement of Cash Flows for the year ended March 31, 2026 (Amounts in INR crores, unless otherwise stated) Particulars I March 31, 2026 I"
+        },
+        {
+          "rank": 5,
+          "score": 0.0132,
+          "page": 21,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": false,
+          "preview": "One 97 Communications Limited Notes to the Standalone Audited Financial Results 7. On November 21, 2025, the Government of India notified provisions of the Code on Wages, 2019, the"
+        },
+        {
+          "rank": 6,
+          "score": 0.0088,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.25,
+          "survives_dedup_topk": true,
+          "preview": "uded in the SCN. Based on an independent legal opinion and management's assessment, the Group has recorded provision for related compounding fees on best estimates. Pending the fin"
+        },
+        {
+          "rank": 7,
+          "score": 0.0023,
+          "page": 12,
+          "chunk_type": "RISK_DISCLOSURE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": false,
+          "preview": "85 crores are in compliance with applicable laws. During the quarter and year ended March 31, 2026, the RBI has compounded the matters having aggregate value of approximately INR 3"
+        },
+        {
+          "rank": 8,
+          "score": 0.0013,
+          "page": 8,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "financial_type": "consolidated",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.5,
+          "survives_dedup_topk": true,
+          "preview": "One 97 Communications Limited CIN: L 72200DL2000PLC108985 Registered Office: First Floor Devika Tower Nehru Place New Delhi 110019 India; Tel: +91 11 2628 0280; Website: www.paytm."
+        },
+        {
+          "rank": 9,
+          "score": 0.0004,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.34286,
+          "survives_dedup_topk": false,
+          "preview": "S.R. LLP BATLIBOl&ASSOCIATES Chartered Accountants III. Associates (Direct) 1. Paytm Payments Bank Limited 2. Paytm lnsuretech Private Limited (till November 28,2025) 3. Paytm Inte"
+        },
+        {
+          "rank": 10,
+          "score": 0.0001,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.1,
+          "survives_dedup_topk": false,
+          "preview": "ocomo Technologies Private Limited (till March 28, 2025) IV. Associates (Indirect) I. Foster Payment Networks Private Limited (subsidiary of PFSL) (till October I 0, 2025) 2. Admir"
+        },
+        {
+          "rank": 11,
+          "score": 0.0001,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "ited] (till October 30, 2025) 4. Paytm Assure Tech Limited [formerly known as Paytm Life Insurance Limited] (till October 30, 2025) 5. Paytm Financial Services Limited ('PFSL') (ti"
+        },
+        {
+          "rank": 12,
+          "score": 0.0001,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": false,
+          "preview": " November 28, 2025) 3. Seven Technology LLC, Delaware (from February 13, 2025, associate of PCTL) 4. Dinie Con-espondente Bancario e Meios de Pagamento Ltda, Brazil (from February "
+        },
+        {
+          "rank": 13,
+          "score": 0.0001,
+          "page": 5,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.18803,
+          "survives_dedup_topk": false,
+          "preview": "S.R. LLP BATLIBOI & ASSOCIATES Chartered Accountants Annexure-A List of Entities I. Subsidiaries (Direct) I. OCL Tech Platfo1ms Limited [formerly known as One 97 Communications Ind"
+        },
+        {
+          "rank": 14,
+          "score": 0.0001,
+          "page": 11,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": false,
+          "preview": "One 97 Communications Limited Notes to the Consolidated Audited Financial Results 6. Details of utilisation of net IPO Proceeds ofINR 8, I 19 crores, are as follows: (Amount in INR"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "S.R. LLP BATL/80/ & ASSOCIATES Chartered Accountants \u2022 Obtain sufficient appropriate audit evidence regarding the financial information of the entities within the Group and its ass"
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.15263,
+          "survives_dedup_topk": false,
+          "preview": "ensuring the accuracy and completeness of the accounting records, relevant to the preparation and presentation of the Statement that give a true and fair view and are free from mat"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "tors are responsible for the preparation and presentation of the Statement that give a true and fair view of the net loss and other comprehensive income and other financial informa"
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 6,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": false,
+          "preview": "suretech Private Limited (till November 28,2025) 3. Paytm Intelligence Limited [formerly known as Paytm Emerging Tech Limited and earlier Paytm General lnsurance Limited] (till Oct"
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "s included in the Group and of its associates and joint ventures are also responsible for overseeing the financial reporting process of their respective companies. Auditor's Respon"
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 2,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": "ocess of their respective companies. Auditor's Responsibilities for the Audit of the Consolidated Financial Results Our ohjectives are to obtain reasonable assurance about whether "
+        }
+      ]
+    },
+    {
+      "company": "ETERNAL",
+      "query": "What does Eternal say about order mix shifting toward lower-value orders?",
+      "expectation": "genuine",
+      "candidates": 20,
+      "spread_all": {
+        "n": 20,
+        "top1": 0.6594,
+        "top5": 0.0007,
+        "median": 0.0,
+        "min": 0.0,
+        "stdev": 0.2418,
+        "top1_minus_top5": 0.6587,
+        "top1_minus_median": 0.6594
+      },
+      "spread_kept_topk": {
+        "n": 5,
+        "top1": 0.6594,
+        "top5": 0.0001,
+        "median": 0.0007,
+        "min": 0.0001,
+        "stdev": 0.3588,
+        "top1_minus_top5": 0.6593,
+        "top1_minus_median": 0.6587
+      },
+      "overlap_pairs": [
+        {
+          "rank_a": 1,
+          "rank_b": 3,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.6594,
+          "score_b": 0.592,
+          "overlap": 0.6139,
+          "suppressed": false
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 4,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.6594,
+          "score_b": 0.4121,
+          "overlap": 0.8119,
+          "suppressed": true
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 6,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.6594,
+          "score_b": 0.0003,
+          "overlap": 0.6907,
+          "suppressed": false
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 7,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.6594,
+          "score_b": 0.0002,
+          "overlap": 0.5109,
+          "suppressed": false
+        },
+        {
+          "rank_a": 1,
+          "rank_b": 10,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.6594,
+          "score_b": 0.0,
+          "overlap": 0.8778,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 3,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.6515,
+          "score_b": 0.592,
+          "overlap": 0.8667,
+          "suppressed": true
+        },
+        {
+          "rank_a": 2,
+          "rank_b": 4,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.6515,
+          "score_b": 0.4121,
+          "overlap": 0.6556,
+          "suppressed": false
+        },
+        {
+          "rank_a": 3,
+          "rank_b": 4,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.592,
+          "score_b": 0.4121,
+          "overlap": 0.802,
+          "suppressed": true
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 6,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.4121,
+          "score_b": 0.0003,
+          "overlap": 0.5052,
+          "suppressed": false
+        },
+        {
+          "rank_a": 4,
+          "rank_b": 10,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.4121,
+          "score_b": 0.0,
+          "overlap": 0.6778,
+          "suppressed": false
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 7,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.0003,
+          "score_b": 0.0002,
+          "overlap": 0.8261,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 10,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.0003,
+          "score_b": 0.0,
+          "overlap": 0.8556,
+          "suppressed": true
+        },
+        {
+          "rank_a": 6,
+          "rank_b": 11,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.0003,
+          "score_b": 0.0,
+          "overlap": 0.6237,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 10,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.0002,
+          "score_b": 0.0,
+          "overlap": 0.6333,
+          "suppressed": false
+        },
+        {
+          "rank_a": 7,
+          "rank_b": 11,
+          "page_a": 9,
+          "page_b": 9,
+          "score_a": 0.0002,
+          "score_b": 0.0,
+          "overlap": 0.7935,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 12,
+          "page_a": 40,
+          "page_b": 40,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8987,
+          "suppressed": true
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 14,
+          "page_a": 40,
+          "page_b": 40,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6667,
+          "suppressed": false
+        },
+        {
+          "rank_a": 9,
+          "rank_b": 15,
+          "page_a": 40,
+          "page_b": 40,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7468,
+          "suppressed": true
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 14,
+          "page_a": 40,
+          "page_b": 40,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.7692,
+          "suppressed": true
+        },
+        {
+          "rank_a": 12,
+          "rank_b": 15,
+          "page_a": 40,
+          "page_b": 40,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8481,
+          "suppressed": true
+        },
+        {
+          "rank_a": 14,
+          "rank_b": 15,
+          "page_a": 40,
+          "page_b": 40,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.9103,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 18,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.8571,
+          "suppressed": true
+        },
+        {
+          "rank_a": 17,
+          "rank_b": 19,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.6957,
+          "suppressed": false
+        },
+        {
+          "rank_a": 18,
+          "rank_b": 19,
+          "page_a": 10,
+          "page_b": 10,
+          "score_a": 0.0,
+          "score_b": 0.0,
+          "overlap": 0.5604,
+          "suppressed": false
+        }
+      ],
+      "chunks": [
+        {
+          "rank": 1,
+          "score": 0.6594,
+          "page": 9,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 1.0,
+          "survives_dedup_topk": true,
+          "preview": "ample. The results have been encouraging - order volume growth is being driven by MTC growth, both from new-to-platform customers and higher frequency among existing budget-conscio"
+        },
+        {
+          "rank": 2,
+          "score": 0.6515,
+          "page": 9,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.53333,
+          "survives_dedup_topk": true,
+          "preview": "gins have remained stable even as the order mix has shifted towards lower-value orders. Ultimately, we are optimizing for absolute Adjusted EBITDA (and not %), and the current tact"
+        },
+        {
+          "rank": 3,
+          "score": 0.592,
+          "page": 9,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.58333,
+          "survives_dedup_topk": false,
+          "preview": "nificantly. What matters is whether the economics hold as NAOV comes down - and they do. Revenue per order continues to improve and operating cost efficiencies have kept pace, whic"
+        },
+        {
+          "rank": 4,
+          "score": 0.4121,
+          "page": 9,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.41667,
+          "survives_dedup_topk": false,
+          "preview": "stomers. A declining NAOV is a natural and intended consequence of this strategy. If we can make restaurant food affordable for a much larger base of Indians, the addressable marke"
+        },
+        {
+          "rank": 5,
+          "score": 0.0007,
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": true,
+          "preview": "f Eternal Limited (formerly known as Zomato Limited) (\u201cCompany\u201d) subject to board approval, wherever applicable with respect to the results of operations and financial condition of"
+        },
+        {
+          "rank": 6,
+          "score": 0.0003,
+          "page": 9,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.2,
+          "survives_dedup_topk": true,
+          "preview": "essable market into more price-sensitive segments. From Q2FY26, we lowered the minimum order value for free delivery to INR 99 from INR 199 for Gold members, stepped up targeted ac"
+        },
+        {
+          "rank": 7,
+          "score": 0.0002,
+          "page": 9,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.29091,
+          "survives_dedup_topk": false,
+          "preview": "t three quarters after bottoming out in Q1FY26. And we believe the improvement is structural, driven primarily by deliberate interventions to expand the addressable market into mor"
+        },
+        {
+          "rank": 8,
+          "score": 0.0001,
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.09091,
+          "survives_dedup_topk": true,
+          "preview": "se (ii) other income (iii) depreciation and amortization expense (iv) finance cost and (v) exceptional items These metrics have certain limitations and hence should be considered i"
+        },
+        {
+          "rank": 9,
+          "score": 0.0,
+          "page": 40,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "wth. Hyperpure gross margin improved YoY largely due to better sourcing and growing mix of high margin categories. In the core restaurant supply business, we increased the minimum "
+        },
+        {
+          "rank": 10,
+          "score": 0.0,
+          "page": 9,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": false,
+          "preview": "conscious customers, and curated assortment specifically for this segment - meals under INR 250, for example. The results have been encouraging - order volume growth is being drive"
+        },
+        {
+          "rank": 11,
+          "score": 0.0,
+          "page": 9,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.08333,
+          "survives_dedup_topk": false,
+          "preview": " NOV growth seems to be accelerating consistently over the last three quarters. Are there any structural reasons that are driving this growth? Deepinder: Yes, growth has been accel"
+        },
+        {
+          "rank": 12,
+          "score": 0.0,
+          "page": 40,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.14286,
+          "survives_dedup_topk": false,
+          "preview": " in FY24.   COGS primarily relates to the Hyperpure business and grew in line with Hyperpure Revenue growth. Hyperpure gross margin improved YoY largely due to better sourcing and "
+        },
+        {
+          "rank": 13,
+          "score": 0.0,
+          "page": 31,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.07692,
+          "survives_dedup_topk": false,
+          "preview": "00 initiative leading to Net Zero emissions Facilitate delivery of 100 million plastic-free across the food ordering and delivery value food orders by 2025  chain by 2033 Help rest"
+        },
+        {
+          "rank": 14,
+          "score": 0.0,
+          "page": 40,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.16667,
+          "survives_dedup_topk": false,
+          "preview": "Company Overview | Statutory Reports: MD&A | Financial Statements B. Expenses Cost of goods sold (COGS) increased by INR 1,487 crore (107% YoY) to INR 2,882 crore in FY24.   COGS p"
+        },
+        {
+          "rank": 15,
+          "score": 0.0,
+          "page": 40,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "financial_type": "unknown",
+          "fiscal_year": "FY24",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "al Statements B. Expenses Cost of goods sold (COGS) increased by INR 1,487 crore (107% YoY) to INR 2,882 crore in FY24.   COGS primarily relates to the Hyperpure business and grew "
+        },
+        {
+          "rank": 16,
+          "score": 0.0,
+          "page": 35,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.125,
+          "survives_dedup_topk": false,
+          "preview": "7 On Au~us1 ::!7, 2024, Eternal Limited (Formerly knm,11 a~ Zomato Limited) compklcd the aequisiMn ofOrbgcn TC(:hnologics Priw.1c Limited f'OTPL. .) . 3nd Wucel:md Entertainment Pr"
+        },
+        {
+          "rank": 17,
+          "score": 0.0,
+          "page": 10,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07143,
+          "survives_dedup_topk": false,
+          "preview": "eepinder: No meaningful impact yet. When localised supply disruptions happen - whether from LPG shortages, weather, or anything else - we typically see demand redistribute across t"
+        },
+        {
+          "rank": 18,
+          "score": 0.0,
+          "page": 10,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.11111,
+          "survives_dedup_topk": false,
+          "preview": "ages, weather, or anything else - we typically see demand redistribute across the platform rather than it going away. The breadth of restaurant selection across cuisines, price poi"
+        },
+        {
+          "rank": 19,
+          "score": 0.0,
+          "page": 10,
+          "chunk_type": "TEXT",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07692,
+          "survives_dedup_topk": false,
+          "preview": "We expect growth to continue trending toward our long-term expectation of 20%+ YoY NOV growth, with margins remaining in the 5-6% range. Q8. Do you expect the recent LPG shortage i"
+        },
+        {
+          "rank": 20,
+          "score": 0.0,
+          "page": 3,
+          "chunk_type": "TABLE",
+          "financial_type": "unknown",
+          "fiscal_year": "FY26",
+          "rrf_score": 0.07143,
+          "survives_dedup_topk": false,
+          "preview": "Headline Results for Q4FY26 (Quarter ending March 31, 2026) * Sharp increase in YoY Adjusted Revenue growth mainly due to shift to 1P model in quick commerce from Q1FY26 onwards, w"
+        }
+      ]
+    }
+  ]
+}

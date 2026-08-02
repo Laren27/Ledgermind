@@ -60,7 +60,87 @@ QUERIES = [
     ("TITAN",   "What did Titan disclose about raw material gold price hedging?", "poor"),
     ("PAYTM",   "What are Paytm's data privacy and customer data retention policies?", "poor"),
     ("ETERNAL", "How does Eternal's board compose its audit committee?", "poor"),
+
+    # --- absent_cross, added 2026-08-02 -------------------------------------
+    # PURPOSE: stress the 0.15-0.5 band, which the 2026-08-01 run left empty.
+    # That run was good-versus-poor: poor topped out at 0.0323, good started at
+    # 0.329, nothing between. A live cross query on 2026-08-02 landed at
+    # 0.3211/0.1734 -- inside the gap -- and returned tier=medium on what was
+    # by content a genuine no-answer, which is what currently makes
+    # _reconcile_cross Quadrant 4 unreachable by any question.
+    #
+    # HYPOTHESIS UNDER TEST, recorded before measuring so it can be
+    # disconfirmed: the separating variable is FRAMING, not topic absence.
+    # 'poor' queries above are bare factual lookups ("What is Eternal's
+    # attrition rate"). These are cross-style comparisons naming "financial
+    # exposure", and Cohere may be scoring that framing against the financial
+    # statements -- matching the FRAME of the question rather than its subject,
+    # the same behaviour recorded when the ETERNAL cross query ranked
+    # forward-looking-statements boilerplate above genuine margin commentary.
+    #
+    # CONTROLLED PAIR: data privacy and audit committee appear in BOTH sets,
+    # bare above and cross-framed here. Same topic, same corpus, different
+    # framing. If those two pairs diverge the hypothesis holds; if all ten
+    # interleave it is wrong, which is the more useful outcome.
+    #
+    # If absent_cross clusters near 0.3 while poor stays near 0.01, the band
+    # has structure and COHERE_MEDIUM has an evidence-backed value to move to.
+    # Do not move it on fewer points than this.
+    ("ETERNAL", "Does Eternal's disclosed approach to franchisee dispute resolution align with its financial exposure to those disputes?", "absent_cross"),
+    ("PAYTM",   "Is Paytm's stated customer information policy consistent with its financial exposure to regulatory penalties?", "absent_cross"),
+    ("ETERNAL", "Does Eternal's audit committee composition align with its financial exposure to related-party transactions?", "absent_cross"),
+    ("TITAN",   "Does Titan's disclosed gold price hedging approach align with its financial exposure to commodity movements?", "absent_cross"),
+    ("ETERNAL", "Is Eternal's stated approach to rider safety consistent with its financial exposure to insurance claims?", "absent_cross"),
+    ("PAYTM",   "Does Paytm's disclosed information security posture align with its financial exposure to breach liability?", "absent_cross"),
+    ("TITAN",   "Is Titan's stated store-expansion strategy consistent with its financial exposure to lease commitments?", "absent_cross"),
 ]
+
+# --- specificity set, added 2026-08-03 ---------------------------------------
+# A SEPARATE list rather than more entries in QUERIES, because it asks a
+# different question and mixing them would make the per-label summaries
+# meaningless.
+#
+# Two labels only, both recorded before measuring:
+#
+#   absent  — topics this corpus structurally cannot answer. Targeted at TITAN
+#             and PAYTM specifically: their chunk counts are small enough that
+#             absence is a property of the corpus, not a judgement call about
+#             whether some passage half-addresses the question. All six are
+#             governance/policy topics (board evaluation, RPT approvals, vigil
+#             mechanism, sitting fees, CSR, risk committee charter) of the kind
+#             that live in an annual report's statutory section, which these
+#             quarterly filings do not carry.
+#
+#   genuine — real corpus content, deliberately PERIPHERAL rather than headline.
+#             Headline topics (revenue, PAT) are already known to score high;
+#             they would measure the easy case. ESOPs, lease-liability cash-flow
+#             treatment, store counts, segment reporting, impairment of loans to
+#             associates and order-mix commentary are all genuinely present and
+#             all genuinely secondary.
+#
+# No prediction is recorded about WHERE these land. The prior absent_cross run
+# disconfirmed its own stated hypothesis, and a band this measurement has not
+# yet observed does not need another guess attached to it.
+SPECIFICITY_QUERIES = [
+    ("TITAN",   "How does Titan's board evaluate the performance of its independent directors?", "absent"),
+    ("TITAN",   "What is Titan's policy on related party transaction approvals?", "absent"),
+    ("PAYTM",   "What vigil mechanism does Paytm maintain for whistleblower complaints?", "absent"),
+    ("TITAN",   "How does Titan determine sitting fees for non-executive directors?", "absent"),
+    ("PAYTM",   "What is Paytm's stated approach to CSR expenditure allocation?", "absent"),
+    ("TITAN",   "How does Titan's risk management committee define its charter?", "absent"),
+
+    ("ETERNAL", "What does Zomato disclose about its employee stock option plans?", "genuine"),
+    ("ETERNAL", "How are lease liabilities treated in Zomato's cash flow statement?", "genuine"),
+    ("ETERNAL", "What does Eternal report about store count changes in the quarter?", "genuine"),
+    ("TITAN",   "What does Titan report for its Watches segment this quarter?", "genuine"),
+    ("PAYTM",   "What does Paytm disclose about impairment of loans to associates?", "genuine"),
+    ("ETERNAL", "What does Eternal say about order mix shifting toward lower-value orders?", "genuine"),
+]
+
+# Which set this invocation measures. Kept as an explicit name rather than a
+# CLI flag so the committed file records exactly which set produced the
+# committed JSON alongside it.
+QUERIES_TO_RUN = SPECIFICITY_QUERIES
 
 # Written inside the container; copy out with:
 #   docker compose exec -T backend cat /app/measurements/cohere_score_dump.json > docs/measurements/<name>.json
@@ -106,8 +186,8 @@ def main():
         "queries": [],
     }
 
-    for i, (company, query, expectation) in enumerate(QUERIES, 1):
-        print(f"\n[{i}/{len(QUERIES)}] {company} ({expectation})")
+    for i, (company, query, expectation) in enumerate(QUERIES_TO_RUN, 1):
+        print(f"\n[{i}/{len(QUERIES_TO_RUN)}] {company} ({expectation})")
         print(f"  {query[:72]}")
 
         candidates = hybrid_search(
@@ -200,7 +280,9 @@ def main():
 
     ok = [q for q in report["queries"] if q.get("spread_all")]
     print("\nSpread by expectation (does Cohere discriminate?):")
-    for exp in ("good", "known_flat", "known_weak_ranking", "poor"):
+    # Derived from the data rather than hardcoded, so a run of any query set
+    # summarises its own labels instead of silently printing nothing.
+    for exp in sorted({q["expectation"] for q in ok}):
         rows = [q for q in ok if q["expectation"] == exp]
         if rows:
             print(f"  {exp:<20} top1 {min(q['spread_all']['top1'] for q in rows):.3f}"
