@@ -11,7 +11,7 @@ therefore never appeared in a diff. A design document that cannot be reviewed
 alongside the code it describes will drift silently. Any change that makes a
 blueprint statement untrue must add an entry here in the same commit.
 
-Last verified: 2026-07-30.
+Last verified: 2026-08-02.
 
 ---
 
@@ -83,6 +83,18 @@ As shipped: `ChunkResult.reranker_backend` tags each chunk, and
 thresholds accordingly. Cohere values reviewed against production reranker
 scores 2026-07-29; no evidence of miscalibration, though the 0.15–0.5 band
 remains unstressed by any observed query.
+
+**Measured properly 2026-08-01** (`scripts/cohere_score_dump.py`, 10 queries,
+raw JSON under `docs/measurements/`). The prior belief that Cohere scores were
+"flat" was an artefact of only ever inspecting the post-dedup top-5 of
+well-retrieving queries. Across full candidate sets the separation is two orders
+of magnitude with ZERO overlap: good queries top out at 0.329–0.999, poor ones
+at 0.003–0.032. `COHERE_HIGH=0.5` is correct and should not be moved — no poor
+query cleared it, the highest reaching 0.0323, fifteen times below. A single
+0.584 cover-letter datapoint had suggested the opposite; ten points overruled
+it. Note the median candidate on a GOOD query still scores ~0.006–0.08: Cohere
+pushes nearly everything to the floor and lifts only real matches, which is what
+makes the citation floor in section A safe at 0.05.
 
 ### §5 / §8 — Embedding runtime
 `sentence-transformers` + `torch` replaced by `fastembed` ONNX
@@ -451,13 +463,24 @@ until processed.
 
 ### §12 / §7 — Cross-examination path is BUILT but UNMEASURED
 `cross_engine.py` and `contradiction.py` exist and `router.py` routes to
-`path="cross"`. Zero golden questions target it — verified by grepping
-`expected_path` across all three datasets. The 83/83 figure therefore says
-nothing about this path, and the LLM-client refactor touched
-`response_generator`'s cross branch without any test exercising it.
+`path="cross"`. No golden question ASSERTS `expected_path="cross"` — verified by
+grepping across all three datasets — so the path is exercised incidentally
+rather than deliberately.
 
-This is the weakest claim in the system: an untested path in a platform whose
-premise is verifiability. Closing it needs golden questions, not code.
+**Amended 2026-08-02, and the amendment cuts both ways.** The original claim
+that the path was wholly unmeasured is no longer accurate: PQ012 routes to
+`cross` on every observed run under gemini-3.1-flash-lite, and exercised the
+path hard enough to expose a real substitution defect (Stage 0c, section A).
+Incidental coverage found a bug that deliberate coverage had not been written to
+look for.
+
+What remains true is narrower and still the weakest claim here. Contradiction
+detection is untested: no golden question presents a real disagreement between
+narrative text and an SQL figure, so `detect_contradictions` has never been
+asserted against a case where it SHOULD fire — only against cases where it
+should not. A useful set needs one question per availability quadrant plus at
+least one genuine contradiction; without the latter it only asserts that nothing
+fires, which the empty case already gives for free.
 
 Still true as of 2026-07-30, though the cross branch has since been rewritten
 (see Trap 7 in section C) and verified by hand across repeated runs. Golden
@@ -527,11 +550,19 @@ Baseline as of 2026-08-02, provider-clean and model-clean on
 gemini-3.1-flash-lite: **83/84** — Eternal 52/52, Titan 14/14, Paytm 17/18.
 Do not read the 83 as the question count; the two numbers coinciding is an
 accident of one open failure. The single failure is PQ012, which asserts
-expected_path="semantic" while the current model routes it to "cross"; the
-cross path then appends an unrelated SQL-verified figure ("Exceptional Items
-for FY26 was ₹-186 Cr") to a question about PPBL exposure. Left failing
-deliberately — editing the assertion to match observed behaviour would hide a
-real substitution bug. Tracked as the lead backlog item.
+expected_path="semantic" while the current model routes it to "cross".
+
+**Updated 2026-08-02.** The substitution half of that failure is FIXED: the
+cross path no longer appends an unrelated SQL-verified figure ("Exceptional
+Items for FY26 was ₹-186 Cr") to a question about PPBL exposure. See Stage 0c in
+section A. Verified live — `dsl_object` is None, no figure is appended, and the
+answer states the impairment correctly; the scoped `semantic_risk` sweep passes
+its keyword and confidence assertions and fails on `expected_path` alone.
+
+It stays red on purpose and carries a `known_deliberate_failure` field saying
+so. Editing `expected_path` to "cross" would buy 84/84 by deleting the only
+artifact recording that router classification is imprecise on "financial
+exposure to X" phrasing.
 
 The earlier 84/84 is VOID and must not be quoted: it predates the five
 extraction fixes and the token-set coverage floor of 2026-08-01, which changed
@@ -547,3 +578,42 @@ separately from the newer-filing restatement case.
 Caveat on scope: the race the lock defends against requires concurrent
 ingestion, and ingestion is currently a single manual CLI run. The mitigation is
 correct and untriggered.
+
+---
+
+## D. Latent risks — mechanism real, currently no victims
+
+Entries here are NOT divergences. The code matches the spec and behaves
+correctly today; each describes a failure mode that a specific, nameable change
+in the data would activate. Recorded so the trigger is recognised when it
+arrives, rather than rediscovered as a bug.
+
+### §9 — The `quarter` filter is currently a no-op
+`_build_filter` adds `quarter` as a hard `must` when set, which would exclude
+every chunk whose `quarter` is null — i.e. all annual narrative. That mechanism
+is real. It presently has no victims, and the recorded fear that annual
+commentary was unreachable was mistaken.
+
+Measured 2026-08-02 (`scripts/check_quarter_payload.py`, zero quota) across
+ETERNAL's 2268 chunks. Storage is clean: exactly two shapes, `STORED_NULL`
+(1999) and `VALUE:'Q4'` (269). No missing keys, no empty strings, no `"None"`
+strings — so the `IsNullCondition` versus `IsEmptyCondition` distinction the
+concern was framed around does not arise.
+
+The decisive finding is that `quarter` and `fiscal_year` are perfectly
+COLLINEAR in this corpus: every FY24 chunk is null (the Zomato annual report,
+two doc_ids) and every FY26 chunk is `Q4` (the Q4FY26 filing, two doc_ids). So
+`fiscal_year=FY26 AND quarter=Q4` excludes exactly what `fiscal_year=FY26`
+excludes on its own — the quarter condition removes nothing. That is why a
+probe under a Q4 filter returned the same candidate count as every other filter
+shape.
+
+**Trigger:** the first time one company has BOTH an annual and a quarterly
+filing in the SAME fiscal year. That does not exist today — ETERNAL spans FY24
+(annual) and FY26 (Q4), TITAN is Q1FY26 only, PAYTM is FY26. At that point a
+`quarter=Qn` query would genuinely exclude that year's annual narrative, and the
+fix is an OR-branch admitting stored-null alongside the requested quarter. Do
+not build it before then: it would add a filter path with no test that fails
+without it.
+
+`fiscal_year` remains a hard `must` regardless. That one was never in question.
