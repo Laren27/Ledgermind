@@ -273,6 +273,52 @@ def _is_numeric_word(text: str) -> bool:
     return bool(_NUMERIC_WORD_RE.match(text.strip()))
 
 
+def _ocr_one_to_digit(token: str) -> str:
+    """
+    Map an OCR "I" that stands for the digit 1 onto "1", PRESERVING whatever
+    negative-marking wrapper it arrived in.
+
+    WHY THE WRAPPER MATTERS. _is_numeric_word() tests text.strip("()"), so
+    "(I)" already qualifies as a numeric word, already enters a bucket, and
+    already CLAIMS a value column. What then failed was the conversion:
+    clean_financial_number("(I)") strips the parens and calls float("I"),
+    raising ValueError and returning None. So the column was consumed and the
+    value thrown away -- strictly worse than never matching, because a
+    genuinely printed figure silently became an absent one. Measured on PAYTM
+    FY26 (FS-Results_Q4-...-March-31,-2026.pdf) page 8, where the FY25 annual
+    column of BOTH 'Adjustment of tax relating to earlier years' and 'Deferred
+    tax expense/ (credit)' prints as "(I)", i.e. (1). Those two absences are
+    exactly what made that period's tax identity unevaluable: the row closes as
+    20 + (-1) + (-1) = 18 against a printed Total Tax expense of 18.
+
+    EXACT-STRING, NOT A REGEX, and deliberately so. This sits on the per-bucket
+    value loop, which runs for every bucket of every row of every financial
+    page in all four reference documents. _NUMERIC_WORD_RE, _VALUE_TOKEN_RE and
+    the regexes inside clean_financial_number() are left untouched.
+
+    ROMAN-NUMERAL SAFETY, and why the guard is on the CORE rather than the raw
+    token. The substitution fires only when the token stripped of wrapper
+    characters is EXACTLY "I", so no multi-character numeral can be caught:
+    "II", "III", "IV", "VI", "VII" all have cores that are not "I" and are
+    returned unchanged (they are not numeric words in the first place -- only
+    the one-character form matches ^I$). This is the same lesson as
+    entity_resolver's TRAILING_INITIAL_RE, which must run on RAW text before
+    casefold because case is the only thing separating a split initial from a
+    numeral prefix: get the STAGE wrong and a fix aimed at one shape silently
+    rewrites another. The stage here is deliberately late -- a token only
+    reaches this function after it has been classified numeric AND assigned to
+    a value column by x-position. Description words never pass through it, so
+    a row label like "V Profit before tax" or "I nterest expense" cannot be
+    touched.
+
+    Bare "I" already mapped to "1" at the call site before this function
+    existed; that behaviour is preserved exactly, not widened.
+    """
+    if token.strip("()/\\") != "I":
+        return token
+    return token.replace("I", "1")
+
+
 def extract_financials_positional(pdf_path, page_index, column_centers, tolerance=None):
     """
     Row-value extraction using physical x-position instead of whitespace
@@ -444,7 +490,7 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
             if comma_fragments:
                 fragment = max(comma_fragments, key=len)
             else:
-                fragment = "".join("1" if t == "I" else t for t in texts)
+                fragment = "".join(_ocr_one_to_digit(t) for t in texts)
 
             values.append(clean_financial_number(fragment))
 
