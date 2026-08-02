@@ -475,6 +475,16 @@ def _compute_derived_totals(records: list[FinancialRecord]) -> list[FinancialRec
         # directly (same PAYTM-standalone gap: PAT is printed but the tax
         # line is not, in the main quarterly table). Requires PBT (possibly
         # just derived above) and PAT both present.
+        #
+        # DELIBERATELY NOT ALSO DERIVED FROM ITS COMPONENTS. §6 requires the
+        # two formula copies here and in validate_financial_identities to move
+        # together, so the absence of the component sum in this function is a
+        # decision, not an oversight: validate_financial_identities check 4
+        # asserts tax_expense == current_tax + deferred_tax + adjustment. If
+        # this function also SYNTHESISED tax_expense from those same three
+        # components, that check would be verifying its own arithmetic and
+        # could never fail. Derivation from PBT-PAT is independent of the
+        # components, so the check stays meaningful against it.
         if "tax_expense" not in metrics and "profit_before_tax" in metrics and "pat" in metrics:
             pbt_idx2, pbt_val2 = metrics["profit_before_tax"]
             pat_val = metrics["pat"][1]
@@ -550,6 +560,60 @@ def validate_financial_identities(records: list[FinancialRecord]) -> list[dict]:
                 
             computed = metrics["profit_before_tax"] - tax
             _check(key, "pat = profit_before_tax - tax_expense", computed, "pat", metrics)
+
+        # 4. Tax Composition Check
+        #    tax_expense = current_tax + deferred_tax
+        #                  + adjustment_of_tax_relating_to_earlier_years
+        #
+        # ASSERTS ONLY WHEN ALL FOUR ROWS ARE PRESENT, and reports rather than
+        # skips when they are not.
+        #
+        # WHY NOT COALESCE MISSING COMPONENTS TO ZERO. An absent row and a
+        # genuine zero are indistinguishable once `.get(m, 0)` has run, and
+        # that indistinguishability is exactly how the deferred_tax alias tie
+        # stayed invisible for weeks (see registry.py's deferred_tax comment):
+        # PAYTM consolidated tax_expense held the DEFERRED figure, and a
+        # zero-coalescing sum still "reconciled" against it.
+        #
+        # Measured 2026-08-03 across all 10 PAYTM period groups: 2 are fully
+        # populated (FY26 annual consolidated, FY26 Q3 consolidated) and both
+        # reconcile exactly -- 18+10+2=30 and 6+(-3)+2=5, diff 0.00. The other
+        # 8 lack at least one component. FY25 annual consolidated is the case
+        # that decides the design: current_tax 20.00 against tax_expense 18.00
+        # with deferred_tax ABSENT. Coalescing would report that as an 11.11%
+        # identity FAILURE, when the true statement is that a component was
+        # never extracted. Failing there would be a false accusation about the
+        # arithmetic; passing silently would hide the extraction gap.
+        #
+        # So incomplete groups go to a third outcome, neither pass nor fail --
+        # the same treatment purge_orphaned_metrics gives period groups that no
+        # source document produces: reported by name, acted on by nobody.
+        tax_parts = (
+            "current_tax",
+            "deferred_tax",
+            "adjustment_of_tax_relating_to_earlier_years",
+            "tax_expense",
+        )
+        if any(m in metrics for m in tax_parts):
+            absent = [m for m in tax_parts if m not in metrics]
+            if absent:
+                logger.warning(
+                    "  [IDENTITY NOT EVALUATED] %s | %s %s (%s): tax_expense = "
+                    "current_tax + deferred_tax + "
+                    "adjustment_of_tax_relating_to_earlier_years — absent: %s",
+                    key[0], key[1], key[2], key[3], ", ".join(absent),
+                )
+            else:
+                computed = (
+                    metrics["current_tax"]
+                    + metrics["deferred_tax"]
+                    + metrics["adjustment_of_tax_relating_to_earlier_years"]
+                )
+                _check(
+                    key,
+                    "tax_expense = current_tax + deferred_tax + adjustment_of_tax_relating_to_earlier_years",
+                    computed, "tax_expense", metrics,
+                )
 
     return failures
 
