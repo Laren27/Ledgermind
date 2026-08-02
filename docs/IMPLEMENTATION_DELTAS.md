@@ -467,20 +467,57 @@ until processed.
 grepping across all three datasets — so the path is exercised incidentally
 rather than deliberately.
 
-**Amended 2026-08-02, and the amendment cuts both ways.** The original claim
-that the path was wholly unmeasured is no longer accurate: PQ012 routes to
-`cross` on every observed run under gemini-3.1-flash-lite, and exercised the
-path hard enough to expose a real substitution defect (Stage 0c, section A).
-Incidental coverage found a bug that deliberate coverage had not been written to
-look for.
+**Superseded 2026-08-02.** The heading is now wrong in both directions and is
+kept only so the correction has something to attach to. The path IS measured:
+three golden questions assert `expected_path="cross"` and all three pass
+provider-clean.
 
-What remains true is narrower and still the weakest claim here. Contradiction
-detection is untested: no golden question presents a real disagreement between
-narrative text and an SQL figure, so `detect_contradictions` has never been
-asserted against a case where it SHOULD fire — only against cases where it
-should not. A useful set needs one question per availability quadrant plus at
-least one genuine contradiction; without the latter it only asserts that nothing
-fires, which the empty case already gives for free.
+- **PQ018** — predates today and was missed when this section was first written.
+  Asserts note 4's reconciliation with four substantive keywords (`ppbl`, `190`,
+  `optionally convertible debentures`, `march 31, 2024`) at medium confidence.
+- **Q053** — Quadrant 1, RICH-NARRATIVE. Management commentary on quick commerce
+  against SQL revenue 54,364. Five citations at 0.95-0.99.
+- **Q054** — Quadrant 1, EVIDENCE-THIN. The narrative genuinely does not explain
+  the D&A rise, so the qualitative half returns an accurate scoped negative and
+  the verified 1,597 Cr is appended beneath it — the exact juxtaposition of the
+  cross self-contradiction bug fixed on 2026-07-31.
+
+All three assert `expected_contradictions: 0`, which against this corpus is the
+strongest available assertion: it guards the failure that actually occurred
+(eleven false `severity: high` flags on a query whose top-cited chunk was the
+same cash-flow statement the SQL value came from), and nothing else in the
+golden set asserts that a non-contradiction stays unflagged.
+
+**Three quadrants remain unassertable, each for a measured reason, and none is
+closable by writing a cleverer question.**
+
+*A genuine contradiction does not exist in this corpus.* Three zero-quota
+retrieval probes looked for one. Every profitability-framed query returns
+financial statements — cash flow, auditor's report, results statement, balance
+sheet — because in a results filing that is where profit lives. The narrative
+discusses NOV, order mix, store counts and category growth. The two halves
+address different subjects, so there is nothing to disagree about. Closing this
+needs a DOCUMENT containing a real disagreement (an earnings-call transcript, an
+investor presentation making directional claims), not another question. A
+manufactured contradiction would train the system to fire on approximation,
+which is Trap 7 inverted and worse than no test at all.
+
+*Quadrant 2 (qual refused + quant verified) is unexercised.* Q054 was authored
+expecting it and landed in Quadrant 1 instead, at tier=high. `_is_refusal_text`
+correctly declined to call the answer a refusal: the scoped negative is followed
+by roughly 380 characters of substantive content, well past the 120-character
+tail guard. That is the right call — the answer IS substantive. Reaching
+Quadrant 2 needs a metric the retrieved chunks are wholly silent on, and three
+attempts (finance costs, depreciation, Paytm exceptional items) each found the
+opposite, because the financial statements are themselves retrievable text and
+Cohere ranks them 0.99 for a metric-named query.
+
+*Quadrant 4 (both halves empty) cannot be asserted as cross at all.* The
+`cross_examination` scorer fails on `tier == "low"`, and a genuine no-answer is
+low by construction. TQ015 was authored as a Quadrant 4 cross test and moved to
+`semantic_honest_refusal` for this reason. This is arguably a scorer gap rather
+than a fact of nature — a real no-answer on the cross path currently has no way
+to be tested — and is recorded in the backlog rather than patched around.
 
 Still true as of 2026-07-30, though the cross branch has since been rewritten
 (see Trap 7 in section C) and verified by hand across repeated runs. Golden
@@ -547,9 +584,32 @@ companies §1 lists. 84 golden questions across three datasets (Eternal 52,
 Titan 14, Paytm 18), above the blueprint's 50.
 
 Baseline as of 2026-08-02, provider-clean and model-clean on
-gemini-3.1-flash-lite: **83/84** — Eternal 52/52, Titan 14/14, Paytm 17/18.
-Do not read the 83 as the question count; the two numbers coinciding is an
-accident of one open failure. The single failure is PQ012, which asserts
+gemini-3.1-flash-lite: **86/87** — Eternal 54/54, Titan 15/15, Paytm 17/18.
+Every sweep reported `Providers: {'gemini': N}` and
+`Models served: {'gemini-3.1-flash-lite': N}`, with blocked queries correctly
+excluded (7 + 2 + 2, no LLM call).
+
+Composition note, because the number was not observed in a single run: the
+Eternal sweep returned 53/54 with Q038 failing, Q038 was then recategorised from
+`semantic_honest_refusal` to `semantic_audit` (its expectation was stale — see
+below), and a scoped `semantic_audit` re-run returned 6/6. Nothing else changed
+between the two. A single clean 54/54 artifact would need one more full Eternal
+sweep, roughly 100 calls, and has not been run.
+
+Q038 was golden-data staleness, not a defect. Its expectation assumed the corpus
+held only the Q4FY26 SRE 2410 limited review, which disclaims opining on
+internal-control effectiveness. But ETERNAL spans TWO fiscal years in Qdrant,
+and the FY24 statutory audit does address internal financial controls under
+s143(3)(i). The live answer cites FY24 pages 164-166 at 0.87-0.98, scopes the
+finding explicitly to the year ended March 31 2024, and notes the absence of an
+FY26 assessment. Accurate and better than a refusal. The question also
+implicitly exercises CRAG rung 2 — it names no period, which is what makes the
+FY24 report reachable.
+
+The previous **83/84** is superseded. It predates the three golden questions
+added 2026-08-02 (Q053, Q054, TQ015) and the Q038 recategorisation.
+
+Do not read the 86 as the question count; there are 87 questions. The single failure is PQ012, which asserts
 expected_path="semantic" while the current model routes it to "cross".
 
 **Updated 2026-08-02.** The substitution half of that failure is FIXED: the
