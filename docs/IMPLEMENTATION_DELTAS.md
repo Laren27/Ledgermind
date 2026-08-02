@@ -562,7 +562,21 @@ investor presentation making directional claims), not another question. A
 manufactured contradiction would train the system to fire on approximation,
 which is Trap 7 inverted and worse than no test at all.
 
-*Quadrant 2 (qual refused + quant verified) is unexercised.* Q054 was authored
+*Quadrant 2 (qual refused + quant verified) is EXERCISED as of 2026-08-02* by
+**PQ019** — "Is Paytm's stated workforce strategy consistent with its financial
+exposure to attrition?" Three consecutive gemini-3.1-flash-lite runs plus a
+scoped eval sweep: `path=cross`, tier=medium, `sql_verified=false`,
+`dsl_object=None`, one citation, every run opening with a scoped negative about
+the absent workforce strategy. It carries NO keywords by design — a scoped
+negative has no stable vocabulary, and asserting on refusal phrasing is the
+brittleness the golden keyword rule warns against. Note the model does transcribe
+an employee benefits expense figure from a retrieved chunk as adjacent context;
+unticked and `sql_verified=false`, so not a defect, but if a future change makes
+that number appear verified the entry should start failing. The paragraph below
+records the three attempts that preceded it and why they failed, which is still
+the useful part.
+
+Q054 was authored
 expecting it and landed in Quadrant 1 instead, at tier=high. `_is_refusal_text`
 correctly declined to call the answer a refusal: the scoped negative is followed
 by roughly 380 characters of substantive content, well past the 120-character
@@ -572,12 +586,42 @@ attempts (finance costs, depreciation, Paytm exceptional items) each found the
 opposite, because the financial statements are themselves retrievable text and
 Cohere ranks them 0.99 for a metric-named query.
 
-*Quadrant 4 (both halves empty) cannot be asserted as cross at all.* The
-`cross_examination` scorer fails on `tier == "low"`, and a genuine no-answer is
-low by construction. TQ015 was authored as a Quadrant 4 cross test and moved to
-`semantic_honest_refusal` for this reason. This is arguably a scorer gap rather
-than a fact of nature — a real no-answer on the cross path currently has no way
-to be tested — and is recorded in the backlog rather than patched around.
+*Quadrant 4 (both halves empty) is blocked on threshold calibration, not on
+question authorship.* The scorer gap this paragraph originally described is
+CLOSED — `expected_tier_low` was added 2026-08-02 as an inversion rather than a
+skip, so a genuine no-answer can now be asserted. The blocker moved.
+
+Four cross-routed candidates were measured that day; all four returned
+tier=**medium**. The cleanest is *"Does Eternal's disclosed approach to
+franchisee dispute resolution align with its financial exposure to those
+disputes?"* — a topic the corpus does not contain in any form, narrative or line
+item. Three identical gemini-3.1-flash-lite runs: `path=cross`, `dsl=None`
+(Stage 0c fired), and a response stating the documents contain neither the
+qualitative approach nor the financial exposure, transcribing no figure. By
+content it is exactly Quadrant 4. It scored `confidence_score=0.3227`, citation
+reranker scores **0.3211 / 0.1734**.
+
+`COHERE_MEDIUM=0.15`, so those clear the medium floor twofold. This is the first
+real data in the **0.15–0.5 band recorded as unstressed** in §13 above. That
+calibration was good-versus-poor: poor topped out at 0.032, good ran 0.329–0.999,
+and nothing landed between. This query is a third class the calibration lacked —
+right company, right document, plausible framing, topic genuinely absent — where
+retrieval returns the least-irrelevant available chunk, an order of magnitude
+above true noise and below real evidence.
+
+Quadrant 4 requires empty `retrieved_chunks`, which arises from
+`semantic_engine`'s hard refusal, not from chunks that were retrieved and turned
+out useless. So no question reaches it while the medium floor sits at 0.15.
+
+**Do not move `COHERE_MEDIUM` on this datapoint.** One point is what produced the
+wrong prediction from the 0.584 cover-letter anomaly that ten later measurements
+overruled, and the current baseline was established at this value. The next step
+is a deliberate stressing of the 0.15–0.5 band: reuse
+`scripts/cohere_score_dump.py` against roughly ten corpus-silent-but-plausible
+queries (franchisee disputes, gold hedging, data-privacy policy and
+audit-committee composition are four verified anchor-free candidates), zero
+Gemini calls, same method as the original calibration. If they cluster near 0.3,
+the floor has an evidence-backed value to move to.
 
 Still true as of 2026-07-30, though the cross branch has since been rewritten
 (see Trap 7 in section C) and verified by hand across repeated runs. Golden
@@ -644,7 +688,9 @@ companies §1 lists. 84 golden questions across three datasets (Eternal 52,
 Titan 14, Paytm 18), above the blueprint's 50.
 
 Baseline as of 2026-08-02, provider-clean and model-clean on
-gemini-3.1-flash-lite: **86/87** — Eternal 54/54, Titan 15/15, Paytm 17/18.
+gemini-3.1-flash-lite: **87/88** — Eternal 54/54, Titan 15/15, Paytm 18/19,
+after PQ019 was added and verified (see §12/§7). The preceding 86/87 differs by
+that one question only.
 Every sweep reported `Providers: {'gemini': N}` and
 `Models served: {'gemini-3.1-flash-lite': N}`, with blocked queries correctly
 excluded (7 + 2 + 2, no LLM call).
@@ -737,3 +783,21 @@ not build it before then: it would add a filter path with no test that fails
 without it.
 
 `fiscal_year` remains a hard `must` regardless. That one was never in question.
+
+### §10 — `metric_anchor_phrases()` matches substrings, not words
+Stage 0c tests `phrase in query` against raw lowercased text, and the anchor set
+includes two- and three-character aliases: `da` (depreciation), `gov` (gross
+order value). So `da` matches inside "**da**ta" and `gov` inside
+"**gov**ernance". Confirmed 2026-08-02 while authoring cross candidates.
+
+Not a defect today, for the reason §10 already gives: Stage 0c's polarity is
+inverted relative to Stage 0b. It is consulted to find NOTHING, so a broader set
+makes the guard fire LESS — leaving a query unguarded, which is the prior state
+and recoverable — rather than suppressing a figure someone asked for, which would
+be a new defect.
+
+The consequence worth recording is that the effective anchor set is far broader
+than the docstring implies, which makes authoring anchor-free queries harder than
+expected. **Trigger:** if word-boundary matching is ever introduced it would
+NARROW the set and could unguard queries currently caught, so it must be measured
+against the full golden set first, exactly as the Stage 0c verification was.
