@@ -3,7 +3,7 @@ import re
 from typing import Optional
 import pdfplumber
 
-from .entity_resolver import resolve_metric, METRIC_ALIASES
+from .entity_resolver import resolve_metric, normalize_metric_label, METRIC_ALIASES
 from .models import BlockType, FinancialRecord, FinancialType, PageBlock
 from .pdf_parser import extract_financials, extract_financials_positional, find_fully_populated_row_centers
 from .section_classifier import get_blocks_by_type
@@ -291,6 +291,34 @@ _SKIP_DESCRIPTIONS = {
 
 def _should_skip_row(description: str, values: list) -> bool:
     desc_lower = description.lower().strip()
+    # The LENGTH tests below measure the NORMALISED label, not the raw one.
+    # Bracketed metadata is not part of the label, and measuring the raw
+    # string made this guard reject a real line item:
+    #
+    #   "Provision for impainnent ofloans/investments in subsidiary/associate
+    #    [refer note 4]"                      raw 83 chars -> SKIPPED
+    #   normalises to
+    #   "provision for impairment of loans/investments in subsidiary/associate"
+    #                                         norm 69 chars -> kept
+    #
+    # That row carries PAYTM's standalone impairment (FY26 439.0, FY25 37.0),
+    # resolves correctly to impairment_of_loans_and_investments_in_associates,
+    # and was silently dropped from every ingest after this guard landed on
+    # 2026-07-31 -- while its 59-char CONSOLIDATED twin (207.0 / 30.0) passed.
+    # Found 2026-08-02 because the row surfaced as a purge candidate with no
+    # current-code replacement.
+    #
+    # The guard's intent is unchanged: real line items are short LABELS.
+    # Normalisation only removes non-label text ([refer note 4], footnote
+    # markers, unit annotations) and repairs OCR damage, so prose is
+    # unaffected -- measured on the two known prose cases, 104->103 and 93->93
+    # characters, both still caught. The impairment label loses 14.
+    #
+    # Deliberately scoped to the LENGTH tests. The remaining checks below stay
+    # on desc_lower: they are pattern matches whose behaviour under
+    # normalisation has not been measured, and this fix is for one demonstrated
+    # defect, not a rewrite.
+    desc_norm = normalize_metric_label(description)
 
     # Pure OCR noise: a description with no alphabetic characters at all
     # (e.g. ".1,203" — a stray digit/decimal fragment, not a real label).
@@ -302,7 +330,7 @@ def _should_skip_row(description: str, values: list) -> bool:
     # sold gold-ingots aggregating...", audit-review boilerplate sentences).
     # Real P&L/BS line items are short labels; a row this long is prose
     # that happened to parse as a table row, not a genuine metric.
-    if len(description) > 80 or len(desc_lower.split()) > 12:
+    if len(desc_norm) > 80 or len(desc_norm.split()) > 12:
         return True
 
     if "deferred revenue" in desc_lower or "contract liabilities" in desc_lower or "segment revenue" in desc_lower:
