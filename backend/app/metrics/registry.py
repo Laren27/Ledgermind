@@ -692,3 +692,43 @@ def not_yet_derivable_metrics() -> list[str]:
     compiler exists yet, so these currently return a clean unavailable
     response rather than being computed."""
     return [m.canonical_name for m in ALL_METRICS if m.dsl_enabled and m.metric_type == "derived"]
+
+def metric_anchor_phrases() -> set[str]:
+    """Every phrase that counts as the user NAMING a metric, in any vocabulary.
+
+    Used by cross_engine's Stage 0c guard. GeminiDSLResponse.metric is a
+    REQUIRED field, so when a cross-routed query names no metric at all the
+    model cannot return "none" -- it manufactures one, and the manufactured
+    metric is compiled, executed and stamped sql_verified=True. Measured live
+    2026-08-01: PQ012 ("financial exposure to Paytm Payments Bank") produced
+    metric="exceptional_items" and appended a ticked "Rs -186 Cr" across five
+    consecutive runs on gemini-3.1-flash-lite. Stable classification, not
+    non-determinism, and not something Stage 0b could ever catch -- 0b fires
+    on a metric the user NAMED, and PQ012 names none.
+
+    POLARITY IS THE OPPOSITE OF unqueryable_metric_aliases() AND THAT IS WHY
+    THERE IS NO WORD FLOOR HERE. Stage 0b fires when it FINDS a phrase, so a
+    broad set makes it over-fire and it needs UNQUERYABLE_MIN_WORDS. This set
+    is consulted to find NOTHING, so breadth makes the guard fire LESS. Short
+    aliases ("cash", "equity", "others", "india") are free safety here, not a
+    hazard. Failing to anchor leaves a PQ012-class query unguarded (status
+    quo, recoverable); anchoring too eagerly suppresses a figure someone
+    legitimately asked for (a new defect). Widen this set freely; never
+    narrow it without measuring against the full golden set.
+
+    prompt_aliases is included and is load-bearing. "delivery charges" and
+    "employee benefits" exist ONLY there, not in any aliases tuple -- a first
+    pass reading aliases alone left four quantitative golden questions
+    (Q004/Q013/Q020/Q023) unanchored. Parenthetical commentary is dropped
+    because those entries are prose for Gemini, not matchable phrases.
+    """
+    phrases: set[str] = set()
+    for m in ALL_METRICS:
+        for alias in m.aliases:
+            phrases.add(alias.lower().strip())
+        phrases.add(m.canonical_name.replace("_", " ").lower())
+        for alias in (m.prompt_aliases or "").split(","):
+            a = alias.lower().strip()
+            if a and "(" not in a:
+                phrases.add(a)
+    return phrases
