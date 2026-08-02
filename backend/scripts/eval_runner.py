@@ -454,7 +454,30 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
                 "actual": {"sql_verified": sql_verified},
             }
 
-        if tier == "low":
+        # tier is asserted in ONE direction by default and the OTHER when the
+        # golden entry sets expected_tier_low. Low normally means the
+        # qualitative half missed its chunks -- a real failure, and the right
+        # default for every cross question written so far.
+        #
+        # But _reconcile_cross's Quadrant 4 (both halves empty, a genuine
+        # no-answer) returns tier="low" BY CONSTRUCTION, so an unconditional
+        # fail made that quadrant untestable: TQ015 was authored as a
+        # Quadrant 4 cross question on 2026-08-02 and had to be moved to
+        # semantic_honest_refusal purely because this branch could not express
+        # the expectation.
+        #
+        # Deliberately an INVERSION, not a skip. Skipping the check would let
+        # such a question pass at any tier, asserting nothing -- the flag has
+        # to buy a real assertion, not remove one.
+        expect_low = bool(golden.get("expected_tier_low"))
+        if expect_low and tier != "low":
+            return {
+                "pass": False,
+                "reason": f"Expected low confidence (genuine no-answer) but got tier={tier} "
+                          f"— check whether either half actually found evidence",
+                "actual": {"confidence_tier": tier, "response_preview": response[:200]},
+            }
+        if not expect_low and tier == "low":
             return {
                 "pass": False,
                 "reason": "Low confidence — the qualitative half likely missed its chunks",
