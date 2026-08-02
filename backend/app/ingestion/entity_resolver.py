@@ -189,6 +189,9 @@ def resolve_metric(raw: str) -> str:
     _WORD_SPLIT_RE = re.compile(r"[\s/]+")
     normalized_words = set(_WORD_SPLIT_RE.split(normalized_text)) - {""}
     best_match: Optional[tuple[int, str]] = None  # (alias_word_count, canonical_name)
+    # Every alias matching at best_match's word count, winner first. Tracked
+    # only so a TIE can be REPORTED -- see the block after the loop.
+    tied: list[tuple[str, str]] = []  # (alias, canonical_name)
     for alias, canonical_name in METRIC_ALIASES.items():
         alias_words = set(_WORD_SPLIT_RE.split(alias)) - {""}
         if not alias_words:
@@ -217,7 +220,56 @@ def resolve_metric(raw: str) -> str:
             # measured in shared whole words rather than raw character length.
             if best_match is None or len(alias_words) > best_match[0]:
                 best_match = (len(alias_words), canonical_name)
+                tied = [(alias, canonical_name)]
+            elif len(alias_words) == best_match[0]:
+                tied.append((alias, canonical_name))
     if best_match:
+        # A TIE AT THE WINNING WORD COUNT IS RESOLVED BY DICT INSERTION ORDER,
+        # i.e. by declaration order in registry.ALL_METRICS. That is arbitrary
+        # with respect to correctness, and until 2026-08-02 it was also silent.
+        #
+        # THE BUG THAT MOTIVATED THIS. PAYTM's P&L prints 'Deferred tax
+        # expense/ (credit)', 4 tokens. Both "deferred tax" (-> deferred_tax)
+        # and "tax expense" (-> tax_expense) are 2-word subsets at exactly 0.50
+        # coverage, so both cleared the floor and tied. tax_expense is declared
+        # earlier in ALL_METRICS, so it won; the deferred row was stored AS
+        # tax_expense, and financial_extractor's seen_keys (first-wins) then
+        # discarded the genuine 'Total Tax expense' row as a duplicate key.
+        # PAYTM consolidated tax_expense held the DEFERRED figure (FY26 annual
+        # 10 against the true 30), producing three PAT identity failures that
+        # stood for weeks. Nothing anywhere recorded that a choice had been
+        # made. Fixed by adding a 3-word "deferred tax expense" alias, which
+        # wins outright -- but the next such collision deserves one log line
+        # rather than a multi-session diagnosis.
+        #
+        # A static scan of the registry (2026-08-02) found 189 same-length
+        # alias pairs mapping to different canonicals and sharing at least one
+        # word. That is an upper bound, not a risk count: most pairs share only
+        # a stopword and could never both be subsets of one real label. Which
+        # ties are REACHABLE is a property of the labels documents actually
+        # contain, which is exactly what this log measures and a static scan
+        # cannot.
+        #
+        # Reports only when the tied aliases name DIFFERENT canonicals. Two
+        # aliases of the same metric tying is the registry working as intended
+        # (pat carries both "profit for the period" and "profit for the year").
+        #
+        # Deliberately does NOT change the outcome. Which candidate is correct
+        # is a per-label judgement, and the fix is normally an alias edit in
+        # registry.py so the two stop colliding at all. Same reasoning as
+        # seen_keys: make it visible, do not guess.
+        rivals = [(a, c) for a, c in tied if c != best_match[1]]
+        if rivals:
+            shared = set.intersection(*[
+                set(_WORD_SPLIT_RE.split(a)) - {""} for a, _ in tied
+            ])
+            logger.warning(
+                "  [METRIC TIE] '%s' (normalized: '%s') — %d aliases matched at "
+                "%d words; kept '%s' by registry declaration order, rejected %s. "
+                "Shared tokens: %s. Disambiguate with a longer alias in registry.py.",
+                raw, normalized_text, len(tied), best_match[0], best_match[1],
+                sorted({c for _, c in rivals}), sorted(shared) or "none",
+            )
         return best_match[1]
 
     logger.warning("Unknown metric: '%s' (normalized: '%s') — storing as-is", raw, normalized_text)
