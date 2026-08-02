@@ -473,15 +473,32 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="LedgerMind Phase 3 — Full Pipeline Smoke Test"
     )
-    parser.add_argument("pdf_path", nargs="?", default=os.path.expanduser(
-        "~/ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"))
-    parser.add_argument("--company", default="ETERNAL")
-    parser.add_argument("--ticker", default="ETERNAL")
-    parser.add_argument("--fiscal-year", default="FY26")
-    parser.add_argument("--quarter", default="Q4",
-                         help="Use 'none' for annual reports")
-    parser.add_argument("--doc-type", default="quarterly_result")
-    parser.add_argument("--filing-date", default="2026-04-28")
+    # EVERY metadata flag is REQUIRED. There is no defensible default for
+    # "which company is this PDF" -- and until 2026-08-02 every default here
+    # was ETERNAL's, so omitting a flag silently ingested a document under
+    # Eternal's metadata. That already happened: TITAN was mislabelled Q4
+    # for months because --quarter and --filing-date were omitted on its
+    # first ingest, and the wrong quarter then propagated into Postgres and
+    # Qdrant payloads. A missing flag must be an immediate error, not a
+    # plausible-looking wrong answer.
+    #
+    # Nothing calls this CLI programmatically (verified 2026-08-02:
+    # process_pending_uploads uses ingest_from_storage_sync, backfill
+    # references it only in a comment, RUNBOOK does not mention it), so
+    # making these required breaks no caller.
+    parser.add_argument("pdf_path")
+    parser.add_argument("--company", required=True)
+    # Deliberately optional and defaulted to None: _run_ingestion resolves
+    # the ticker from COMPANY_REGISTRY and OVERWRITES whatever is passed
+    # here, so a value supplied on the command line is discarded anyway.
+    parser.add_argument("--ticker", default=None)
+    parser.add_argument("--fiscal-year", required=True)
+    parser.add_argument("--quarter", required=True,
+                         help="Q1/Q2/Q3/Q4, or 'none' for annual reports")
+    parser.add_argument("--doc-type", required=True,
+                         help="quarterly_result | annual_report | drhp | transcript")
+    parser.add_argument("--filing-date", required=True,
+                         help="YYYY-MM-DD, from the PDF cover page")
     parser.add_argument("--version", default="v1")
     parser.add_argument("--skip-financials", action="store_true",
                          help="Vector reindex only — skip Stage 7 financial extraction")
@@ -538,31 +555,47 @@ if __name__ == "__main__":
     print("--- Phase 3 Completion Gate ---")
 
     # Gate 1: document states
+    # Scoped to the doc_ids THIS RUN produced, not to company+fiscal_year.
+    # The old predicate matched any previously-indexed document for the same
+    # company and year, so an ingest that registered nothing still found
+    # rows and passed. ETERNAL alone spans two fiscal years and four
+    # doc_ids; the gate could not observe its own run.
     conn = get_connection()
     with conn.cursor() as cur:
         cur.execute("SET app.tenant_id = %s", (ALPHA_TENANT,))
         cur.execute(
             "SELECT financial_type, ingestion_state FROM documents "
-            "WHERE company = %s AND fiscal_year = %s "
-            "ORDER BY financial_type",
-            (args.company, args.fiscal_year),
+            "WHERE doc_id = ANY(%s::uuid[]) ORDER BY financial_type",
+            (result["doc_ids"],),
         )
         doc_rows = cur.fetchall()
     conn.close()
 
-    print(f"\nDocuments table:")
+    print(f"\nDocuments table (this run's doc_ids):")
     for row in doc_rows:
         status = "✅" if row[1] == "indexed" else "❌"
         print(f"  {status} {row[0]:13s} → {row[1]}")
-    assert doc_rows, f"No documents found for {args.company}/{args.fiscal_year}"
+    assert doc_rows, f"No documents registered by this run ({result['doc_ids']})"
     assert all(r[1] == "indexed" for r in doc_rows), "Not all documents are indexed"
 
-    # Gate 2: Qdrant chunk count
+    # Gate 2: chunks written BY THIS RUN.
+    #
+    # This previously read verify_collection(ALPHA_TENANT)["total_points"],
+    # a TENANT-WIDE count. ETERNAL alone holds 2268 chunks, so a threshold of
+    # 100 was already satisfied before the run started -- the gate passed
+    # unconditionally on any ingest into a non-empty tenant, including one
+    # that indexed zero chunks. It could not fail. The tenant total is still
+    # printed for context, but the assertion is on this run's own output.
+    this_run_chunks = result["chunks_indexed"]
     qdrant_info = verify_collection(ALPHA_TENANT)
-    qdrant_ok   = qdrant_info["total_points"] >= args.min_chunks
+    qdrant_ok   = this_run_chunks >= args.min_chunks
     print(f"\nQdrant chunks: {'✅' if qdrant_ok else '❌'} "
-          f"{qdrant_info['total_points']} points (min expected: {args.min_chunks})")
-    assert qdrant_ok, f"Expected ≥{args.min_chunks} chunks, got {qdrant_info['total_points']}"
+          f"{this_run_chunks} written by this run (min expected: {args.min_chunks}) "
+          f"| tenant total now {qdrant_info['total_points']}")
+    assert qdrant_ok, (
+        f"This run indexed {this_run_chunks} chunks, expected >={args.min_chunks}. "
+        f"Lower --min-chunks for a genuinely small document."
+    )
 
     # Gate 3: Key financials in PostgreSQL
     # Golden-value hard assertions only apply to the originally verified
