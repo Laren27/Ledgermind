@@ -530,9 +530,49 @@ directly above. That verification ran at purge time against the 464-row table;
 this measurement is against the 420-row post-purge state, and which four periods
 were checked then was not recorded. The two are therefore not directly
 comparable and the earlier claim is neither confirmed nor retracted here.
-Recorded as an open discrepancy — whether the purge removed component rows that
-would otherwise make more groups evaluable is unmeasured, and worth one dry run
-to settle before the next extraction change.
+SETTLED 2026-08-03 by that dry run. The purge is excluded as a cause of tax
+sparsity on two independent grounds, either of which is sufficient alone.
+
+1. The database is now exactly the current extractor's output. The dry run
+   reported ORPHANED: 0 with no unscoped-group section at all, so every live
+   business key is in the produced set. Produced row keys 1377, live is_latest
+   rows 1377, and DISTINCT live business keys also 1377 — equal cardinality on a
+   subset relation forces set equality. Had a purge deleted a component row the
+   extractor still produces, that key would now be produced-but-not-live and the
+   two counts could not both be 1377. Reinforcing this, `financials` holds ZERO
+   is_latest = FALSE rows: nothing retired, nothing residual.
+2. `validate_financial_identities` runs over extraction RECORDS, not over
+   database rows — it receives `records` and groups them in memory. A purge
+   mutates only the table, so it is structurally incapable of changing that
+   function's verdict. This ground holds regardless of what any row count says.
+
+So every current NOT EVALUATED verdict means the component was not extracted.
+The DB-side matrix above is a faithful reconstruction of extraction output
+precisely because the two sets coincide; that coincidence is a present fact, not
+a guarantee, and the reconstruction stops being faithful the moment they diverge.
+
+What remains genuinely unrecoverable: the purge DID delete tax component rows
+(deltas records them as "a component summing into a preserved total ... for all
+four periods", which means all four rows were present for those periods at purge
+time). They were hard-deleted and left no is_latest = FALSE trace, so WHICH four
+periods cannot be recovered from the database. But those groups would not be
+evaluable today even had the purge never run: the purge only removes rows the
+extractor has already stopped producing, and a re-ingest now reproduces exactly
+the current 1377 rows. The loss of evaluability traces to the extraction change.
+The purge removed the stale evidence of it, not the capability.
+
+§9 OBLIGATION DISCHARGED. The post-extraction-change `purge_orphaned_metrics`
+dry run required by §9 ran clean on 2026-08-03: zero orphans, zero unscoped
+groups, nothing to purge, nothing applied.
+
+LATENT GAP, recorded because it is untested rather than verified. That same
+"zero is_latest = FALSE rows" fact means Truth Resolution and restatement
+handling have NEVER been exercised against live data. The retirement path --
+`db_loader._SQL_LOCK_LATEST` flipping a prior row to is_latest = FALSE while
+preserving it -- is the mechanism the whole restatement design rests on, and no
+row in the live table has ever traversed it. Its correctness is currently an
+argument from reading the SQL, not a measurement. Treat any first restatement as
+an unproven code path and measure it, do not assume it.
 
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
