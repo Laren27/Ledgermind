@@ -218,10 +218,58 @@ those logs show only what was dropped. False positives live on the kept side and
 would surface as a changed answer, not a log line. 83/83 held after the change,
 which is evidence rather than proof.
 
-Surfaced but not addressed: with duplicates cleared, slots 4 and 5 now hold
-chunks scoring 0.026 and 0.014 — effectively noise presented to the user as
-citations. A minimum relevance floor for citation is separate open work,
-distinct from the confidence tier thresholds in §13.
+Surfaced here, closed 2026-08-02 — see the citation relevance floor below.
+
+### §9 — Citation relevance floor
+With duplicates cleared, the trailing slots held chunks scoring 0.026 and 0.014:
+noise presented to the user as numbered evidence. A citation is a CLAIM that a
+passage supports the answer, so rendering a 0.02 chunk with the same visual
+weight as a 1.00 match asserts support the score says is absent — a Zero
+UI-Hallucination Mandate violation on the evidence list itself.
+
+Measured 2026-08-02 across four live `semantic_risk` queries, 20 real citations.
+Sorted, the scores fall into two clusters with nothing between them: noise at
+0.0027–0.0290 (seven values) and genuine matches at 0.0883–0.9996 (thirteen).
+`CITATION_RELEVANCE_FLOOR = 0.05` sits in a roughly threefold empty band, so it
+is not a tuned constant — anything in 0.03–0.08 gives identical results on this
+evidence. Consistent with the 2026-08-01 Cohere dump, where no 'poor' query
+exceeded 0.0323.
+
+Three properties are deliberate and load-bearing:
+
+- **Display layer only.** The filter lives in `_build_citations()`, the single
+  construction point, and does not touch `retrieved_chunks`. A weak chunk in the
+  model's context is harmless and occasionally useful; the defect is presenting
+  it as evidence. Filtering retrieval instead would change what the model sees on
+  every semantic and cross query, risking the eval baseline for no gain.
+- **Cannot move confidence.** `_score_confidence()` reads `chunks[0]` and
+  `chunks[-1]` and runs BEFORE `_build_citations()` at every call site, so the
+  tier cannot shift as a side effect of a display filter. Verified live: counts
+  went 5→2, 5→5, 5→3, 5→3 across the four queries with every tier unchanged. If
+  that call ordering ever changes, this guarantee changes with it.
+- **Cohere scale only.** Local ONNX returns raw logits (thresholds -4.5/-7.5)
+  where 0.05 sits above nearly every legitimate score and would drop everything.
+  One threshold across two scales is the §13 bug rebuilt. No logit-scale floor
+  exists because none has been measured, and inventing one for symmetry is the
+  unmeasured-constant habit this project has already paid for.
+
+It can never return an empty list: if every chunk falls below the floor the
+top-scoring one is kept, since an answer with zero citations violates Principle 2
+outright and one weak citation beats none.
+
+The same asymmetry as near-duplicate suppression applies. The logs show only what
+was dropped; a false positive — a genuinely relevant chunk scoring below 0.05 —
+would surface as a missing citation, not a log line. Four queries found none,
+which is evidence rather than proof. A suspiciously short citation list is the
+tell, and this threshold is the first thing to check.
+
+Incidental observation, not acted on: all seven chunks dropped across the three
+affected queries came from Paytm pages 5–6, the same two pages recurring in every
+query. Consistent with cover/boilerplate matter that retrieves on frame-matching
+and scores near zero on subject-matching. Whether such pages should reach the
+candidate pool at all is a chunker/classifier question, not a retrieval one; the
+naive fix (filter by page number) is exactly the per-document hack this project
+rejects.
 
 ### §10 — Stage 0 guards: refusing beats substituting
 Blueprint §10's DSL self-healing loop assumes an invalid metric produces an
@@ -242,6 +290,15 @@ query against the shared registry:
   investments in associates recorded in FY26?" returned
   `metric="exceptional_items"` and appended a ticked `₹-186 Cr` for a metric
   nobody asked about.
+- **Stage 0c — no metric named at all**, added 2026-08-02. Lives in
+  `cross_engine.py`, not `quant_engine.py`. `GeminiDSLResponse.metric` is a
+  REQUIRED field, so a cross-routed query naming no metric cannot return "none"
+  — the model manufactures one, which compiles, executes, and is stamped
+  `sql_verified=True`. Observed live across five consecutive runs on
+  gemini-3.1-flash-lite: PQ012, "Does Paytm have any financial exposure to Paytm
+  Payments Bank following the license cancellation?", produced
+  `metric="exceptional_items"` and appended a ticked `₹-186 Cr`. Stable
+  classification, not non-determinism.
 
 Stage 0b matches canonical names with underscores expanded, not only alias
 tuples — load-bearing, since every stored alias for that metric uses a slash
@@ -251,7 +308,40 @@ aliases like "cash", "equity", "others" and "india", and scanning those would
 fire on nearly any query. 44 phrases survive the floor, all unambiguous
 financial-statement language. It fails toward NOT firing.
 
-The guard records a partial `dsl_object` before returning, so the cross path's
+Stage 0c inverts Stage 0b's polarity, and that is why it has NO word floor.
+Stage 0b fires when it FINDS a phrase, so breadth makes it over-fire and it needs
+`UNQUERYABLE_MIN_WORDS`. Stage 0c is consulted to find NOTHING, so breadth makes
+it fire LESS: short aliases like "cash" and "india" are free safety rather than a
+hazard. Failing to anchor leaves a query unguarded (the prior state, recoverable);
+anchoring too eagerly would suppress a figure someone legitimately asked for (a
+new defect). Its phrase set therefore unions aliases, underscore-expanded
+canonical names, and `prompt_aliases` — the last being load-bearing, since
+"delivery charges" and "employee benefits" exist only there, and a first pass
+reading alias tuples alone left four quantitative golden questions unanchored.
+Verified against all 84 golden questions: 28 have no anchor, every one of them
+adversarial (blocked pre-router) or `semantic_*` (never invokes the quant half).
+
+Stage 0c is scoped to the cross path BY PLACEMENT, not by a runtime conditional.
+On `path=quantitative` the router has already asserted the user wants a number,
+and refusing there would risk legitimate queries phrased outside registry
+vocabulary. On cross the quant half is an adjunct to a qualitative answer, so
+skipping it degrades to qualitative-only — a case `_reconcile_cross` already
+handles as Quadrant 3. Living in `cross_engine.py` means Path 2 is untouched by
+construction rather than by a check someone could later move. It deliberately
+does NOT set `dsl_object`: leaving it None is what tells reconciliation this
+query never asked for a figure, so `CROSS_NO_VERIFIED_FIGURE_NOTE` — which
+asserts a metric was identified — stays correctly silent. No change to
+`response_generator.py` was needed.
+
+Note the router was NOT changed. Its cross rule ("verify or compare qualitative
+claims against financial numbers") matches "financial exposure" defensibly, and
+re-tuning a classification prompt used by every query to clear one test is the
+prompt-versus-concrete-rule fight already lost twice here. With the guard in
+place, routing cross costs nothing. PQ012's golden entry stays red on
+`expected_path` as the single artifact recording that classification is imprecise
+on this phrasing; it carries a `known_deliberate_failure` field saying so.
+
+Stage 0b records a partial `dsl_object` before returning, so the cross path's
 reconciliation can tell "a metric was identified but produced no verified
 figure" from "no figure was ever requested" — without it, a refused query looks
 identical to a purely qualitative one and the user is never told the system
