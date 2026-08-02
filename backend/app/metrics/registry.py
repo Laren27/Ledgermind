@@ -309,7 +309,20 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
     ),
     MetricDefinition(
         canonical_name="deferred_tax",
-        aliases=("deferred tax", "deferred rnx"),
+        # "deferred tax expense" is load-bearing, not redundant with
+        # "deferred tax". PAYTM's P&L prints 'Deferred tax expense/
+        # (credit)', which tokenises to 4 words. Both "deferred tax" and
+        # tax_expense's "tax expense" are 2-word subsets scoring exactly
+        # 0.50 coverage -- a TIE, broken in resolve_metric by
+        # first-seen-wins over METRIC_ALIASES insertion order, and
+        # tax_expense is declared earlier in ALL_METRICS. The deferred row
+        # therefore won the tax_expense slot, and seen_keys (first-wins)
+        # then discarded the genuine 'Total Tax expense' row as a duplicate
+        # key. Result: PAYTM consolidated tax_expense held the DEFERRED
+        # figure (FY26 annual 10 vs the true 30), which is what produced
+        # three standing PAT identity failures. The 3-word alias scores
+        # 0.75 and wins outright, no tie. Measured 2026-08-02.
+        aliases=("deferred tax", "deferred rnx", "deferred tax expense"),
         metric_type="raw", dsl_enabled=False, label="Deferred Tax",
     ),
 
