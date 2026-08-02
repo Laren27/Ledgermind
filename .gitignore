@@ -15,12 +15,15 @@ dist/
 *.log
 
 # Session artifacts — eval output and vendored CLI binaries
-golden_dataset/eval_results_*.json
+# Eval OUTPUTS live in eval_results/, never in golden_dataset/.
+# golden_dataset/ holds ONLY the three q*.json INPUTS: a glob over
+# that directory once held 79 output files against 3 inputs; a glob
+# over it picked up stale ones, crashing an
+# anchor scan and producing a phantom category discrepancy.
+eval_results/
 backend/render-cli/
 backend/render.zip
 frontend/tsconfig.tsbuildinfo
-golden_dataset/eval_*.json
 backend/measurements/
 backend/measurements/
 backend/measurements/
-golden_dataset/eval_pq012_probe_*.json
