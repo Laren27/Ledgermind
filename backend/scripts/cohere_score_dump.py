@@ -259,16 +259,32 @@ def main():
             "spread_all": st,
             "spread_kept_topk": kept_st,
             "overlap_pairs": overlaps,
+            # RECORDING ONLY. doc_id and the wider preview were added
+            # 2026-08-03 after a stored result could not answer a question
+            # asked of it: the audit-committee chunk in
+            # cohere_band_stress_2026-08-02.json was recorded at 180 chars
+            # with no doc_id, so establishing whether the corpus actually
+            # contained audit-committee disclosure -- and which document it
+            # came from -- had to be inferred from page + fiscal_year rather
+            # than read. The label on that query turned out to be wrong. A
+            # measurement whose provenance cannot be checked from the file it
+            # wrote is one re-run away from being worthless.
+            #
+            # .get() rather than [] on doc_id per the ChunkResult TypedDict
+            # convention; it is a declared field populated from the Qdrant
+            # payload, but a chunk written before that payload key existed
+            # should degrade to "" rather than raise mid-measurement.
             "chunks": [{
                 "rank": r + 1,
                 "score": round(c["reranker_score"], 4),
+                "doc_id": c.get("doc_id", ""),
                 "page": c["page_number"],
                 "chunk_type": c["chunk_type"],
                 "financial_type": c["financial_type"],
                 "fiscal_year": c["fiscal_year"],
                 "rrf_score": round(c["rrf_score"], 5),
                 "survives_dedup_topk": c["chunk_id"] in kept_ids,
-                "preview": c["text"][:180].replace("\n", " "),
+                "preview": c["text"][:600].replace("\n", " "),
             } for r, c in enumerate(scored)],
         })
 
