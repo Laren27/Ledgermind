@@ -325,6 +325,27 @@ ALL_METRICS: tuple[MetricDefinition, ...] = (
         aliases=("deferred tax", "deferred rnx", "deferred tax expense"),
         metric_type="raw", dsl_enabled=False, label="Deferred Tax",
     ),
+    MetricDefinition(
+        canonical_name="adjustment_of_tax_relating_to_earlier_years",
+        # PAYTM's P&L prints 'Adjustment of tax relating to earlier years *',
+        # which normalizes to a 7-word label and was falling through as an
+        # unmapped raw name (regression_check log line 154, 2026-08-02).
+        # The canonical name here is byte-identical to what resolve_metric's
+        # unmapped fallback already produced (normalized.replace(" ", "_")),
+        # so registering it changes no stored key and no existing row -- it
+        # only stops the metric being anonymous to the registry.
+        #
+        # No tie is reachable at this label. The coverage floor (0.5) requires
+        # a matching alias to carry >= 4 words against these 7, and no other
+        # alias in ALL_METRICS has 4+ words that are all a subset of
+        # {adjustment, of, tax, relating, to, earlier, years} -- the 2-word
+        # tax aliases ("tax expense", "current tax", "deferred tax") score
+        # below the floor and are excluded before scoring. Verified by
+        # replaying resolve_metric on the raw label; see commit message.
+        aliases=("adjustment of tax relating to earlier years",),
+        metric_type="raw", dsl_enabled=False,
+        label="Adjustment of Tax Relating to Earlier Years",
+    ),
 
     # ── Balance sheet / cash flow ────────────────────────────────────────
     MetricDefinition(
