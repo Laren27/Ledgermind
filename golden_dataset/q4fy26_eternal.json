@@ -596,17 +596,23 @@
     },
     {
         "id": "Q038",
-        "category": "semantic_honest_refusal",
+        "category": "semantic_audit",
         "question": "What does ETERNAL's audit report say about internal controls?",
         "expected_path": "semantic",
         "expected_is_blocked": false,
-        "expected_confidence_tier": "medium",
+        "expected_confidence_tier": "high",
         "expected_source_pages": [
-            27,
-            38
+            164,
+            165,
+            166,
+            44
         ],
-        "known_limitation": "This is a Q4 results REVIEW (SRE 2410), not a full statutory audit — the auditor explicitly disclaims opining on internal control effectiveness rather than stating controls are adequate. 'adequate' as a keyword was based on an incorrect assumption about filing type; corrected after direct Qdrant verification confirmed the word never appears in this context.",
-        "notes": "Reclassified 2026-07-29. The correct answer is a PARTIAL refusal: the SRE 2410 limited review mentions communicating internal-control deficiencies to those charged with governance, but never states whether any were found. The model correctly opens 'the provided documents do not state...' then explains what is and isn't covered. Five keyword sets across two models all failed because we were keywording an answer whose correct form is an honest refusal. Distinct from Q036 (flat absence); this is present-but-inconclusive."
+        "known_limitation": "SUPERSEDED 2026-08-02. The previous text here reasoned from the Q4FY26 filing ALONE — an SRE 2410 limited review that disclaims opining on internal-control effectiveness — and concluded the correct answer was a partial refusal. That premise is now false. ETERNAL spans TWO fiscal years in Qdrant (FY24 annual report + FY26 quarterly), and the FY24 statutory audit DOES address internal financial controls under s143(3)(i), including the audit-trail observation. Verified live: the answer cites FY24 pages 164-166 at 0.87-0.98, scopes the finding explicitly to the year ended March 31 2024, and correctly notes the documents lack an FY26 internal-controls assessment beyond the unmodified opinion. Accurate, well-sourced, and better than a refusal. This was golden-data staleness, not a system defect — the earlier note that ETERNAL's corpus was 'entirely FY26' was itself wrong.",
+        "notes": "Recategorised semantic_honest_refusal -> semantic_audit 2026-08-02 after a full sweep failed it with 'Did NOT refuse'. The scorer was correct; the expectation was stale.\n\nIMPLICITLY TESTS CRAG RUNG 2. The question names no period, so fiscal_year is None and rung 2 (drop fiscal_year) is what makes the FY24 annual report reachable at all. If someone later adds 'FY26' to the question text it will fail again, for a completely different reason — the narrowed filter would exclude the only chunks that answer it. Do not add a period to this question.\n\nKeywords are contiguous phrases from the filing: 'internal financial controls' is the statutory wording and the question's own subject; 'audit trail' is the substantive finding. 'adequate' was tried and removed earlier after Qdrant verification showed it never appears in this context; 'unmodified opinion' is deliberately NOT asserted as it is incidental to the question.",
+        "expected_keywords": [
+            "internal financial controls",
+            "audit trail"
+        ]
     },
     {
         "id": "Q039",
