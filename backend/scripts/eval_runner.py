@@ -655,6 +655,21 @@ def main():
                 "path":            result.get("path") if result else None,
                 "is_blocked":      result.get("is_blocked") if result else None,
                 "confidence_tier": result.get("confidence_tier") if result else None,
+                # The NUMBER behind the tier, plus what was actually cited.
+                # Their absence made "scored low" and "retrieved nothing"
+                # indistinguishable in this file: on 2026-07-30 that turned
+                # Q026 into a six-command detour through psql, and on
+                # 2026-08-02 it forced a live re-query twice to answer a
+                # question about citation scores this record should hold.
+                # citation_scores is what a relevance floor is calibrated
+                # against — see semantic_engine.CITATION_RELEVANCE_FLOOR.
+                "confidence_score": result.get("confidence_score") if result else None,
+                "citation_count":  len(result.get("citations") or []) if result else None,
+                "citation_scores": [
+                    round(c.get("reranker_score"), 4)
+                    for c in (result.get("citations") or [])
+                    if c.get("reranker_score") is not None
+                ] if result else None,
                 "sql_verified":    result.get("sql_verified") if result else None,
                 "error":           result.get("error") if result else None,
                 "response_preview": (result.get("response_text") or "")[:200] if result else None,
