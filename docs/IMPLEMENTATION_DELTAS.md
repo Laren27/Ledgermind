@@ -92,7 +92,9 @@ of magnitude with ZERO overlap: good queries top out at 0.329–0.999, poor ones
 at 0.003–0.032. `COHERE_HIGH=0.5` was read as correct and unmovable — no poor
 query cleared it, the highest reaching 0.0323, fifteen times below.
 
-**That margin is SUPERSEDED as of 2026-08-02.** A second measurement (17
+**That margin is SUPERSEDED as of 2026-08-02** — and the supersession is
+ITSELF CORRECTED 2026-08-03; read the correction block below before quoting
+any number in the next two paragraphs. A second measurement (17
 queries, `docs/measurements/cohere_band_stress_2026-08-02.json`) found a poor
 query at **0.4834** — "How does Eternal's board compose its audit committee?",
 a topic this corpus does not contain. `poor` now spans 0.0012–0.4834. The
@@ -105,7 +107,8 @@ in that threshold was overstated and the number should not be quoted as
 fifteenfold again. A third measurement targeting the 0.03–0.5 region
 specifically is the way to settle it.
 
-Also measured and DISCONFIRMED in the same run: the hypothesis that cross-style
+Also measured and read at the time as DISCONFIRMED in the same run — DOWNGRADED
+TO UNTESTED 2026-08-03, see the correction block below: the hypothesis that cross-style
 framing ("does X align with its financial exposure to Y") lifts scores by
 matching the financial-statement frame rather than the subject. Seven such
 queries on absent topics scored 0.0002–0.0725, and the three controlled pairs —
@@ -116,6 +119,57 @@ variable. Recorded so it is not re-attempted. A single
 it. Note the median candidate on a GOOD query still scores ~0.006–0.08: Cohere
 pushes nearly everything to the floor and lifts only real matches, which is what
 makes the citation floor in section A safe at 0.05.
+
+**CORRECTION 2026-08-03 — the 0.4834 query was MISLABELLED.** "How does
+Eternal's board compose its audit committee?" was recorded above as a `poor`
+query on "a topic this corpus does not contain". That is wrong. The topic IS in
+the corpus. Its three top-ranked chunks are all page 135, FY24 — the ZOMATO
+FY24 annual report, whose statutory corporate-governance section the quarterly
+filings do not carry — and the stored previews contain the disclosure verbatim:
+"Brief terms of reference, composition of these committees", "I. Audit
+Committee", "governance policies". 0.4834 is Cohere scoring genuinely relevant
+retrieved text. It is a correct score on a present topic, not an absent-query
+outlier. Found by reading the committed JSON, not by re-running anything.
+
+Three consequences, all of which narrow what the earlier paragraphs claimed:
+
+1. THE RECORDED ABSENT MAXIMUM FALLS TO 0.2195. With the audit-committee query
+   removed from the absent population, the highest score any genuinely absent
+   query has produced across both runs is 0.2195 — "How does Titan's board
+   evaluate the performance of its independent directors?"
+   (`cohere_specificity_2026-08-03.json`, label `absent`). That one was checked
+   the same way rather than assumed: its top chunk is the AUDITOR'S LETTERHEAD
+   ADDRESS BLOCK (BS R & Co. LLP, Embassy Golf Links, page 11, TABLE), which is
+   unrelated to the question. It is a genuine absent-query score.
+
+   The `poor` span of 0.0012–0.4834 above therefore does not describe absent
+   queries. The remaining band_stress `poor` entries top out at 0.0288 and the
+   seven `absent_cross` at 0.0725.
+
+2. THE FRAMING HYPOTHESIS IS UNTESTED, NOT DISCONFIRMED. The disconfirmation
+   rested on three controlled pairs, and the only pair that diverged was the
+   audit-committee pair — 0.4834 bare against 0.0725 cross-framed. If the bare
+   query was scoring real governance text while the cross-framed one was not,
+   the two halves were never asking about the same available content, and the
+   pair cannot separate framing from topic presence. The other two pairs (gold
+   hedging 0.0012/0.0002, data privacy 0.0144/0.0102) did not diverge, which is
+   consistent with the hypothesis being wrong but equally consistent with both
+   halves simply being absent. Downgraded from DISCONFIRMED to UNTESTED. It may
+   still be false; this run does not establish it either way.
+
+3. `COHERE_MEDIUM=0.15` IS NOW MEASURED TO ADMIT A GENUINELY ABSENT QUERY. At
+   0.2195, the Titan board-evaluation query clears 0.15 — scoring an auditor's
+   address block. The 0.15–0.5 band is no longer unstressed: it has one
+   genuinely absent occupant. Under `COHERE_HIGH=0.5` the margin against a
+   genuine absent query is 0.2805 rather than the 0.017 stated above, since
+   that 0.017 was computed from the mislabelled query.
+
+**NO THRESHOLD WAS MOVED.** Not `COHERE_HIGH` (0.5), not `COHERE_MEDIUM`
+(0.15), not the citation floor (0.05). This entry corrects the record only.
+One absent query at 0.2195 is a single datapoint, and §1 requires proposing and
+stopping on any of these constants. What it does establish is that the band
+between MEDIUM and HIGH is reachable by a no-answer query, which the earlier
+text said was unobserved.
 
 ### §5 / §8 — Embedding runtime
 `sentence-transformers` + `torch` replaced by `fastembed` ONNX
