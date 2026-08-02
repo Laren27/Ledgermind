@@ -74,6 +74,37 @@ DOCUMENTS = [
         "expect_revenue_min": 1000, "expect_revenue_max": 20000,  # already covers both (13040, 14814)
     },
     {
+        # PAYTM added 2026-08-02. Until then this gate covered 3 of the 4
+        # corpus PDFs, and purge_orphaned_metrics.py correctly refused to
+        # evaluate PAYTM's 395 is_latest rows because no document in this list
+        # produced their business keys — they were reported under NOT
+        # EVALUATED, never deleted. Adding it here extends BOTH.
+        #
+        # UNLIKE the other three, this ONE pdf yields five period/type
+        # combinations (FY26 annual + Q4 + Q3, FY25 annual + Q4, each in both
+        # financial types). quarter=None and doc_type=annual_report reflect the
+        # document's primary character: 128 annual rows against 49 for Q4.
+        # Labelling it Q4 would repeat the mistake Titan's comment below
+        # records.
+        #
+        # The revenue band is deliberately wide because the five combinations
+        # span 1005 (FY26 Q4 standalone) to 8437 (FY26 annual consolidated).
+        # This catches a magnitude error or a total extraction failure and
+        # little else — weaker coverage than the other three entries, recorded
+        # as such rather than dressed up as equivalent.
+        "filename": "FS-Results_Q4-&-Financial-Year-ended-March-31,-2026.pdf",
+        "company": "PAYTM", "ticker": "PAYTM", "fiscal_year": "FY26",
+        "quarter": None, "doc_type": "annual_report",
+        "filing_date": "2026-05-06",
+        # Measured 2026-08-02: 6 FS pages, [7,8,9,16,17,18] — two symmetric
+        # three-page blocks (consolidated, then standalone), the same shape as
+        # ETERNAL's Q4FY26 filing. Bounds are tighter than the other entries
+        # because a real change here (a missing statement, a classifier
+        # regression) moves the count by a whole block of 3, not by 1.
+        "min_fs_pages": 4, "max_fs_pages": 10,
+        "expect_revenue_min": 1000, "expect_revenue_max": 10000,
+    },
+    {
         "filename": "ZOMATO_ANNUAL_REPORT_2023-24.pdf",
         "company": "ETERNAL", "ticker": "ETERNAL", "fiscal_year": "FY24",
         "quarter": None, "doc_type": "annual_report",
