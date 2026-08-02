@@ -58,6 +58,40 @@ COHERE_MEDIUM_CONFIDENCE_THRESHOLD = 0.15
 # results that changed run-to-run for the same query, depending purely on
 # which reranker backend happened to serve that request.
 
+# Citation relevance floor — DISPLAY LAYER ONLY, Cohere scale only.
+#
+# A citation is a CLAIM that a passage supports the answer. Chunks scoring
+# 0.02-0.03 were being rendered as numbered footnotes with the same visual
+# weight as a 1.00 match, which is a Zero UI-Hallucination Mandate violation:
+# the evidence list asserts support that the score says is not there.
+#
+# MEASURED 2026-08-02 across 4 live semantic_risk queries, 20 real citations.
+# Sorted, the scores fall in two clusters with NOTHING between them:
+#     noise    0.0027 0.0029 0.0065 0.0096 0.0181 0.0234 0.0290
+#     genuine  0.0883 0.0948 0.4502 0.8538 0.8604 ... 0.9996
+# 0.05 sits in a ~3x-wide empty band, so this is not a tuned constant --
+# anything in 0.03-0.08 yields identical results on this evidence. Consistent
+# with the 2026-08-01 Cohere dump, where no 'poor' query exceeded 0.0323.
+#
+# DOES NOT TOUCH retrieved_chunks. A weak chunk in Gemini's context is
+# harmless and occasionally useful; the defect is presenting it as evidence.
+# Filtering retrieval instead would change what the model sees on every
+# semantic and cross query and put the eval baseline at risk for no gain.
+#
+# DOES NOT TOUCH CONFIDENCE. _score_confidence() reads chunks[0] and
+# chunks[-1] and runs BEFORE _build_citations() at every call site, so the
+# tier cannot move as a side effect of a display filter. Verified against the
+# node body -- if that ordering ever changes, this guarantee changes with it.
+#
+# COHERE ONLY. Local ONNX returns raw logits (thresholds -4.5/-7.5) where
+# 0.05 sits ABOVE nearly every legitimate score and would drop everything.
+# One threshold across two scales is the bug that made every Cohere-scored
+# query read HIGH. No logit-scale floor exists because none has been
+# measured; inventing one for symmetry is the unmeasured-constant habit this
+# project has already paid for. Local is a fallback that only runs when
+# Cohere fails -- it can wait for its own measurement.
+CITATION_RELEVANCE_FLOOR = 0.05
+
 MIN_CHUNKS_FOR_ANSWER = 1   # refuse if fewer chunks than this after reranking
 
 # Maximum CRAG retries — blueprint §13 specifies 2
@@ -144,6 +178,44 @@ def _score_confidence(chunks: List[ChunkResult]) -> Tuple[float, str]:
 # Citation builder
 # ---------------------------------------------------------------------------
 
+def _apply_citation_floor(chunks: List[ChunkResult]) -> List[ChunkResult]:
+    """Drop Cohere-scored chunks below CITATION_RELEVANCE_FLOOR.
+
+    NEVER returns an empty list. If every chunk falls below the floor, the
+    top-scoring one is kept: an answer with zero citations violates
+    Principle 2 (every answer traceable) outright, and one weak citation is
+    strictly better than none. The floor removes noise from a list; it must
+    not be able to empty it.
+
+    Input is assumed sorted by reranker_score descending -- rerank() sorts
+    before returning at both backends, so chunks[0] is the best.
+    """
+    if not chunks:
+        return chunks
+    if chunks[0].get("reranker_backend") != "cohere":
+        return chunks
+
+    kept = [c for c in chunks if c["reranker_score"] >= CITATION_RELEVANCE_FLOOR]
+    if not kept:
+        logger.info(
+            "Citation floor: all %d chunks below %.2f (top=%.4f) — keeping top only",
+            len(chunks), CITATION_RELEVANCE_FLOOR, chunks[0]["reranker_score"],
+        )
+        return [chunks[0]]
+
+    dropped = [c for c in chunks if c["reranker_score"] < CITATION_RELEVANCE_FLOOR]
+    if dropped:
+        # Real scores logged so the threshold stays calibratable against
+        # evidence rather than becoming folklore.
+        logger.info(
+            "Citation floor: dropped %d of %d below %.2f | scores=%s pages=%s",
+            len(dropped), len(chunks), CITATION_RELEVANCE_FLOOR,
+            [round(c["reranker_score"], 4) for c in dropped],
+            [c.get("page_number") for c in dropped],
+        )
+    return kept
+
+
 def _build_citations(chunks: List[ChunkResult]) -> List[Citation]:
     """
     Convert ChunkResult objects → Citation objects for the response layer.
@@ -151,6 +223,8 @@ def _build_citations(chunks: List[ChunkResult]) -> List[Citation]:
     Citations are what the UI displays and what gets written to the audit log.
     text_preview is the first 200 chars — enough for a snippet, not the full chunk.
     """
+    chunks = _apply_citation_floor(chunks)
+
     citations = []
     for chunk in chunks:
         citation = Citation(
