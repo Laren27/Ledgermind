@@ -359,6 +359,66 @@ figure" from "no figure was ever requested" — without it, a refused query look
 identical to a purely qualitative one and the user is never told the system
 declined to verify the figure they named.
 
+### §8 — A guard that measures the raw label rejects real line items
+`_should_skip_row()` drops rows whose description exceeds 80 characters or 12
+words, on the reasoning that real P&L/BS line items are short LABELS and
+anything longer is narrative prose that happened to parse as a table row. That
+reasoning is sound. The implementation measured the RAW description while
+`resolve_metric()` measured the NORMALISED one — two different strings, and the
+guard ran first.
+
+Bracketed note references, footnote markers and roman-numeral prefixes are not
+part of a label, so counting them rejected genuine data:
+
+- PAYTM standalone `Provision for impainnent ofloans/investments in
+  subsidiary/associate [refer note 4]` — 83 raw characters, 69 normalised.
+  Carries FY26 439.0 and FY25 37.0, resolves correctly to
+  `impairment_of_loans_and_investments_in_associates`, and was dropped from
+  every ingest after the guard landed 2026-07-31, while its 59-character
+  CONSOLIDATED twin (207.0 / 30.0) passed. The standalone/consolidated
+  asymmetry is what made it visible.
+- TITAN `V. Profit before share of profit of an associate and tax (III -JV)` —
+  13 raw words, 11 normalised. A real line item, the step between operating
+  profit and PBT for a company with associate holdings.
+- 69 further PAYTM cash-flow and OCI rows that had never entered the database
+  at all: opening/closing cash balances, net cash from operating/investing/
+  financing, FVTOCI fair-value changes. Internally consistent on inspection
+  (FY25 closing 2072 = FY26 opening 2072).
+
+Fixed by measuring the normalised label for the LENGTH tests only. The
+remaining checks stay on `desc_lower` — their behaviour under normalisation has
+not been measured, and this was one demonstrated defect, not a rewrite. Prose
+is unaffected because it has no bracketed metadata to strip: the two known
+cases measure 104->103 and 93->93 characters, both still caught.
+
+HOW IT WAS FOUND, which is the part worth keeping. Adding PAYTM to
+`regression_check.DOCUMENTS` extended `purge_orphaned_metrics.py` to its 395
+previously-unevaluated rows. The first dry run flagged 46 candidates, and two
+of them carried the standalone impairment figures with NO current-code
+replacement anywhere. A blanket `--apply` would have deleted verified data and
+nothing would have surfaced it until a standalone query returned empty. The
+"verify raw/canonical pairs at identical values before deleting" rule from the
+178-row purge is what stopped it.
+
+Backfilled with `scripts/backfill_financials.py` (new): Stage 7 only, doc_ids
+READ from the documents table rather than minted. A full pipeline run would
+have re-chunked, re-embedded and re-upserted Qdrant, all producing byte-
+identical output for an unchanged document — pure risk, and rewriting Qdrant
+payloads is exactly what produced the PAYTM FY99 drift. `pipeline.py` has
+`--skip-financials` for stages 1-6; there was no inverse.
+
+Safe because `db_loader._SQL_LOCK_LATEST` matches on the BUSINESS KEY
+(company, metric, fiscal_year, financial_type, quarter), not `doc_id`. PAYTM
+395 -> 464 rows (69 inserted, 351 skipped as already-present, 0 errors), TITAN
++4. The purge then ran clean at 44, every candidate verified as either paired
+to a replacement at identical values (`operating_profit` ->
+`operating_profit/(loss)_before_working_capital_changes`, `equity` ->
+`paid_up_equity_share_capital`, `payables` -> `increase/(_decrease)_in_trade_
+payables`, and so on) or a component summing into a preserved total
+(`deferred_tax` + `current_tax` + `adjustment_of_tax_relating_to_earlier_years`
+= `tax_expense`, verified arithmetically for all four periods). 464 -> 420,
+second run idempotent, every golden value unchanged.
+
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
 naming because none of them were caught by any existing check.
