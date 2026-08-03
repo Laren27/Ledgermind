@@ -137,10 +137,48 @@ SPECIFICITY_QUERIES = [
     ("ETERNAL", "What does Eternal say about order mix shifting toward lower-value orders?", "genuine"),
 ]
 
+# --- band probe, added 2026-08-03 --------------------------------------------
+# TWELVE QUERIES, ALL LABELLED "unlabelled", AND THAT IS THE POINT.
+#
+# Every prior set here carried a label recorded before measurement so results
+# could disconfirm a prediction. This set deliberately does not, because the
+# failure being corrected is a mislabel, not a bad prediction: the 0.4834
+# audit-committee query in cohere_band_stress_2026-08-02.json was recorded as a
+# no-answer and later found to be answerable from the corpus. The label was
+# assigned from the query's WORDING rather than from what retrieval returned,
+# and once written it was read back as evidence.
+#
+# So nothing here is pre-assigned absent or genuine. The queries were CHOSEN in
+# two groups -- six on subjects with neighbouring content but expected to have
+# no direct disclosure, six expected present but peripheral -- and that intent
+# is recorded in this comment, where it cannot be mistaken for a measurement.
+# The label field says "unlabelled" for all twelve. Ground truth is assigned by
+# reading the top chunks AFTER the run, from the 600-char previews and doc_ids,
+# and by a human, not by this file.
+#
+# Read the previews before believing any score. That is the whole procedure.
+PROBE_QUERIES = [
+    # Group 1 -- subjects with neighbouring content, direct disclosure expected absent
+    ("ETERNAL", "What succession plan does Eternal disclose for its chief executive?", "unlabelled"),
+    ("ETERNAL", "What cybersecurity incidents has Eternal reported in the period?", "unlabelled"),
+    ("ETERNAL", "What is Eternal's disclosed policy on political contributions?", "unlabelled"),
+    ("PAYTM",   "How does Paytm describe its disaster recovery arrangements?", "unlabelled"),
+    ("TITAN",   "What does Titan disclose about its supplier audit programme?", "unlabelled"),
+    ("ETERNAL", "How does Eternal benchmark director remuneration against peer companies?", "unlabelled"),
+
+    # Group 2 -- expected present but peripheral
+    ("ETERNAL", "What does Eternal report about Hyperpure in the quarter?", "unlabelled"),
+    ("TITAN",   "What does Titan report about its Eyecare segment?", "unlabelled"),
+    ("PAYTM",   "What does Paytm report about its non-controlling interests?", "unlabelled"),
+    ("ETERNAL", "What does Eternal disclose about lease terminations?", "unlabelled"),
+    ("TITAN",   "What does Titan report about its Jewellery segment?", "unlabelled"),
+    ("PAYTM",   "What does Paytm disclose about share-based payment expense?", "unlabelled"),
+]
+
 # Which set this invocation measures. Kept as an explicit name rather than a
 # CLI flag so the committed file records exactly which set produced the
 # committed JSON alongside it.
-QUERIES_TO_RUN = SPECIFICITY_QUERIES
+QUERIES_TO_RUN = PROBE_QUERIES
 
 # Written inside the container; copy out with:
 #   docker compose exec -T backend cat /app/measurements/cohere_score_dump.json > docs/measurements/<name>.json
