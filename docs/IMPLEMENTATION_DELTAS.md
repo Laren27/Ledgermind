@@ -267,6 +267,95 @@ to establish how often entity-matching dominates, or to support any positive
 rule about what the score does mean. Do not cite this entry as evidence for
 anything beyond the negative result.
 
+#### Quadrant 4 is now exercised — the blocker was query selection, not COHERE_MEDIUM
+
+`_reconcile_cross` Quadrant 4 (both halves empty, a genuine no-answer) had no
+golden coverage. Two successive explanations were recorded and both were wrong:
+first that `COHERE_MEDIUM=0.15` blocked it (RETRACTED — those were ONNX logits,
+not Cohere scores), then that the blocker was UNKNOWN. **It was query
+selection.**
+
+Every earlier candidate was chosen by judging from the query's WORDING that its
+topic was absent. Four were authored on 2026-08-02 and all four returned
+tier=medium, because each topic scored above 0.15 and pulled a citation. The
+band probe made topic absence MEASURABLE rather than assumed, and selecting from
+its sub-0.15 results resolved this on the first attempt.
+
+THREE PROBE QUERIES, anchor-checked then submitted live as admin 2026-08-03.
+All three cleared `anchor_check.py` with no bare-substring match against the
+217-phrase `metric_anchor_phrases()` set (positive control confirmed the check
+fires), so Stage 0c set no partial `dsl_object` on any of them:
+
+```
+query                              path   tier    cites  dsl   sql_verified  reranker_backend
+disaster recovery / outages        cross  low     0      None  False         None
+political contributions / penalty  cross  medium  1      None  False         cohere
+director remuneration benchmarking cross  low     0      None  False         None
+```
+
+All three: `llm_provider=gemini`, `llm_model=gemini-3.1-flash-lite`,
+`is_blocked=false`, `crag_triggered=true`. Q1 and Q3 returned
+`error=low_confidence_refusal` at `response_generator`; Q2 returned no error.
+
+Q1 became **PQ020** in `q_paytm.json`, asserting `expected_path="cross"` and
+`expected_tier_low=true`, with no keyword assertions — a scoped no-answer has no
+stable vocabulary. Verified against the real scorer: `--categories
+cross_examination`, 3/3 PASS, scoped=true, PQ020 passing at confidence=low.
+Golden set 88 -> 89. **NO THRESHOLD WAS MOVED to make this pass.**
+
+Topic selection is the transferable part. "Disaster recovery" measured
+top1=0.0003 in `cohere_band_probe_2026-08-03.json` — the lowest of twelve, all
+20 candidates being subsidiary name lists. Author future Quadrant 4 questions
+from measured sub-0.15 topics, not from intuitions about what a filing omits.
+
+#### Q2 as an instance of the `chunks[0]` question — one page as a generic attractor
+
+Recorded against the open architectural question above, as EVIDENCE for it, not
+as a defect with a fix.
+
+Q2 ("political contributions… regulatory penalties") returned **tier=medium on a
+single citation: ETERNAL FY26 page 44** — the Regulation 33 declaration letter.
+The response text is correct and says the documents do not contain the
+information. The TIER disagrees with the prose, and it disagrees because
+`_score_confidence` reads `chunks[0]`, which is that letter.
+
+The same page recurs across unrelated queries in the band probe:
+
+- **0.6954** — false top-1 for "What succession plan does Eternal disclose for
+  its chief executive?", where the genuine hit sat at rank 2 / 0.0219.
+- **0.0099** — top-1 for "What does Eternal disclose about lease terminations?",
+  where the genuine figure sat at rank 9 / 0.0001.
+- **0.26** — sole citation behind Q2's medium tier here.
+
+One boilerplate page — scrip codes, ISIN, a signatory block, a compliance
+subject line — acting as a **generic attractor** across questions with nothing
+in common. This is the entity-matching behaviour recorded in the band probe
+entry seen from the consuming side: the page is dense in exactly the surface
+features questions carry, so it ranks first on questions it cannot answer.
+
+**DO NOT TUNE THIS.** Not the citation floor, not `COHERE_MEDIUM`, not a
+page-44 filter — the naive fix (exclude a page number) is the per-document hack
+this project rejects, and it would silently break the moment another filing's
+cover page took the same role. The architectural question is whether a
+confidence tier may be derived from one chunk at all. It needs proposing on its
+own terms.
+
+#### `reranker_backend` is None on refusal paths
+
+Measured on Q1 and Q3 above: both returned `reranker_backend=None` — not
+`"cohere"`, not `"local"`. Both are the queries that ended in
+`low_confidence_refusal` at `response_generator` with zero citations. The
+refusal short-circuits before a backend is recorded.
+
+Consequence for §4(d), which requires reading `reranker_backend` from the same
+response as any `reranker_score`: **that check cannot be applied on a refusal
+path.** This is harmless in itself — a refusal carries no citations and
+therefore no scores to misinterpret, so there is nothing for the incompatible-
+scales trap to catch. But it is worth knowing before someone treats a `None`
+backend as evidence of a fallback, or writes a guard that asserts the field is
+populated. Absence of the field here means "no citations were scored", not "the
+backend is unknown".
+
 ### §5 / §8 — Embedding runtime
 `sentence-transformers` + `torch` replaced by `fastembed` ONNX
 (`BAAI/bge-small-en-v1.5` dense, `Xenova/ms-marco-MiniLM-L-6-v2` cross-encoder).
@@ -1307,8 +1396,9 @@ attempts (finance costs, depreciation, Paytm exceptional items) each found the
 opposite, because the financial statements are themselves retrievable text and
 Cohere ranks them 0.99 for a metric-named query.
 
-*Quadrant 4 (both halves empty) — blocker UNKNOWN. An earlier claim here is
-RETRACTED.*
+*Quadrant 4 (both halves empty) — RESOLVED 2026-08-03, see the entry below.
+The blocker was query selection. An earlier COHERE_MEDIUM claim here is
+RETRACTED, and the "blocker UNKNOWN" status that replaced it is now closed.*
 
 Written and pushed earlier on 2026-08-02: that Quadrant 4 was blocked on
 `COHERE_MEDIUM=0.15`, on the evidence of a genuine no-answer cross query
