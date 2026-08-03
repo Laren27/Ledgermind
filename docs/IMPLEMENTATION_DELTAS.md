@@ -702,11 +702,12 @@ with an identical description will produce a spurious token-level "recovery"
 business key -- and Layer A is the authority for what actually changed. Read
 Layer B as provenance for a Layer A finding, never as a finding on its own.
 
-#### The all-zero row guard: a printed nil is data, and it is discarded — OPEN
+#### The all-zero row guard: a printed nil is data, and it was discarded — RESOLVED
 
-STATUS: mechanism understood and measured, fix NOT attempted. The tradeoff at
-the bottom of this entry is a live decision, not a formality; do not "clean this
-up" without settling it.
+STATUS: RESOLVED 2026-08-03, measured and backfilled. The mechanism below is
+kept as written because it is the reasoning that justified the change; the
+RESOLUTION section at the end records what was actually done. This entry was
+OPEN for one day and the tradeoff paragraph below was the live decision.
 
 WHERE IT DIES. `_should_skip_row`'s final clause,
 `financial_extractor.py:353`:
@@ -804,6 +805,81 @@ Known consequence already visible elsewhere in this file: the two
 `absent: deferred_tax` verdicts for ETERNAL FY24 and FY23 standalone in the
 NOT EVALUATED tally are this clause, not an extraction gap in the usual sense --
 the figure IS printed and IS read.
+
+RESOLUTION, 2026-08-03
+----------------------
+
+THE FIX IS UPSTREAM OF THE GUARD, not in it. `pdf_parser.NOT_PRINTED` is a
+sentinel returned when a bucket is EMPTY. Before it existed, None meant two
+different things in a positional row and nothing could tell them apart: the
+column carried no token at all, or a token WAS printed and
+`clean_financial_number` could not parse it (its `except ValueError` path -- the
+shape that hid the `(I)` defect). **`None` now means exactly one thing: a token
+was printed and would not parse.** That single disambiguation is what let the
+guard be rekeyed without guessing.
+
+The sentinel is identity-compared with `is`, never `==`, and is deliberately a
+bare class rather than an Enum or float subclass: anything with numeric
+behaviour could be summed or `abs()`'d by accident on this hot path and silently
+become a value. It is falsy, so a stray truthiness test reads as "no value
+here". `_should_skip_row`'s magnitude guard and `_rows_to_records`' emit loop
+both had to learn about it -- `abs(NOT_PRINTED)` raises TypeError.
+
+The clause itself was KEPT, not deleted, rekeyed to
+`if all(v is NOT_PRINTED for v in values)`: drop only when no column carried a
+printed token.
+
+THE CLAUSE IS NOW UNREACHABLE FOR POSITIONAL-PATH ROWS, and this is recorded
+rather than discovered later. `extract_financials_positional` at
+`pdf_parser.py:466` already refuses to emit a row with fewer than
+MIN_VALUE_COLUMNS (2) non-empty buckets, so every row reaching the guard from
+that path has at least two printed tokens and the new predicate cannot fire for
+it. **It survives as a structural floor for the degenerate all-empty row, not as
+a filter.** In this corpus it filters nothing. That is a deliberate weakening,
+accepted knowingly: separating real line items from OCR label noise is the job
+of the LABEL guards, not of a values test, and the tradeoff paragraph above was
+resolved in favour of admitting the rows and reviewing them by hand.
+
+WHAT WAS ADMITTED. 45 of the 50 rows, reviewed individually before any write.
+**Every one of the 45 is a printed nil** -- each value is 0.0 or -0.0. They add
+no magnitude, only the filing's positive assertion that the line is zero. That
+is the whole point: the assertion is data, and its absence was previously
+indistinguishable from the line not being printed.
+
+THE ONE EXCLUSION. `non-controlling_int~re!_i`, all 5 rows. ETERNAL_Q4FY26 p31
+prints the non-controlling-interest line twice and OCR renders the occurrences
+differently; the damaged name covers the SAME five period groups as
+`non-controlling_interest` with IDENTICAL values in all five. One printed line
+under two readings. Excluded by name in `_OCR_DUPLICATE_METRICS`, keyed on the
+RESOLVED metric because the raw label is the damaged thing, and placed in the
+EXTRACTOR rather than in `backfill_financials` so a re-ingest cannot reintroduce
+it. Deliberately a named list and not a similarity rule: the
+`income tax relating to above` family on ZOMATO p285/p286 has the same resolved
+shape and identical values but sits on DIFFERENT pages, and the OCI section
+prints that label once per OCI item, so those are plausibly two real lines and
+are NOT excluded. Add to that set only on the same evidence -- same period
+groups, same values, traced to one printed line.
+
+THE CASE THAT JUSTIFIED THE WORK. `deferred_tax` for ETERNAL FY24 and FY23
+standalone, printed `Deferred tax - -` on ZOMATO p.285, read correctly as
+[0.0, 0.0], then discarded whole. Both rows are now in `financials` at 0.0, and
+those groups no longer report `absent: deferred_tax` -- they remain NOT
+EVALUATED only because `adjustment_of_tax_relating_to_earlier_years` is
+genuinely not printed in that filing. A registry metric, restored from a printed
+figure, changing a tax identity from unevaluable-for-the-wrong-reason to
+unevaluable-for-the-right-one.
+
+MEASURED. `regression_check` 2026-08-03: 4/4 PASS, 0 identity failures, 0
+discarded rows, NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged, and the same 6
+derivation overwrites at identical values -- nothing derived moved. Produced
+1392 -> 1442 with the guard rekeyed, then -> 1437 with the one exclusion, the
+delta matching `_zero_row_loss_scan`'s prediction exactly per document.
+`backfill_financials`: ETERNAL_Q4FY26 11 inserted / 449 skipped, ZOMATO 30 / 242,
+TITAN 4 / 269, PAYTM unchanged and not run -- **0 restated, 0 reingested, 0
+errors** throughout. `live == produced` restored as SET EQUALITY at **1437**
+(1437 rows, 1437 distinct business keys), and `financials` still holds ZERO
+`is_latest = FALSE` rows, so the restatement path recorded earlier in this file
+STILL has never executed against live data.
 
 #### The `*`-as-negligible-amount convention, and why it is safe by construction
 
