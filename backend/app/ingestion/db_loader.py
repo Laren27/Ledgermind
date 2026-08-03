@@ -8,7 +8,11 @@ Responsibilities:
      b. If a newer filing exists already: skip insert (we'd be regressing)
      c. If an older filing exists: flip it to is_latest=FALSE
      d. Insert new row ON CONFLICT DO NOTHING (handles exact re-ingestion)
-  3. Return a summary dict: inserted / skipped / restated counts
+  3. Return a summary dict: inserted / restated / reingested / corrected /
+     skipped / errors counts. "corrected" is an opt-in parser-correction path
+     (correct_values=True) that updates a value in place WITHOUT touching
+     is_latest — a fixed parser re-reading a fixed document is not a
+     restatement by the issuer. Off by default.
 
 Connection:
   Uses DATABASE_URL from environment (postgresql://ledgermind_app:...@postgres:5432/ledgermind)
@@ -39,10 +43,11 @@ logger = logging.getLogger(__name__)
 
 # Step 1 of the upsert transaction:
 # Lock any existing is_latest=TRUE row for the same business key.
-# Returns the existing row's filing_date so we can compare.
+# Returns the existing row's filing_date so we can compare, and its value so
+# the parser-correction path can tell a changed figure from an unchanged one.
 # IS NOT DISTINCT FROM handles NULL quarter (annual reports).
 _SQL_LOCK_LATEST = """
-SELECT id, filing_date, doc_id
+SELECT id, filing_date, doc_id, value
 FROM   financials
 WHERE  company        = %(company)s
   AND  metric         = %(metric)s
@@ -58,6 +63,24 @@ _SQL_RETIRE_LATEST = """
 UPDATE financials
 SET    is_latest = FALSE
 WHERE  id = %(existing_id)s
+"""
+
+# PARSER-CORRECTION path. Opt-in only (correct_values=True), reached only when
+# the doc_id AND the business key both already match and only the VALUE differs.
+#
+# WHY THIS IS AN UPDATE AND NOT A RESTATEMENT. is_latest / retirement / a new
+# row all encode a claim about the FILING's history: the issuer published a
+# revised figure. Nothing of the sort happened here. The filing never changed;
+# our READING of it did, because the parser was fixed. Recording a parser
+# correction through the restatement machinery would manufacture a filing
+# history that does not exist -- a retired "original" row the issuer never
+# filed, sitting in the audit trail as though it had. So: value only. is_latest,
+# doc_id, filing_date, version lineage and created_at are all left untouched.
+_SQL_CORRECT_VALUE = """
+UPDATE financials
+SET    value = %(value)s
+WHERE  id    = %(existing_id)s
+RETURNING id
 """
 
 # Step 2b: Insert new row.
@@ -126,18 +149,47 @@ def get_connection():
 # Core upsert logic — single record
 # ---------------------------------------------------------------------------
 
+def _stored_value_differs(existing, new) -> bool:
+    """True when the stored value and the freshly-extracted one are different.
+
+    Compared as FLOATS, deliberately, and not as Decimals. `value` is numeric,
+    so psycopg2 hands it back as Decimal, while record.value is a float that
+    came from the parser. Decimal.__eq__ converts the float to its EXACT binary
+    expansion, so Decimal("33.33") == 33.33 is False -- the stored figure and
+    the one that produced it would compare as different, and every such row
+    would be "corrected" to itself on every run. float(Decimal("33.33")) round-
+    trips back to the same float, so this comparison answers the question
+    actually being asked: would writing this record change what is stored?
+    """
+    if existing is None or new is None:
+        return (existing is None) != (new is None)
+    return float(existing) != float(new)
+
+
 def _upsert_one(
     cursor,
     record: FinancialRecord,
+    correct_values: bool = False,
 ) -> str:
     """
     Upsert a single FinancialRecord within an already-open transaction.
 
-    Returns one of: "inserted" | "restated" | "skipped"
+    Returns one of: "inserted" | "restated" | "reingested" | "corrected" | "skipped"
 
     "inserted"  — new record, no prior is_latest row existed
     "restated"  — prior is_latest row retired, new row inserted
+    "reingested"— same filing_date under a new doc_id retired a stale row
+    "corrected" — same doc_id, same business key, DIFFERENT value: the stored
+                  figure was updated in place. Only reachable with
+                  correct_values=True. See _SQL_CORRECT_VALUE for why this is
+                  not a restatement.
     "skipped"   — exact same (doc_id, metric, period) already exists
+
+    correct_values is OFF by default so that the ingestion pipeline and the
+    Celery worker are unaffected: for them a same-doc_id replay genuinely is a
+    replay, and silently rewriting stored figures on every retry is not
+    behaviour anyone asked for. It is opted into by an operator who has just
+    changed the parser and knows the re-read is the better reading.
     """
     params = {
         "company":        record.company,
@@ -161,7 +213,7 @@ def _upsert_one(
     outcome = "inserted"
 
     if existing:
-        existing_id, existing_filing_date, existing_doc_id = existing
+        existing_id, existing_filing_date, existing_doc_id, existing_value = existing
 
         from datetime import date
         new_date_str = record.filing_date
@@ -180,6 +232,28 @@ def _upsert_one(
         # ON CONFLICT DO NOTHING insert, which will correctly no-op since
         # the (doc_id, metric, period) key already exists.
         if str(existing_doc_id) == str(record.doc_id):
+            # PARSER CORRECTION. The reasoning immediately above -- "same
+            # document replayed, so nothing can have changed" -- holds for the
+            # DOCUMENT and not for our reading of it. When the parser is fixed,
+            # the same document legitimately yields a different figure under an
+            # unchanged business key, and every path below this point is an
+            # INSERT that the (doc_id, metric, period) unique index will
+            # swallow, leaving the stale value in place. That is how a misread
+            # 7,292 survived a --apply backfill against a fixed parser.
+            if correct_values and _stored_value_differs(existing_value, record.value):
+                cursor.execute(_SQL_CORRECT_VALUE,
+                               {"value": record.value, "existing_id": existing_id})
+                if cursor.fetchone() is None:
+                    return "skipped"
+                logger.warning(
+                    "CORRECTED %s | %s | %s | %s | %s : %s -> %s (doc_id %s, "
+                    "is_latest untouched)",
+                    record.company, record.metric, record.fiscal_year,
+                    record.quarter, record.financial_type,
+                    existing_value, record.value, record.doc_id,
+                )
+                return "corrected"
+
             cursor.execute(_SQL_INSERT_SAFE, params)
             inserted_id = cursor.fetchone()
             if inserted_id is None:
@@ -248,6 +322,7 @@ def load_financial_records(
     records: list[FinancialRecord],
     tenant_id: str,
     conn=None,
+    correct_values: bool = False,
 ) -> dict:
     """
     Write a list of FinancialRecord objects to the financials table.
@@ -259,6 +334,13 @@ def load_financial_records(
         conn:      Optional psycopg2 connection. If None, opens one
                    from DATABASE_URL and closes it after. If provided,
                    caller owns the connection lifecycle.
+        correct_values:
+                   OFF by default. When True, a record whose doc_id AND
+                   business key already match an existing is_latest row, but
+                   whose VALUE differs, updates that row's value in place
+                   instead of being skipped. For re-running extraction after a
+                   PARSER fix. It does not flip is_latest, insert a row, or
+                   retire anything -- see _SQL_CORRECT_VALUE.
 
     Returns:
         {
@@ -267,6 +349,8 @@ def load_financial_records(
           "reingested": int,   # same filing_date retired a stale is_latest row
                                 # (happens during iterative re-ingestion with a
                                 # fresh doc_id each run)
+          "corrected":  int,   # same doc_id + business key, value updated in
+                                # place. Always 0 unless correct_values=True.
           "skipped":    int,   # duplicates or older-filing attempts
           "errors":     int,   # records that failed (logged, not raised)
         }
@@ -280,13 +364,15 @@ def load_financial_records(
     """
     if not records:
         logger.info("load_financial_records called with empty list — nothing to do")
-        return {"inserted": 0, "restated": 0, "reingested": 0, "skipped": 0, "errors": 0}
+        return {"inserted": 0, "restated": 0, "reingested": 0, "corrected": 0,
+                "skipped": 0, "errors": 0}
 
     owns_conn = conn is None
     if owns_conn:
         conn = get_connection()
 
-    counts = {"inserted": 0, "restated": 0, "reingested": 0, "skipped": 0, "errors": 0}
+    counts = {"inserted": 0, "restated": 0, "reingested": 0, "corrected": 0,
+              "skipped": 0, "errors": 0}
 
     try:
         # Set tenant context once for the session (RLS enforcement)
@@ -297,7 +383,7 @@ def load_financial_records(
         for record in records:
             try:
                 with conn.cursor() as cur:
-                    outcome = _upsert_one(cur, record)
+                    outcome = _upsert_one(cur, record, correct_values=correct_values)
                 conn.commit()
                 counts[outcome] += 1
 
@@ -321,8 +407,10 @@ def load_financial_records(
             conn.close()
 
     logger.info(
-        "load_financial_records complete: %d inserted, %d restated, %d reingested, %d skipped, %d errors",
-        counts["inserted"], counts["restated"], counts["reingested"], counts["skipped"], counts["errors"],
+        "load_financial_records complete: %d inserted, %d restated, %d reingested, "
+        "%d corrected, %d skipped, %d errors",
+        counts["inserted"], counts["restated"], counts["reingested"],
+        counts["corrected"], counts["skipped"], counts["errors"],
     )
     return counts
 
