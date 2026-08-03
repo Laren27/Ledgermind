@@ -289,6 +289,30 @@ _SKIP_DESCRIPTIONS = {
     "owners of the parent", "owners of the subsidiary", "non-controlling interests",
 }
 
+# ONE measured OCR duplicate, excluded by name. Keyed on the RESOLVED metric,
+# not the raw description, because the raw label is the damaged thing.
+#
+# ETERNAL_Q4FY26 page 31 prints the non-controlling-interest line twice, and OCR
+# renders the two occurrences differently: 'Non-controlling interest' resolves to
+# non-controlling_interest, while 'Non-controlling int~re!,,I' resolves to
+# non-controlling_int~re!_i. Measured 2026-08-03: the two names cover the SAME
+# five period groups (ETERNAL FY25 annual + Q4, FY26 annual + Q3 + Q4,
+# consolidated) with IDENTICAL values in all five. It is one printed line under
+# two readings, so the second is redundant storage, not a second line item.
+#
+# DELIBERATELY A NAMED LIST, NOT A SIMILARITY RULE. A general
+# "collapse OCR-similar metric names" heuristic would have to decide, without
+# evidence, whether two near-identical labels are one line read twice or two
+# lines that genuinely print alike -- and the corpus contains both. The
+# 'income tax relating to above' family on ZOMATO p285/p286 is the counter-case:
+# same resolved shape, same values, but DIFFERENT pages, and the OCI section
+# prints that label once per OCI item, so those are plausibly two real lines.
+# They are therefore NOT excluded. Add to this set only with the same standard
+# of evidence: same period groups, same values, traced to one printed line.
+_OCR_DUPLICATE_METRICS = {
+    "non-controlling_int~re!_i",   # ETERNAL_Q4FY26 p31, dup of non-controlling_interest
+}
+
 def _should_skip_row(description: str, values: list) -> bool:
     desc_lower = description.lower().strip()
     # The LENGTH tests below measure the NORMALISED label, not the raw one.
@@ -420,6 +444,11 @@ def _rows_to_records(
         normalized_metric = resolve_metric(description)
 
         if normalized_metric in segments_to_skip:
+            continue
+
+        # One measured OCR duplicate of an already-captured line. See
+        # _OCR_DUPLICATE_METRICS for the evidence and why this is a named list.
+        if normalized_metric in _OCR_DUPLICATE_METRICS:
             continue
 
         if normalized_metric not in _KNOWN_METRICS:
