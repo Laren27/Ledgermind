@@ -1056,7 +1056,12 @@ unevaluable-for-the-right-one.
 
 MEASURED. `regression_check` 2026-08-03: 4/4 PASS, 0 identity failures, 0
 discarded rows, NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged, and the same 6
-derivation overwrites at identical values -- nothing derived moved. Produced
+derivation overwrites at identical values -- nothing derived moved. **That
+last clause was WRONG; see "A comma-bearing fragment is not proof of a complete
+number" below.** One of those 6 was ETERNAL FY26 Q4 consolidated
+`total_expenses`, where OCR read 17406 and derivation computed 7406 — a 10,000
+Cr divergence, not an identical value, and the overwrite was destroying a
+correctly-read row rather than confirming it. Produced
 1392 -> 1442 with the guard rekeyed, then -> 1437 with the one exclusion, the
 delta matching `_zero_row_loss_scan`'s prediction exactly per document.
 `backfill_financials`: ETERNAL_Q4FY26 11 inserted / 449 skipped, ZOMATO 30 / 242,
@@ -1065,6 +1070,147 @@ errors** throughout. `live == produced` restored as SET EQUALITY at **1437**
 (1437 rows, 1437 distinct business keys), and `financials` still holds ZERO
 `is_latest = FALSE` rows, so the restatement path recorded earlier in this file
 STILL has never executed against live data.
+
+#### A comma-bearing fragment is not proof of a complete number — RESOLVED
+
+The third OCR defect of the fragment family, after `(I)` and the all-zero row
+guard. Same page, same extractor, a different wrong assumption each time.
+
+**MECHANISM.** ETERNAL_Q4FY26 p.31 prints consolidated revenue as `17,292`.
+OCR renders it as TWO words — `I` (the leading 1) and `7,292` — separated by
+0.5pt, far inside `FRAGMENT_ADJACENCY_GAP` (8.0pt), so both land in the SAME
+column bucket. `extract_financials_positional` then applied this rule: *if any
+fragment in the bucket contains a comma, it is a complete number — trust it
+alone and discard every other token sharing the bucket.* The rule kept `7,292`,
+threw the leading digit away, and stored **7,292 for a printed 17,292**.
+
+The rule exists for a real reason — it protects against stray tokens (row
+markers, footnote glyphs) drifting into a value bucket — and it is right almost
+always. What it got wrong is the inference: a comma proves the token *contains*
+a thousands separator, not that the token is the *whole* number. The one shape
+that breaks it is a number whose leading thousands group is itself OCR-split
+off, which is exactly what `I` -> `1` produces.
+
+**THE JOIN'S THREE CONDITIONS.** The fix is deliberately narrow: it does NOT
+concatenate the whole bucket when a comma is present, which would undo the
+stray-token protection the rule exists for. It attaches AT MOST ONE fragment,
+and only when all three hold:
+
+1. the fragment sits immediately to the **LEFT** of the comma fragment in x0
+   order — a trailing marker on the right is still discarded;
+2. it is **physically adjacent** by the SAME `FRAGMENT_ADJACENCY_GAP` already
+   used to build the cluster, so x-position decides rather than text shape;
+3. after `_ocr_one_to_digit`, it is **one or two digits** — the width of a
+   leading thousands group. A longer token is another number, not a broken-off
+   digit, and is left alone.
+
+`I` -> `1` runs through `_ocr_one_to_digit`, consistent with the `(I)` fix.
+Exact-string and positional logic only; no regex added or changed, which
+matters because this loop runs for every bucket of every row of every financial
+page in all four documents.
+
+**BLAST RADIUS: A SINGLE CELL.** Measured with `scripts/_frag_blast_radius.py`,
+old and new parsers run against the same parse of the same page across all four
+reference documents:
+
+```
+ETERNAL  6 pages, 161 rows,  1 cell changed   <- p31 'Revenue from operations'
+                                                 FY26 Q4 consolidated
+                                                 7292.0 -> 17292.0
+TITAN    8 pages, 125 rows,  0
+PAYTM    6 pages, 156 rows,  0
+ZOMATO  15 pages, 149 rows,  0
+```
+
+One cell corpus-wide. `regression_check` 2026-08-04: 4/4 PASS, 0 identity
+failures, 0 discarded rows, NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged,
+produced counts unchanged at 460 / 273 / 432 / 272 = **1437**.
+
+**THE PRIOR ENTRY WAS WRONG, AND THE SYSTEM HAD BEEN SAYING SO ALL ALONG.**
+The all-zero-row-guard entry above recorded "the same 6 derivation overwrites at
+identical values -- nothing derived moved", and ETERNAL FY26 Q4 consolidated
+`total_expenses` was treated across multiple sessions as correct-by-derivation.
+It was not. `_compute_derived_totals` was recomputing `total_income` and
+`total_expenses` FROM the corrupted revenue and **overwriting two rows that OCR
+had read CORRECTLY**:
+
+```
+printed on p.31, self-consistent at 17,xxx:
+  17,292 revenue + 342 other income   = 17,634 total income
+  17,634 total income  -  228 PBT     = 17,406 total expenses
+stored, self-consistent at 7,xxx only because derivation manufactured it:
+   7,292 /  7,634 /  7,406
+```
+
+The stored column was internally consistent, which is precisely why it survived
+review — arithmetic self-consistency is not evidence when one term propagates
+into the others. And this log line appeared in **every** `regression_check` run:
+
+```
+total_expenses OCR value 17406.00 disagrees with computed 7406.00
+(derived from PBT) for ('ETERNAL','FY26','Q4','consolidated') — overwriting.
+```
+
+That is the system correctly reporting a 10,000 Cr disagreement between what it
+read and what it computed, and then resolving it in favour of the wrong value,
+once per run, for multiple sessions, while it was read as benign noise. It was
+surfaced per-document deliberately (commit `5a21b3f`) and still went unread.
+
+The reason it hid: the divergence list was scanned as a category rather than
+per magnitude. The five SURVIVING overwrites diverge by 2, 3, 8, 11 and 78 Cr —
+rounding-scale, genuinely benign. This one diverged by **10,000 Cr**, three
+orders of magnitude larger, and sat in the same list. **Standing rule: a
+derivation overwrite whose magnitude is not rounding-scale is a misread
+component until proven otherwise. Read that list by size, not by count.**
+Derivation overwrites are now 6 -> 5, because OCR and derivation finally agree
+on this cell.
+
+**THE DATABASE STILL HOLDS THE OLD VALUES.** The parser is fixed; `financials`
+is not. `backfill_financials --company ETERNAL --apply`, run 2026-08-04 against
+the fixed parser, extracted the corrected 460 records and wrote **nothing**:
+`{'inserted': 0, 'restated': 0, 'reingested': 0, 'skipped': 460, 'errors': 0}`,
+with `revenue` / `total_income` / `total_expenses` still at 7292 / 7634 / 7406.
+The script reads existing `doc_id`s from `documents` by design, to preserve
+lineage; `db_loader._upsert` then takes its same-`doc_id` branch, which treats
+"same document replayed" as "nothing can have changed" and routes to
+`ON CONFLICT DO NOTHING`. That inference does not hold when the PARSER changed
+under a fixed document. There is currently no path that updates a value under an
+unchanged `(doc_id, business key)` — restatement requires a DIFFERENT `doc_id`.
+Left OPEN and unfixed pending a decision; correcting it touches the loader's
+truth-resolution semantics, not just this one cell.
+
+#### `_NotPrinted` compares by identity, which does not survive two module copies
+
+Recorded because it silently corrupted the instrument used to justify shipping
+the fix above, and any future side-by-side parser comparison will hit it again.
+
+`pdf_parser._NotPrinted` defines no `__eq__`, so it compares by **identity** —
+deliberately, per its own docstring: it must never be equal to `0.0`, to `None`,
+or to itself by value, and every in-tree consumer tests it with `is` against the
+single module-level `NOT_PRINTED` instance. That contract is correct everywhere
+in the application.
+
+It breaks the moment TWO copies of the module are loaded side by side, which is
+exactly what a before/after diagnostic does. `old.NOT_PRINTED` and
+`new.NOT_PRINTED` are distinct objects, so `old.NOT_PRINTED == new.NOT_PRINTED`
+is **False**, and the obvious cell test `if vo == vn: continue` reports every
+column that printed nothing as a changed cell. Measured before repair: 16 / 14 /
+25 / 0 cells reported changed against 1 / 0 / 0 / 0 real — **54 false positives
+corpus-wide**, the instrument overstating its own blast radius by 94% on ETERNAL
+and burying the one real change in the noise.
+
+Closed in the DIAGNOSTIC, not the sentinel: `_cell_key()` maps each side through
+ITS OWN module's `NOT_PRINTED` so the two collapse onto one shared key. Giving
+`_NotPrinted` a value-based `__eq__` would weaken an identity contract the
+application depends on in order to serve a diagnostic — the wrong trade. The
+`NOT_PRINTED -> None` transition deliberately remains a REAL change: it means a
+token appeared where none had been and failed to parse, the exact shape that hid
+the `(I)` defect.
+
+**Standing rule: any cross-module comparison of extractor output must normalise
+`NOT_PRINTED` explicitly, and must report how many sentinel pairs it collapsed.**
+A guard that is silently correct cannot be told apart from one that is silently
+absent, and this one's failure mode is under-reporting change.
 
 #### The `*`-as-negligible-amount convention, and why it is safe by construction
 
