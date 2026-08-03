@@ -988,6 +988,62 @@ row per key afterwards. Do not assume the path works because the schema permits
 it. It is untested, not verified, and the distinction is the whole point of this
 entry.
 
+#### Frontend container install was unpinned — RESOLVED
+
+STATUS: RESOLVED 2026-08-03. Recorded here for the first time: this was found by
+audit in the prior session and reported only in conversation, never written
+down, so there was no OPEN entry to move. That is itself the lesson -- an
+unrecorded finding is indistinguishable from one nobody made.
+
+WHAT WAS WRONG. `frontend/Dockerfile` ran `COPY package*.json ./` then
+`npm install`. Three separate problems compounded:
+
+1. **No lockfile reached the install.** `package*.json` does not match
+   `pnpm-lock.yaml`, and `.dockerignore` did not exclude it, so the tracked
+   lockfile arrived only via the later `COPY . .` -- AFTER npm had already
+   resolved. The lockfile was present in the image and ignored by the one step
+   it exists to constrain.
+2. **Every dependency range is a caret.** next ^14.2.35, react ^18.3.1,
+   typescript ^5.5.4 and the rest. With no lockfile, two builds of the SAME
+   commit could legitimately produce different dependency trees.
+3. **Two package managers had touched the tree.** `pnpm-lock.yaml` was the only
+   TRACKED lockfile, but `frontend/node_modules` carried both a `.pnpm` store
+   and an npm `.package-lock.json` marker, so local installs had been done both
+   ways.
+
+WHY IT NEVER BIT, which is the interesting part. The compose frontend service
+mounted an anonymous `- /app/node_modules` volume. An anonymous volume is
+initialised from the image at FIRST container creation and persists across
+restarts, so the container kept running whatever the first build happened to
+install, no matter how many times the image was rebuilt afterwards. **The
+nondeterminism was real and was frozen by an accident of ordering.** It looked
+stable because nothing was re-resolving, not because anything was pinned. A
+`docker compose down -v`, a new machine, or a first build on a different day
+would each have been free to produce a different tree.
+
+RESOLUTION. Dockerfile now does `COPY package.json pnpm-lock.yaml ./` then
+`corepack enable && pnpm install --frozen-lockfile`, which FAILS rather than
+silently updating when manifest and lockfile disagree. `package.json` declares
+`"packageManager": "pnpm@9.15.9"` so corepack pins the version -- a full semver
+because corepack rejects a bare major (`Invalid package manager specification in
+package.json (pnpm@9); expected a semver version`, which failed the first
+build). Compose runs `pnpm dev`. The untracked npm `.package-lock.json` marker
+was deleted; `pnpm-lock.yaml` was not touched.
+
+CAVEAT, MEASURED, and deliberately left open. Removing the anonymous volume does
+NOT make the container run the image's install. `./frontend:/app` still
+bind-mounts the host directory over /app, so `/app/node_modules` now resolves to
+the HOST's `frontend/node_modules`. Verified by probe: a file created in the host
+tree is immediately visible inside the container. The effective dependency source
+therefore moved from "image install, frozen at first run" to "whatever the
+developer has locally" -- pinned differently, not pinned to the image. The IMAGE
+is now reproducible; the DEV CONTAINER still is not. Closing that needs the bind
+mount not to cover /app (mount source subdirectories, or drop the mount and rely
+on rebuilds), which is a larger change and was not made.
+
+VERIFIED: `docker compose build frontend` succeeds, the container serves HTTP
+200, Next.js 14.2.35 ready in 2.1s.
+
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
 naming because none of them were caught by any existing check.
