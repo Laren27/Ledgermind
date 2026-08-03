@@ -907,6 +907,45 @@ adjustment, confirming those `*` cells are genuine nils, while FY25 annual only
 closed once `(I)` was read as `(1)`). Treat a `None` in a PAYTM column as
 "unknown, possibly nil" and reach for the subtotal before concluding anything.
 
+#### Eval sweep 2026-08-03 — the extraction changes moved no answer
+
+Full three-dataset sweep on **gemini-3.1-flash-lite**, `--delay 35`, run from the
+host per §7. Both provider gates clean on every dataset: gemini only, one model
+only, no Groq fallback. (A prior sweep at `--delay 25` lost one Paytm call to
+Groq and voided that dataset; 35 held.)
+
+```
+Eternal  q4fy26_eternal.json   54  | Pass 54 | Fail 0 | 100.0%
+Titan    q_titan.json          15  | Pass 15 | Fail 0 | 100.0%
+Paytm    q_paytm.json          19  | Pass 18 | Fail 1 |  94.7%
+                                                TOTAL   87/88
+```
+
+The single failure is **PQ012** (`semantic_risk`), `expected_path=semantic`
+against actual `cross`. That entry carries `known_deliberate_failure` and fails
+on `expected_path` ONLY. It is not a regression and must not be cleared by
+editing its expectation.
+
+WHY THIS SWEEP MATTERS, and it is the only claim being made from it. It is the
+first full sweep taken AFTER both extraction changes recorded above -- the
+`(I)` -> `(1)` OCR fix and the `NOT_PRINTED` sentinel rekeying of the all-zero
+row guard -- and it covers both. **The extraction changes moved no answer.**
+87/88 with PQ012 as the sole failure is the same shape as before them, so the
+50 recovered values and the 45 admitted printed nils changed what the database
+CONTAINS without changing what the system ANSWERS.
+
+That is the expected result rather than a disappointing one: 45 of the admitted
+rows are zeros on unregistered metric names, and no golden question asks for
+them. The sweep's value here is negative evidence -- it demonstrates the
+extraction work broke nothing, not that it improved anything.
+
+ANCHORED TO A STATED EXTRACTION STATE, because a score without one is not
+reproducible. At sweep time `financials` held **1437** rows with
+**live == produced as set equality** (1437 rows, 1437 distinct business keys,
+against produced 460 + 273 + 432 + 272), and ZERO `is_latest = FALSE` rows. Any
+future comparison against 87/88 must first confirm that state; a differing row
+count means the two numbers are not comparable.
+
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
 naming because none of them were caught by any existing check.
