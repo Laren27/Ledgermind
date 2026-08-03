@@ -518,15 +518,55 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
             bucket_sorted = sorted(bucket, key=lambda w: w["x0"])
             texts = [w["text"].strip() for w in bucket_sorted]
 
-            # If any fragment in this bucket already contains a comma, it is
-            # a COMPLETE, correctly-extracted number — trust it alone and
-            # discard any other stray token sharing the bucket. Only when
-            # NO fragment has a comma do we treat this as a genuine
-            # OCR-broken number (comma lost, split across words) and
-            # concatenate all fragments in x0 order.
+            # If any fragment in this bucket contains a comma, it is very
+            # likely a complete number and the other tokens sharing the bucket
+            # are strays — so trust it and discard them. Only when NO fragment
+            # has a comma is this treated as a genuine OCR-broken number
+            # (comma lost, split across words) and all fragments concatenated
+            # in x0 order.
+            #
+            # A COMMA IS NOT PROOF OF COMPLETENESS, corrected 2026-08-03.
+            # ETERNAL Q4FY26 page 31 prints consolidated revenue as 17,292 and
+            # OCR splits it into TWO words, "I" (the leading 1) and "7,292".
+            # Both land in the same bucket — the gap is 0.5pt, far inside
+            # FRAGMENT_ADJACENCY_GAP — and the rule above then kept "7,292"
+            # and threw the leading digit away, storing 7,292 for a printed
+            # 17,292. The printed column is self-consistent at 17,xxx
+            # (17,292 + 342 other income = 17,634 total income, less 228 PBT =
+            # 17,406 total expenses, all three printed); the stored column was
+            # self-consistent at 7,xxx only because _compute_derived_totals
+            # recomputed total_income and total_expenses FROM the corrupted
+            # revenue, overwriting two rows that had been read correctly.
+            #
+            # THE FIX IS DELIBERATELY NARROW. It does NOT concatenate the whole
+            # bucket when a comma is present — that would undo the stray-token
+            # protection this rule exists for. It attaches AT MOST ONE
+            # fragment, and only when every one of these holds:
+            #   * it sits immediately to the LEFT of the comma fragment in x0
+            #     order (a trailing marker on the right is still discarded);
+            #   * it is physically adjacent, by the SAME FRAGMENT_ADJACENCY_GAP
+            #     already used to build the cluster — x-position decides, not
+            #     text shape;
+            #   * after _ocr_one_to_digit, it is one or two digits — the width
+            #     of a leading thousands group. A longer token is another
+            #     number, not a broken-off digit, and is left alone.
+            # I -> 1 runs through _ocr_one_to_digit so this stays consistent
+            # with the bare-fragment path below and with the (I) fix.
+            #
+            # Exact-string and positional logic only; no regex is added or
+            # changed, which matters because this loop runs for every bucket of
+            # every row of every financial page in all four documents.
             comma_fragments = [t for t in texts if ',' in t]
             if comma_fragments:
-                fragment = max(comma_fragments, key=len)
+                best = max(comma_fragments, key=len)
+                i = texts.index(best)
+                fragment = best
+                if i > 0:
+                    gap = bucket_sorted[i]["x0"] - bucket_sorted[i - 1]["x1"]
+                    lead = _ocr_one_to_digit(texts[i - 1])
+                    if (gap <= FRAGMENT_ADJACENCY_GAP
+                            and lead.isdigit() and len(lead) <= 2):
+                        fragment = lead + best
             else:
                 fragment = "".join(_ocr_one_to_digit(t) for t in texts)
 
