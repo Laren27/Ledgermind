@@ -469,8 +469,60 @@ def _rows_to_records(
 
     return records
 
+# A directly-read OCR value is EVIDENCE; a derived value is INFERENCE. Below
+# this divergence, derivation wins: the read figure is assumed to be rounding
+# noise or a one-digit slip, and forcing arithmetic alignment is the whole point
+# of this function. Above it, the disagreement is too large to be a rounding
+# artefact -- it means one of the COMPONENTS feeding the derivation was misread,
+# and overwriting the read value would propagate that misread into a row that
+# was read correctly, destroying the evidence that would have exposed it.
+#
+# WHY 5%, AND WHAT IT IS CALIBRATED AGAINST. Measured across all four reference
+# documents 2026-08-04: every genuine rounding-scale divergence is
+#   PAYTM  FY26 annual consolidated  8521 vs 8523    0.02%
+#   PAYTM  FY25 annual consolidated  9096 vs 9093    0.03%
+#   ETERNAL FY25 Q4  standalone      1936 vs 1944    0.41%
+#   ETERNAL FY25 ann standalone      7676 vs 7687    0.14%
+#   ETERNAL FY24 ann standalone      6131 vs 6209    1.27%
+# and there are NO total_income divergences above 1.0 anywhere in the corpus.
+# The one real defect diverged by 57% (17406 read vs 7406 computed, from a
+# misread revenue) and sat in the same undifferentiated list for multiple
+# sessions because that list was read as a category rather than by magnitude.
+# 5% is roughly 4x the largest benign case and ~11x smaller than the defect --
+# deliberately far from both, since the gap between them is two orders of
+# magnitude and precision here would be false confidence.
+#
+# THIS GUARD CAN PRODUCE IDENTITY FAILURES, AND THAT IS THE INTENT. Forcing the
+# overwrite guaranteed validate_financial_identities would agree with itself; it
+# bought that agreement by manufacturing the number being checked. A surfaced
+# failure beats a manufactured agreement. As measured above, nothing in the
+# current corpus crosses the threshold, so this changes no value today -- it is
+# a tripwire for the next misread component, not a correction to this one.
+DERIVED_OVERWRITE_MAX_DIVERGENCE = 0.05
+
+
+def _derivation_within_tolerance(read_val, computed_val) -> bool:
+    """True when a derived value may overwrite the directly-read one.
+
+    Divergence is measured against the READ value, not the computed one: the
+    read figure is the evidence, so it is the reference the inference is judged
+    against. A zero read value admits no ratio, so it falls back to the same
+    absolute 1.0 Cr tolerance the overwrite logging already uses.
+    """
+    if read_val is None or computed_val is None:
+        return True
+    if read_val == 0.0:
+        return abs(computed_val) <= 1.0
+    return abs(computed_val - read_val) / abs(read_val) <= DERIVED_OVERWRITE_MAX_DIVERGENCE
+
+
 def _compute_derived_totals(records: list[FinancialRecord]) -> list[FinancialRecord]:
-    """Force mathematical alignment for Total Income and Total Expenses to neutralize OCR errors."""
+    """Force mathematical alignment for Total Income and Total Expenses to neutralize OCR errors.
+
+    Except where the disagreement is too large to be OCR noise — see
+    DERIVED_OVERWRITE_MAX_DIVERGENCE. There the READ value is kept and the
+    mismatch is logged at ERROR as a suspected misread component.
+    """
     from collections import defaultdict
     groups = defaultdict(dict)
     for i, r in enumerate(records):
@@ -493,7 +545,24 @@ def _compute_derived_totals(records: list[FinancialRecord]) -> list[FinancialRec
             oor_val = metrics["other_operating_revenue"][1] if "other_operating_revenue" in metrics else 0.0
             ti_val = round(rev_val + oi_val + oor_val, 2)
             if "total_income" in metrics:
-                records[metrics["total_income"][0]].value = ti_val
+                ti_idx, ti_read = metrics["total_income"]
+                if _derivation_within_tolerance(ti_read, ti_val):
+                    records[ti_idx].value = ti_val
+                else:
+                    # Keep the read value AND carry it forward, so the
+                    # total_expenses derivation below is consistent with the
+                    # decision just made here rather than silently reverting to
+                    # the rejected inference.
+                    logger.error(
+                        "SUSPECTED MISREAD COMPONENT: total_income read %.2f disagrees "
+                        "with computed %.2f (revenue + other_income + "
+                        "other_operating_revenue) by %.1f%% for %s — KEEPING THE READ "
+                        "VALUE, not overwriting. One of the components is likely misread.",
+                        ti_read, ti_val,
+                        abs(ti_val - ti_read) / abs(ti_read) * 100 if ti_read else float("inf"),
+                        key,
+                    )
+                    ti_val = ti_read
             else:
                 records.append(FinancialRecord(
                     tenant_id=records[rev_idx].tenant_id, doc_id=records[rev_idx].doc_id, company=key[0],
@@ -509,12 +578,23 @@ def _compute_derived_totals(records: list[FinancialRecord]) -> list[FinancialRec
             computed_te = round(ti_val - pbt_val + exc_val, 2)
             if "total_expenses" in metrics:
                 te_idx, te_val = metrics["total_expenses"]
-                if abs(computed_te - te_val) > 1.0:
-                    logger.warning(
-                    "total_expenses OCR value %.2f disagrees with computed %.2f "
-                    "(derived from PBT) for %s — overwriting.", te_val, computed_te, key,
-                )
-                records[te_idx].value = computed_te
+                if not _derivation_within_tolerance(te_val, computed_te):
+                    logger.error(
+                        "SUSPECTED MISREAD COMPONENT: total_expenses read %.2f disagrees "
+                        "with computed %.2f (total_income - PBT + exceptional_items) by "
+                        "%.1f%% for %s — KEEPING THE READ VALUE, not overwriting. One of "
+                        "the components is likely misread.",
+                        te_val, computed_te,
+                        abs(computed_te - te_val) / abs(te_val) * 100 if te_val else float("inf"),
+                        key,
+                    )
+                else:
+                    if abs(computed_te - te_val) > 1.0:
+                        logger.warning(
+                            "total_expenses OCR value %.2f disagrees with computed %.2f "
+                            "(derived from PBT) for %s — overwriting.", te_val, computed_te, key,
+                        )
+                    records[te_idx].value = computed_te
             else:
                 records.append(FinancialRecord(
                     tenant_id=records[pbt_idx].tenant_id, doc_id=records[pbt_idx].doc_id, company=key[0],
