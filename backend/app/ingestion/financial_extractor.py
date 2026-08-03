@@ -5,7 +5,7 @@ import pdfplumber
 
 from .entity_resolver import resolve_metric, normalize_metric_label, METRIC_ALIASES
 from .models import BlockType, FinancialRecord, FinancialType, PageBlock
-from .pdf_parser import extract_financials, extract_financials_positional, find_fully_populated_row_centers
+from .pdf_parser import extract_financials, extract_financials_positional, find_fully_populated_row_centers, NOT_PRINTED
 from .section_classifier import get_blocks_by_type
 from app.ingestion.models import normalize_quarter
 logger = logging.getLogger(__name__)
@@ -347,10 +347,46 @@ def _should_skip_row(description: str, values: list) -> bool:
         return True
     if re.match(r"^\d+\s+[£₹a-z]", desc_lower):
         return True
-    max_val = max((abs(v) for v in values if v is not None), default=0)
+    # NOT_PRINTED must be excluded here as well as None: it is a sentinel
+    # object, and abs() on it raises TypeError.
+    max_val = max(
+        (abs(v) for v in values if v is not None and v is not NOT_PRINTED),
+        default=0,
+    )
     if max_val > 10_000_000:
         return True
-    if not [v for v in values if v is not None and v != 0.0]:
+
+    # NOTHING-PRINTED guard. This clause used to read
+    #
+    #     if not [v for v in values if v is not None and v != 0.0]:
+    #
+    # i.e. "drop the row if every value is absent or zero", and that conflated
+    # two inputs which arrive identically as 0.0: a printed `-` or `(0)`, which
+    # asserts the line item IS zero for the period, and a column that produced
+    # nothing. The filing making a positive claim of zero is DATA. Discarding it
+    # made a printed figure indistinguishable from an absent one -- structurally
+    # the same failure as the (I) defect, reached by a different route.
+    #
+    # Measured cost of the old form (scripts/_zero_row_loss_scan.py, 2026-08-03):
+    # 26 rows dropped across the corpus, 62 candidate records, 50 distinct
+    # business keys -- ETERNAL 16, TITAN 4, PAYTM 0, ZOMATO 30. ZOMATO
+    # p.285 standalone `Deferred tax - -` is the case that named it: printed,
+    # read correctly as [0.0, 0.0], then discarded whole, which is why
+    # deferred_tax is absent for ETERNAL FY24 and FY23 standalone.
+    #
+    # The clause is KEPT rather than deleted, now keyed on the distinction the
+    # sentinel preserves: drop only when no column carried a printed token.
+    #
+    # HONEST SCOPE OF WHAT THIS STILL CATCHES. extract_financials_positional()
+    # already refuses to emit a row with fewer than MIN_VALUE_COLUMNS non-empty
+    # buckets, so every row reaching here from the positional path has at least
+    # two printed tokens and this guard cannot fire for it. It therefore does
+    # NOT filter anything in the current corpus; it remains as a structural
+    # floor for the degenerate all-empty row and for callers that do not share
+    # the positional path's precondition. That is a deliberate weakening, not an
+    # oversight: separating real line items from OCR label noise is the job of
+    # the LABEL guards above, not of a values test.
+    if all(v is NOT_PRINTED for v in values):
         return True
     return False
 
@@ -392,7 +428,9 @@ def _rows_to_records(
         for col_idx, (fiscal_year, quarter) in enumerate(column_map):
             if col_idx >= len(values): break
             value = values[col_idx]
-            if value is None: continue
+            # Both mean "no number for this column": NOT_PRINTED = nothing was
+            # printed, None = a token was printed but would not parse.
+            if value is None or value is NOT_PRINTED: continue
 
             records.append(FinancialRecord(
                 tenant_id=tenant_id, doc_id=doc_id, company=company, ticker=ticker,
