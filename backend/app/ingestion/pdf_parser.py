@@ -44,6 +44,41 @@ _VALUE_TOKEN_RE = re.compile(r"^[(/]?-?[\d,]*\.?\d+[)\\]?$|^-$")
 MIN_VALUE_COLUMNS = 2  # a real financial data row always has at least 2 periods
 
 
+class _NotPrinted:
+    """Sentinel: this column carried NO token at all.
+
+    WHY A SENTINEL AND NOT None. Before this existed, None meant two different
+    things in a positional row and nothing could tell them apart:
+
+      (a) the bucket was EMPTY -- nothing was printed in this column;
+      (b) a token WAS printed but clean_financial_number() could not parse it
+          (its `except ValueError` path -- the shape that hid the (I) defect).
+
+    Collapsing those is what left `_should_skip_row` unable to distinguish "this
+    row has no data" from "this row's data is zero". A printed `-` or `(0)`
+    asserts the line item IS zero for the period; that is a claim the filing is
+    making, not an absence. With this sentinel, None means exactly (b) and
+    NOT_PRINTED means exactly (a), so the guard can act on the difference.
+
+    Identity-compared with `is`, never `==`: it must never be equal to 0.0,
+    None, or itself-by-value. Deliberately not an Enum or a float subclass --
+    anything with numeric behaviour could be summed or abs()'d by accident on a
+    hot path and silently become a value.
+    """
+    __slots__ = ()
+
+    def __repr__(self):
+        return "NOT_PRINTED"
+
+    def __bool__(self):
+        # Falsy, so an accidental truthiness test reads as "no value here"
+        # rather than as a present one.
+        return False
+
+
+NOT_PRINTED = _NotPrinted()
+
+
 def parse_pdf(pdf_path: str) -> list:
     blocks = []
     with pdfplumber.open(pdf_path) as pdf:
@@ -475,7 +510,10 @@ def extract_financials_positional(pdf_path, page_index, column_centers, toleranc
         values = []
         for bucket in buckets:
             if not bucket:
-                values.append(None)
+                # NOT_PRINTED, not None: nothing was printed in this column.
+                # None is reserved for a token that WAS printed and failed to
+                # parse. _should_skip_row depends on telling those apart.
+                values.append(NOT_PRINTED)
                 continue
             bucket_sorted = sorted(bucket, key=lambda w: w["x0"])
             texts = [w["text"].strip() for w in bucket_sorted]
