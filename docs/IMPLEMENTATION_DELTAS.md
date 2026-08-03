@@ -590,20 +590,19 @@ neither prints the wrapped-`I` form. The 15 are printed figures that
 `clean_financial_number` previously converted to None after the column had
 already been claimed.
 
-CONSEQUENCE, recorded as an OPEN obligation and deliberately not acted on.
-`financials` now holds 1377 rows against an extractor that produces 1392, so the
-database is stale by 15 values, PAYTM FY25 annual consolidated `deferred_tax`
-and `adjustment_of_tax_relating_to_earlier_years` among them. Closing that gap
-means `backfill_financials` (Stage 7 only, doc_ids READ from the documents
-table), which is a §1 operation requiring explicit approval and has NOT been
-run. Until it is:
-- the DB-side tax matrix earlier in this entry under-reports evaluability by one
-  group -- extraction now makes PAYTM FY25 annual consolidated fully evaluable
-  and it reconciles exactly (20 + (-1) + (-1) = 18), but the table does not yet
-  hold the components;
-- a `purge_orphaned_metrics` dry run remains SAFE to run and will still report
-  zero orphans (live is still a subset of produced); it simply will no longer
-  demonstrate equality.
+CONSEQUENCE, now CLOSED. `backfill_financials` ran with explicit approval on
+2026-08-03 and the 15-row gap is closed: ETERNAL 7 inserted / 442 skipped,
+ZOMATO 0 inserted / 242 skipped, PAYTM 8 inserted / 424 skipped, and across all
+three **0 restated, 0 reingested, 0 errors**. `financials` went 1377 -> 1392,
+DISTINCT business keys 1392, and **live == produced is restored at 1392**.
+
+Zero `is_latest = FALSE` rows survived the write, which is a property of the
+loader and not luck: `backfill_financials` READS doc_ids from the documents
+table rather than minting them, so every already-present record takes
+db_loader's same-doc_id branch -- `ON CONFLICT DO NOTHING`, counted as
+"skipped", with no retirement. Only genuinely new business keys insert. The
+restatement path therefore STILL has never executed against live data, and the
+latent gap recorded above stands untouched.
 
 MEASURED, not assumed: `regression_check` 2026-08-03, 4/4 PASS, zero identity
 failures, zero discarded rows, and identities NOT EVALUATED 10 / 8 / 7 / 4
@@ -615,6 +614,93 @@ Current/Deferred/Total, ZOMATO the same, and ETERNAL Q4FY26 prints no total-tax
 row at all. Only PAYTM prints the adjustment line. The identity was NOT
 reshaped; that remains an open proposal, and reshaping it now would paper over
 extraction gaps rather than record them.
+
+#### The `(I)` defect: a claimed column that then lost its value
+
+WHAT MADE IT INVISIBLE, which is the part worth keeping. `(I)` did not fail to
+match. `_is_numeric_word()` tests `text.strip("()")`, so `(I)` reduced to `I`,
+matched `^I$` in `_NUMERIC_WORD_RE`, qualified as a numeric word, entered a
+bucket and CLAIMED a value column. Only then did conversion fail:
+`clean_financial_number("(I)")` strips the parens and calls `float("I")`, which
+raises ValueError and returns None. The pre-existing `I` -> `1` repair sat at
+the fragment join and tested `t == "I"` against the UNSTRIPPED token, so every
+wrapped form slipped past it.
+
+The consequence is the reason this rates an entry rather than a line in a commit
+message: **a printed figure became indistinguishable from an absent one**. That
+is the single failure mode this codebase is least equipped to notice, because
+absence is a legitimate, frequently-correct reading everywhere else -- the `*`
+negligible marker, blank columns, nil dashes. An unparseable token that had
+already consumed its column produced exactly the same downstream signature as a
+column that was never printed. It is strictly worse than a non-match, which
+would at least have left the column free.
+
+Fixed in `pdf_parser._ocr_one_to_digit`, deliberately EXACT-STRING rather than
+regex: the call site is the per-bucket value loop, hot for every row of every
+financial page in all four documents, so `_NUMERIC_WORD_RE`, `_VALUE_TOKEN_RE`
+and `clean_financial_number`'s own regexes are untouched. The substitution fires
+only when the token stripped of wrapper characters is EXACTLY "I", preserving
+the wrapper so the negative sign survives ("(I)" -> "(1)" -> -1.0). Roman
+numerals cannot be caught: "II", "III", "IV", "VI", "VII" all have cores that
+are not "I", and none is a numeric word to begin with. The stage is late by
+design -- a token reaches the function only after being classified numeric AND
+assigned to a column by x-position -- so description text never passes through
+it. Same lesson as `entity_resolver.TRAILING_INITIAL_RE`: get the STAGE wrong
+and a fix aimed at one shape silently rewrites another.
+
+15 RECOVERIES, each verified against the printed line before any write. Only TWO
+are tax-breakdown rows; the other 13 are outside what the fix was reasoned about
+and were reviewed individually on that basis.
+
+```
+ETERNAL  FY25 Q4  consol      -1.00  oci_fx_translation                    p31
+ETERNAL  FY25 --  consol    -118.00  income_taxes_(paid)/refund_(net)      p33
+ETERNAL  FY25 --  standalone   -1.00  gain_on_termination_of_lease_contracts p42
+ETERNAL  FY25 --  standalone    0.00  other_interest_paid                   p42
+ETERNAL  FY25 --  standalone   -1.00  profit_on_sale_of_ppe_(net)           p42
+ETERNAL  FY26 Q4  standalone   -1.00  oci_remeasurement_defined_benefit     p40
+ETERNAL  FY26 --  standalone   -1.00  other_interest_paid                   p42
+PAYTM    FY25 Q4  consol       -1.00  share_of_oci_of_associates/jv         p8
+PAYTM    FY25 --  consol       -1.00  adjustment_of_tax_relating_to_earlier_years p8
+PAYTM    FY25 --  consol       -1.00  deferred_tax                          p8
+PAYTM    FY25 --  consol       -1.00  share_of_oci_of_associates/jv         p8
+PAYTM    FY25 --  standalone   -1.00  profit_on_sale_of_ppe_(net)           p18
+PAYTM    FY26 Q3  consol       -1.00  share_of_profit/(loss)_of_associates  p8
+PAYTM    FY26 Q4  consol       -1.00  non-controlling_interests             p8
+PAYTM    FY26 --  consol       -1.00  non-controlling_interests             p8
+```
+
+THREE are confirmed by the filings' OWN printed subtotals, not merely cited:
+associates FY26 Q3 (231 + (-1) = 230, the printed "Proft/(Loss) before
+exceptional items and tax"); non-controlling interests, where owners-of-parent
+plus NCI reproduces the printed total in all five columns (184 + (-1) = 183,
+553 + (-1) = 552, and the FY25 pair via the same line); and the tax row
+(20 + (-1) + (-1) = 18).
+
+FIFTEEN RECOVERIES FROM FOURTEEN TOKENS. `ETERNAL FY25 standalone
+other_interest_paid` carries no `(I)` of its own. Its row prints
+"Other interest paid (I) (0)", so before the fix its values were [None, -0.0],
+and `_should_skip_row` drops any row whose only non-None values are zero -- the
+WHOLE row was discarded. Recovering the FY26 `(I)` resurrected the row, which
+then emitted both columns. Worth remembering as a shape: a single recovered
+token can restore records in columns that never contained the defect.
+
+TITAN AND ZOMATO MEASURED, NOT INFERRED. The first report argued they were
+unaffected from the fix being purely additive plus unchanged record counts.
+That inference was then checked directly: both return gained=0, lost=0,
+value-changed=0, TITAN additionally confirmed at token level (zero tokens
+rewritten on its P&L page), and ZOMATO independently re-confirmed by the
+backfill itself reporting 0 inserted / 242 skipped. Neither document prints the
+wrapped-`I` form.
+
+INSTRUMENT CAVEAT, recorded because the instrument is committed and will be
+reused. `_recovered_value_dump.py`'s LAYER B matches old rows to new rows by
+description string and takes the first match, so a page carrying SEVERAL rows
+with an identical description will produce a spurious token-level "recovery"
+(observed on TITAN page 14, which has three rows labelled
+"-Non-controlling interesi-"). LAYER A is unaffected -- it keys on the full
+business key -- and Layer A is the authority for what actually changed. Read
+Layer B as provenance for a Layer A finding, never as a finding on its own.
 
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
