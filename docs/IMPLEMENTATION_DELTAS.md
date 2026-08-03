@@ -1176,8 +1176,99 @@ lineage; `db_loader._upsert` then takes its same-`doc_id` branch, which treats
 `ON CONFLICT DO NOTHING`. That inference does not hold when the PARSER changed
 under a fixed document. There is currently no path that updates a value under an
 unchanged `(doc_id, business key)` — restatement requires a DIFFERENT `doc_id`.
-Left OPEN and unfixed pending a decision; correcting it touches the loader's
-truth-resolution semantics, not just this one cell.
+**RESOLVED 2026-08-04** by the opt-in correction path below; the three values are
+now 17292 / 17634 / 17406 in the local docker database. Supabase still holds the
+old figures and is corrected by hand.
+
+#### `--correct-values`: correcting a reading is not restating a filing
+
+The gap above needed a path that could change a stored value under an unchanged
+business key. The obvious implementations are all wrong in the same way.
+
+**Restatement machinery must not be reused for this.** `is_latest`, retirement
+and a new row all encode a claim about the FILING's history — that the issuer
+published a revised figure. Nothing of the sort happened here: the filing never
+changed, our reading of it did. Routing a parser correction through restatement
+would manufacture a filing history that does not exist — a retired "original"
+row the issuer never filed, sitting in the audit trail as though it had, and
+`is_latest = FALSE` would stop meaning "superseded by the issuer". So the
+correction is an `UPDATE` of `value` alone. `is_latest`, `doc_id`,
+`filing_date` and `created_at` are untouched; `created_at` still reads
+2026-07-15 on all three corrected rows, which is correct — that IS when the row
+was created.
+
+**Off by default,** and the default was verified rather than assumed: a plain
+`--apply` run made while the values were still stale reported `corrected: 0,
+skipped: 460`. The failure mode was observable and did not occur. For the
+pipeline and the Celery worker a same-`doc_id` replay genuinely is a replay, and
+rewriting stored figures on every retry is not wanted.
+
+**Compare as floats, not Decimals.** `value` is `numeric`, so psycopg2 returns
+`Decimal`, while `record.value` is a float from the parser. `Decimal.__eq__`
+expands the float to its exact binary value, so `Decimal("33.33") == 33.33` is
+**False** — a Decimal comparison would "correct" every non-terminating value to
+itself, on every run, forever.
+
+**MEASURED.** `--apply --correct-values` on ETERNAL: 0 inserted / 0 restated /
+0 reingested / **4 corrected** / 456 skipped / 0 errors; ZOMATO all skipped.
+`financials` still holds **ZERO** `is_latest = FALSE` rows, 1437 rows against
+1437 distinct live business keys. The restatement path STILL has never executed
+against live data — which is the intended outcome, not a gap: a parser
+correction is not a restatement and must not register as one.
+
+**THE FOURTH CORRECTION — a second stale value nothing could previously see.**
+Three corrections were expected. Four fired. The extra one is
+`changes_in_inventories`, ETERNAL **FY26 annual** consolidated,
+`-2002.0 -> -2042.0`, printed on **p.33** as `-Inventories` (a cash-flow line,
+resolving through the alias table), reading `[-2042.0, -88.0]` for
+`[FY26 annual, FY25 annual]`.
+
+It is **not** caused by the fragment-joining fix, whose blast radius was
+measured at exactly one cell on p.31. It is a stale value from an EARLIER parser
+generation — one of the extraction fixes landed since the 2026-07-15 ingest
+re-read this cell, and no process in existence could propagate that: `backfill`
+could only ever INSERT metric names it had never seen, never correct a changed
+value. **Every extraction fix since 2026-07-15 has been silently unable to
+update any figure it improved.** Only new metric names ever landed.
+
+The generalisation worth carrying: **the count of corrections a re-extraction
+produces is a measurement, not a formality.** It is the only instrument that
+reveals how far the database has drifted from what the current parser reads, and
+it should be run and read after every extraction change — the same standing
+obligation `purge_orphaned_metrics` already carries for the opposite direction.
+
+#### The 5% derivation guard — a read value is evidence, a derived value is inference
+
+`_compute_derived_totals` no longer overwrites a directly-read OCR value when
+the derived value disagrees by more than `DERIVED_OVERWRITE_MAX_DIVERGENCE`
+(5%). It keeps the read value and logs at ERROR, naming the business key and
+both figures. Below 5% nothing changed.
+
+**Applied to `total_income` as well as `total_expenses`.** `total_expenses` at
+least logged its disagreements. `total_income` was overwritten **silently** — no
+threshold, no log line — and the defect propagated through BOTH. Guarding only
+the metric that already had a log would have left the quieter path unguarded.
+
+**Calibration.** Every genuine divergence in the corpus is 0.02% / 0.03% /
+0.14% / 0.41% / 1.27%, and there is no `total_income` divergence above 1.0 Cr
+anywhere. The defect diverged by **57%**. 5% is ~4x the largest benign case and
+~11x smaller than the defect; the gap between them is two orders of magnitude,
+so more precision would be false confidence. Verified against those exact
+values: all five benign cases still overwrite; both halves of the defect (57.45%
+and 56.71%) would now be kept and logged.
+
+**It can produce identity failures, and that is the intent.** Forcing the
+overwrite guaranteed `validate_financial_identities` would agree with itself,
+and bought that agreement by manufacturing the number being checked. A surfaced
+failure beats a manufactured agreement. No formula changed, so the §6 pairing
+between the two formula copies is untouched — this changes WHETHER an overwrite
+happens, not what is computed.
+
+**MEASURED.** `regression_check` 2026-08-04: 4/4 PASS, 0 identity failures, NOT
+EVALUATED 10 / 8 / 7 / 4 = 29, derivation overwrites 2 / 0 / 2 / 1 = **5**,
+produced 460 / 273 / 432 / 272 = **1437**, and **zero** `SUSPECTED MISREAD`
+lines. Nothing in the corpus crosses the threshold today. This is a tripwire for
+the next misread component, not a correction to the current one.
 
 #### `_NotPrinted` compares by identity, which does not survive two module copies
 
