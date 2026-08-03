@@ -702,6 +702,135 @@ with an identical description will produce a spurious token-level "recovery"
 business key -- and Layer A is the authority for what actually changed. Read
 Layer B as provenance for a Layer A finding, never as a finding on its own.
 
+#### The all-zero row guard: a printed nil is data, and it is discarded — OPEN
+
+STATUS: mechanism understood and measured, fix NOT attempted. The tradeoff at
+the bottom of this entry is a live decision, not a formality; do not "clean this
+up" without settling it.
+
+WHERE IT DIES. `_should_skip_row`'s final clause,
+`financial_extractor.py:353`:
+
+```python
+if not [v for v in values if v is not None and v != 0.0]:
+    return True
+```
+
+consumed at `financial_extractor.py:381` in `_rows_to_records`:
+
+```python
+if _should_skip_row(description, values):
+    continue
+```
+
+Execution never reaches `financial_extractor.py:397`, where the
+`records.append(FinancialRecord(...))` sits. **No FinancialRecord is ever
+constructed, so `db_loader` never sees the value at all.** Every part of the
+write path -- `_SQL_LOCK_LATEST`, the retirement flip, the ON CONFLICT guard --
+is innocent here. Anyone debugging this from the loader end will find nothing,
+because there is nothing to find: the row is gone two call frames earlier.
+
+THE MECHANISM, traced end to end on ZOMATO AR 2023-24 p.285 standalone, which
+prints `Deferred tax - -`:
+
+1. `_NUMERIC_WORD_RE` (`pdf_parser.py:264`) accepts a bare `-` via its `^-$`
+   alternative, so the dash qualifies as a numeric word, enters a bucket and
+   CLAIMS its value column.
+2. `clean_financial_number` (`pdf_parser.py:95`) maps it:
+   `if not val or val == '-': return 0.0`. The nil dash becomes `0.0`.
+3. `extract_financials_positional` returns `['Deferred tax', 0.0, 0.0]`.
+4. `_rows_to_records` takes `values=[0.0, 0.0]` and the guard above reads the
+   row as EMPTY. It is discarded whole.
+
+Verified directly rather than by reading: `clean_financial_number('-')` is
+`0.0`; `_should_skip_row('Deferred tax', [0.0, 0.0])` is `True`; the SAME label
+with `[1.0, 1.0]` is `False`. The label passes every guard. Only the values
+condemn it.
+
+WHY THIS IS WRONG, stated precisely. **A printed nil asserts that the line item
+IS zero for that period. That is not the same statement as the line not being
+printed.** The filing is making a positive claim and the extractor is
+converting it into an absence. This is structurally the SAME failure as the
+`(I)` defect recorded directly above -- a printed figure becoming
+indistinguishable from an absent one -- and it arrives by the same two-step
+shape: the token is accepted well enough to claim a column, and is then lost
+after the claim. The two defects are independent in code and identical in
+consequence, which is why both are recorded here rather than as commit
+footnotes.
+
+`-0.0 == 0.0` is `True` in Python, so parenthesis-wrapped zeros (`(0)`, which
+`clean_financial_number` negates to `-0.0`) are swept in by the same clause. The
+loss is not limited to bare dashes.
+
+SCOPE, measured across all four reference documents by
+`scripts/_zero_row_loss_scan.py`:
+
+```
+document              rows dropped   gross candidates   DISTINCT keys lost
+ETERNAL_Q4FY26                   5                 16                   16
+TITAN_Q1FY26                     3                 10                    4
+PAYTM_FY26                       0                  0                    0
+ZOMATO_AR_2023-24               18                 36                   30
+--------------------------------------------------------------------------
+total                           26                 62                   50
+```
+
+GROSS exceeds DISTINCT where one page carries several identically-resolving
+rows -- TITAN's three `-Non-controlling interesi-` and ZOMATO's three
+`Non-controlling interest` each collapse to a single key set, and `seen_keys`
+first-wins would collapse them anyway. **50 is the honest figure.** PAYTM is
+clean at zero.
+
+NOT every dropped row is a loss: `finance_costs` on ZOMATO p.291 is dropped by
+this clause but the metric is produced from another page, so its business key
+survives. It is excluded from the 50.
+
+THE TRADEOFF, which is why this is open rather than fixed. Of the 19 distinct
+metric names involved, only FOUR are in the registry -- `deferred_tax`,
+`exceptional_items`, `inventory`, `changes_in_inventories`. The other fifteen
+are not, and would be stored as raw. Several are OCR-damaged variants of each
+other rather than distinct line items:
+`non-controlling_interest` / `non-controlling_interesi` /
+`non-controlling_int~re!_i`, and `income_tax_relating_to_above` /
+`ncome_tax_relating_to_above` / `(_iii)_income_tax_relating_to_above` /
+`(_iii)_ncome_tax_relating_to_above`. So removing the clause outright would add
+~50 rows of which the majority are unregistered and a visible fraction are label
+noise. **The guard is doing real work as well as causing this loss**, and any
+fix has to separate "this row has no data" from "this row's data is zero"
+without also readmitting the noise the guard currently absorbs. That is a design
+question, not a one-line change.
+
+Known consequence already visible elsewhere in this file: the two
+`absent: deferred_tax` verdicts for ETERNAL FY24 and FY23 standalone in the
+NOT EVALUATED tally are this clause, not an extraction gap in the usual sense --
+the figure IS printed and IS read.
+
+#### The `*`-as-negligible-amount convention, and why it is safe by construction
+
+PAYTM's filings use `*` as a value placeholder for an amount too small to print
+at crore granularity. It occupies a column position like a number would --
+p.8 line 52 reads `Non-controlling interests * * * * *` across all five columns,
+and the tax block's `Adjustment of tax relating to earlier years 2 * 2 (I)`
+mixes it with real figures.
+
+`*` is NOT a numeric word: it fails `_NUMERIC_WORD_RE` on every alternative
+(no digits, not `-`, not `I`), so `_is_numeric_word` rejects it, it never enters
+a bucket, and it never claims a value column. It falls through to the
+description instead. **This is structural exclusion, not luck** -- worth
+recording explicitly because the `(I)` fix was reasoned about partly on this
+basis, and a future change to `_NUMERIC_WORD_RE` that admitted `*` would
+silently start writing zeros or Nones into columns that currently stay clean.
+
+The consequence worth carrying: **some `None` values are semantically
+near-zero rather than unknown.** A column whose printed content was `*` yields
+`None`, exactly like a column whose value was misread or never printed. Nothing
+in the record distinguishes them. Only column arithmetic against the filing's
+own printed subtotal separates the two cases -- which is how the PAYTM tax rows
+were settled (FY26 Q4 `-2 + 13 = 11` and FY25 Q4 `1 + 2 = 3` both close with no
+adjustment, confirming those `*` cells are genuine nils, while FY25 annual only
+closed once `(I)` was read as `(1)`). Treat a `None` in a PAYTM column as
+"unknown, possibly nil" and reach for the subtotal before concluding anything.
+
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
 naming because none of them were caught by any existing check.
