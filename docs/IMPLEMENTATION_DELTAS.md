@@ -946,6 +946,48 @@ against produced 460 + 273 + 432 + 272), and ZERO `is_latest = FALSE` rows. Any
 future comparison against 87/88 must first confirm that state; a differing row
 count means the two numbers are not comparable.
 
+#### Truth Resolution / restatement handling — UNTESTED, not verified
+
+This consolidates and supersedes the shorter note recorded earlier in this file
+under the purge entry. It is stated separately because it is the single largest
+unproven surface in the write path and it will not announce itself.
+
+THE FACT. `financials` has held **zero `is_latest = FALSE` rows** at every
+measurement taken across 2026-08-03: at 1377, at 1392, and at 1437. Not "few".
+Zero. No row in the live table has ever been retired.
+
+WHY IT IS STRUCTURAL AND NOT COINCIDENCE. Every write this project has performed
+against `financials` has gone through `backfill_financials`, which READS existing
+`doc_id`s from the `documents` table rather than minting new ones. In
+`db_loader`, an incoming record whose business key already exists is compared on
+`doc_id`, and when they match it takes the same-document branch:
+`ON CONFLICT DO NOTHING`, counted as `skipped`, with **no retirement**. The
+retire-and-replace branch requires a DIFFERENT `doc_id` for the same business
+key, which is precisely the case that has never occurred. So the zero is
+produced by the ingest pattern, not by the restatement logic being exercised and
+found unnecessary.
+
+WHAT IS THEREFORE UNPROVEN. `db_loader._SQL_LOCK_LATEST` selecting the prior row
+`FOR UPDATE`, `_SQL_RETIRE_LATEST` flipping it to `is_latest = FALSE` while
+PRESERVING it, the filing-date ordering guard that refuses an older restatement,
+and every read path's assumption that exactly one `is_latest = TRUE` row exists
+per business key. All of it is an argument from reading SQL. **None of it is a
+measurement.**
+
+THE TRIGGER, stated so it is recognisable when it arrives. This gap becomes live
+the first time a document is ingested that RESTATES a period already present --
+a revised filing, an amended quarterly, a re-issued annual under a new `doc_id`
+covering business keys that already exist. At that moment the retire-and-replace
+branch executes against live data for the first time, and the first thing it
+touches is data that is already correct.
+
+HOW TO TREAT IT. As an unproven code path. Before that first restatement lands:
+measure it deliberately rather than discovering it, verify that the prior row is
+RETIRED and not deleted, and confirm the reads still return exactly one latest
+row per key afterwards. Do not assume the path works because the schema permits
+it. It is untested, not verified, and the distinction is the whole point of this
+entry.
+
 ### Cleanup lags correction — fixing a rule does not repair what it wrote
 Three separate instances surfaced on 2026-07-30/31, and the pattern is worth
 naming because none of them were caught by any existing check.
