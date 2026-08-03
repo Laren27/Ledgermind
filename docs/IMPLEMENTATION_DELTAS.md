@@ -171,6 +171,102 @@ stopping on any of these constants. What it does establish is that the band
 between MEDIUM and HIGH is reachable by a no-answer query, which the earlier
 text said was unobserved.
 
+#### Band probe 2026-08-03 — there is no score-only separator, and the calibration is abandoned as posed
+
+TWELVE QUERIES, ALL RECORDED `unlabelled`, ground truth read from full chunk
+text AFTER the run. Measured with `scripts/cohere_score_dump.py`
+(PROBE_QUERIES), file `docs/measurements/cohere_band_probe_2026-08-03.json`.
+Labels were withheld deliberately: the 0.4834 correction above was a MISLABEL,
+assigned from a query's wording rather than from what retrieval returned, and
+this set was designed so the same mistake could not be repeated.
+
+THE RESULT, which settles the question the last three runs were circling:
+
+```
+corpus DOES answer          0.0099 .. 0.9667
+corpus does NOT answer      0.0003 .. 0.6954
+```
+
+**The two ranges are not adjacent, not touching, and not separable. They are
+fully interleaved, one nested inside the other.** No threshold anywhere on this
+axis splits them, because the same score means both things at different points.
+
+THE TWO BOUNDARY CASES, which are the entry.
+
+- **Q1, top1 = 0.6954, corpus does NOT answer it.** "What succession plan does
+  Eternal disclose for its chief executive?" The 0.6954 chunk is a **Regulation
+  33 declaration letter** (p44, doc `4c024e0f`) — a compliance cover letter
+  carrying scrip codes, an ISIN and a signatory block, and nothing whatever
+  about succession. The genuinely relevant chunk is at **rank 2, score 0.0219**
+  (p80, doc `bd300f21`): "We have a succession plan in place to ensure seamless
+  leadership transitions." That is BRSR boilerplate about succession generally,
+  not a CEO plan, so the question is still unanswered — but the ordering is
+  inverted against relevance by a factor of thirty.
+- **Q10, top1 = 0.0099, corpus DOES answer it.** "What does Eternal disclose
+  about lease terminations?" Rank 1 is the same Regulation 33 letter. The real
+  answer sits at **rank 9, score 0.0001** (p341, doc `e46f92d7`): "Gain on
+  termination of lease contracts (1) (3)" in the standalone lease note. A
+  printed figure, correctly retrieved into the pool, ranked ninth at one
+  ten-thousandth of the top score.
+
+So a no-answer reached 0.6954 and an answer sat at 0.0099. **0.6954 > 0.5 =
+`COHERE_HIGH`.** Any cut placed to exclude Q1 discards Q10, Q12 and half of Q7.
+
+THE MECHANISM: ENTITY MATCHING, not topic matching. Cohere is repeatedly scoring
+the presence of the question's NAMED ENTITIES rather than whether the passage
+addresses the question:
+
+- **Q1** — "chief executive" matched a declaration letter's signatory block.
+- **Q2** ("cybersecurity incidents") — top1 0.0535 on **workplace injury**
+  disclosure: "injuries reported… primarily attributed to slip, trip, and fall
+  incidents." Matched on *incidents*. The genuine ISO 27001 / ransomware /
+  phishing passage is at rank 6, score 0.0004.
+- **Q5** ("supplier audit programme") — top1 0.0799 on the **statutory
+  auditor's** limited review report, BS R & Co. LLP. Matched on *audit*. No
+  candidate in the pool mentions suppliers or vendors at all.
+
+This extends, and is the same failure as, the frame-matching note recorded
+earlier in this file — cover and boilerplate matter retrieving on FRAME while
+scoring near zero on subject — and the observation there that ETERNAL's cross
+query ranked forward-looking-statements boilerplate above genuine margin
+commentary. Frame-matching and entity-matching are two faces of one behaviour:
+the reranker is matching SURFACE FEATURES OF THE QUESTION against surface
+features of the passage. Boilerplate is dense in exactly those features, which
+is why the same handful of cover pages keeps surfacing across unrelated queries.
+
+**`COHERE_MEDIUM` CALIBRATION IS ABANDONED AS POSED — NOT DEFERRED.** The
+programme was: find the value in the 0.15–0.5 band that separates answerable
+from unanswerable. That premise is now contradicted by measurement, not merely
+unsupported by it. No value of `COHERE_MEDIUM`, and no value of `COHERE_HIGH`,
+can perform that separation on this evidence, because the property being
+thresholded is not the property the score carries. Further points on the same
+axis will not change this; collecting them would be measuring harder in the
+direction already shown to be wrong. Any future work here has to introduce a
+signal the reranker score does not contain — subject-term presence in the chunk,
+chunk_type, an entity-vs-topic distinction — rather than a better cut point.
+
+**NO THRESHOLD WAS MOVED.** Not `COHERE_HIGH` (0.5), not `COHERE_MEDIUM`
+(0.15), not the citation floor (0.05).
+
+OPEN ARCHITECTURAL QUESTION, recorded as such and NOT as a defect with a fix.
+`_score_confidence` reads `chunks[0]` — the single top-ranked chunk — to assign
+a confidence tier. Q1 is a demonstrated counterexample: `chunks[0]` is a
+Regulation 33 declaration letter at 0.6954, which would tier as high confidence
+on a question the corpus does not answer, while the only on-topic chunk sits at
+rank 2 with 0.0219. Q10 is the mirror image. This is not being changed here.
+Reading more than one chunk, or weighting by subject presence, is a design
+decision with consequences for every path that consumes a tier, and it needs
+proposing on its own terms rather than being smuggled in as a fix to a
+measurement entry.
+
+**THIS RESTS ON TWELVE QUERIES.** Six chosen as subjects with neighbouring
+content, six as present-but-peripheral, across three companies. It is enough to
+contradict a separation claim — one interleaved pair does that, and there are
+several — but it is NOT enough to characterise the score's behaviour in general,
+to establish how often entity-matching dominates, or to support any positive
+rule about what the score does mean. Do not cite this entry as evidence for
+anything beyond the negative result.
+
 ### §5 / §8 — Embedding runtime
 `sentence-transformers` + `torch` replaced by `fastembed` ONNX
 (`BAAI/bge-small-en-v1.5` dense, `Xenova/ms-marco-MiniLM-L-6-v2` cross-encoder).
