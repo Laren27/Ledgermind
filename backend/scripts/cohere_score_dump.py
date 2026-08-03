@@ -240,24 +240,67 @@ def main():
             })
             continue
 
+        # GATE 1 -- the candidate pool must arrive UNRANKED.
+        #
+        # WHAT ACTUALLY PROTECTS THIS RUN, corrected 2026-08-03. The previous
+        # gate stamped reranker_backend="cohere" onto every candidate and then
+        # asserted that same value, so it could not fail. It read as the §4(d)
+        # "a score without its backend is meaningless" check and provided none
+        # of that protection.
+        #
+        # hybrid_search() does NOT rerank: it builds every ChunkResult with
+        # reranker_backend="none" and reranker_score=-inf (retriever.py, the
+        # _to_chunk_results path). The functions that stamp "cohere" or "local"
+        # live in the rerank path this script deliberately bypasses, calling
+        # Cohere itself instead. So there is no honest backend to READ here --
+        # the layer reports "none" by construction, and asserting "cohere"
+        # against it would be asserting a value nothing produces.
+        #
+        # The real risk this must catch is a candidate arriving ALREADY scored
+        # by the local ONNX reranker, which would put unbounded logits on the
+        # same axis as Cohere's 0-1 probabilities. That is checkable: assert
+        # the pool is unranked before we score it.
+        stale = {c.get("reranker_backend") for c in candidates} - {"none", None}
+        if stale:
+            print(f"  ABORT: candidate pool arrived pre-ranked by {stale}. "
+                  f"hybrid_search must return unranked chunks; a pre-scored "
+                  f"pool means local ONNX logits are mixed into this measurement.")
+            sys.exit(1)
+
         texts = [c["text"] for c in candidates]
         resp = client.rerank(model="rerank-english-v3.0", query=query,
                              documents=texts, top_n=len(texts))
+
+        # GATE 2 -- the response must cover the pool and be in Cohere's range.
+        #
+        # Cohere returns a relevance_score in [0, 1]. The local ONNX
+        # CrossEncoder returns unbounded logits, routinely negative. A score
+        # outside [0, 1], or a short response, means what came back is not what
+        # this measurement claims to measure. Checked on the RESPONSE, which is
+        # data this script did not author, rather than on a field it set itself.
+        if len(resp.results) != len(texts):
+            print(f"  ABORT: rerank returned {len(resp.results)} results for "
+                  f"{len(texts)} documents.")
+            sys.exit(1)
+        out_of_range = [h.relevance_score for h in resp.results
+                        if not (0.0 <= float(h.relevance_score) <= 1.0)]
+        if out_of_range:
+            print(f"  ABORT: {len(out_of_range)} score(s) outside Cohere's "
+                  f"[0,1] range, e.g. {out_of_range[:3]} -- these are ONNX "
+                  f"logits, not Cohere probabilities.")
+            sys.exit(1)
 
         scored = []
         for hit in resp.results:
             c = dict(candidates[hit.index])
             c["reranker_score"] = float(hit.relevance_score)
+            # Recorded as provenance, NOT as something to assert on later:
+            # this script called Cohere directly, so it is the authority for
+            # this field rather than a reader of it. The assertions that make
+            # that claim trustworthy are the two gates above.
             c["reranker_backend"] = "cohere"
             scored.append(c)
         scored.sort(key=lambda c: c["reranker_score"], reverse=True)
-
-        # Gate: mixing Cohere 0-1 scores with local ONNX logits on one axis is
-        # the exact §13 miscalibration this measurement exists to avoid.
-        backends = {c["reranker_backend"] for c in scored}
-        if backends != {"cohere"}:
-            print(f"  ABORT: non-Cohere backend present: {backends}")
-            sys.exit(1)
 
         kept = _deduplicate_near_identical(scored)
         kept_ids = {c["chunk_id"] for c in kept[:TOP_K_RERANK]}
@@ -322,7 +365,19 @@ def main():
                 "fiscal_year": c["fiscal_year"],
                 "rrf_score": round(c["rrf_score"], 5),
                 "survives_dedup_topk": c["chunk_id"] in kept_ids,
-                "preview": c["text"][:600].replace("\n", " "),
+                # FULL TEXT, widened from 600 chars 2026-08-03. The 600-char
+                # preview was still not enough: on a FINANCIAL_STATEMENT chunk
+                # it spends its whole budget on letterhead, CIN and column
+                # headers and truncates before the first line item, so the
+                # PAYTM non-controlling-interests and share-based-payment
+                # queries both read as "no evidence in the preview" when the
+                # underlying page demonstrably carries the line. That is the
+                # same class of error as the 0.4834 mislabel this file exists
+                # to prevent -- a stored result that cannot answer the question
+                # asked of it -- one widening short of fixed. Key renamed from
+                # "preview" to "text" because it is no longer a preview;
+                # earlier files in this directory carry the truncated key.
+                "text": c["text"].replace("\n", " "),
             } for r, c in enumerate(scored)],
         })
 
