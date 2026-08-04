@@ -793,5 +793,22 @@
         ],
         "notes": "Quadrant 1, EVIDENCE-THIN shape — deliberately distinct from Q053. The narrative genuinely does not explain the D&A rise (863 -> 1597), so the qualitative half returns an accurate SCOPED negative ('the excerpts are limited to the balance sheet, cash flows, results statement and auditor's report') and the verified 1,597 Cr is appended beneath it. That juxtaposition — a true statement about what the excerpts lack, printed above a ticked figure — is the exact shape of the cross self-contradiction bug fixed on 2026-07-31. This asserts it stays fixed.",
         "known_limitation": "The single keyword is weak ON PURPOSE and must not be 'strengthened' with words the model happens to use. 'depreciation' is guaranteed present via the appended quant template, so it can never fail for an interesting reason; the real assertions here are expected_sql_verified and expected_contradictions=0. Candidate additions like 'auditor' come from the model ENUMERATING which chunks it received, which is prose that varies run to run — a flaky assertion is worse than a weak one.\n\nAlso records a measurement: this question was authored expecting Quadrant 2 (evidence asymmetry, tier capped high->medium). It lands in Quadrant 1 at tier=high because _is_refusal_text correctly declines to call it a refusal — the scoped negative is followed by ~380 chars of substantive content, well past the 120-char tail guard. That is right: the answer IS substantive. Quadrant 2 remains unexercised."
+    },
+    {
+        "id": "Q055",
+        "category": "quantitative_point",
+        "question": "What was ETERNAL's consolidated revenue for FY26 Q4?",
+        "expected_path": "quantitative",
+        "expected_is_blocked": false,
+        "expected_confidence_tier": "high",
+        "expected_sql_verified": true,
+        "expected_company": "ETERNAL",
+        "expected_fiscal_year": "FY26",
+        "expected_quarter": "Q4",
+        "expected_financial_type": "consolidated",
+        "expected_metric": "revenue",
+        "expected_value": 17292.0,
+        "expected_unit": "crore_inr",
+        "notes": "Pins the figure recovered by the fragment-joining parser fix (dba2af8). p.31 prints 17,292; OCR split it into 'I' + '7,292' and the comma rule discarded the leading digit, so 7,292 was stored and _compute_derived_totals propagated the misread into total_income and total_expenses. Corrected in the database 2026-08-04 via backfill_financials --correct-values; Supabase by migration 015.\n\nTHIS QUESTION CANNOT PASS BY ACCIDENT, which is why it is quarter-scoped. financials holds three sibling consolidated revenue rows for FY26: annual 54364, Q3 16315, and Q4 17292. A quarter filter that silently did nothing would return a different number, so this is simultaneously the first ETERNAL entry that requires dsl_compiler's quarter predicate to actually discriminate. Note that the no-op quarter filter recorded in IMPLEMENTATION_DELTAS is the QDRANT retrieval filter, a separate mechanism from the SQL path exercised here."
     }
 ]
