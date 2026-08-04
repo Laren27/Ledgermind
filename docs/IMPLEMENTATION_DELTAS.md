@@ -1316,7 +1316,7 @@ loader bugs. A non-zero correction count is not a failure — it is the measure 
 how far the store had drifted from the parser, and the only way that distance is
 ever observable.
 
-#### OPEN — `nterest_expense_i`: the split-initial fix removed a line rather than renaming it
+#### OPEN — `nterest_expense_i`: an alias collision, not a lost line (heading corrected)
 
 Recorded BEFORE the Supabase purge deleted the evidence, because the evidence
 was the only reason this is visible at all.
@@ -1349,10 +1349,63 @@ different line in a different statement from the cash-flow adjustment being
 discussed. Do not reconcile the two; they are not the same number and neither
 substitutes for the other.
 
-So the split-initial fix appears to have **removed** the line rather than
-renamed it: before the fix the value was captured under a mangled name, after it
-the value is not captured at all. That is the opposite of the intended effect,
-and it is not what the other members of the family did.
+> **CORRECTED 2026-08-05, the same day, before the entry was acted on.** The
+> claim in this paragraph and the heading above is WRONG. The original wording is
+> kept so the error stays legible. The extractor **does** produce this line and
+> the split-initial fix worked exactly as intended. The measured mechanism below
+> is a different defect in a different place.
+
+**WHAT ACTUALLY HAPPENS**, read from `ZOMATO_ANNUAL_REPORT_2023-24.pdf` on one
+parse:
+
+```
+p169 consolidated  'Finance costs 26'    [FY24 72.0, FY23  49.0]   <- P&L
+p175 consolidated  'Interest expense'    [FY24  2.0, FY23   5.0]   <- cash flow
+p176 consolidated  'nterest expense I'   [FY24 -2.0, FY23  -9.0]   <- cash flow
+p285 standalone    'Finance costs 25'    [FY24 18.0, FY23  16.0]   <- P&L
+p291 standalone    'Interest expense'    [FY24  0.0, FY23   0.0]   <- cash flow
+```
+
+`'nterest expense I'` normalizes to `'interest expense'` — the split-initial fix
+doing its job — and `resolve_metric` maps that to **`finance_costs`** through the
+alias table. The row is extracted and resolved. It is lost one step later: the
+P&L row on p169 reaches the same business key first, and
+`extract_all_financial_records`'s `seen_keys` first-wins guard discards every
+later claimant.
+
+**AND IT SAYS SO.** The discard is logged by design whenever the values differ.
+Twelve fire on this document, six of them `finance_costs`:
+
+```
+[DISCARDED ROW] ('consolidated','FY23',None,'finance_costs') - kept 49.0 (page 169), dropped  5.0 (page 175)
+[DISCARDED ROW] ('consolidated','FY23',None,'finance_costs') - kept 49.0 (page 169), dropped -9.0 (page 176)
+[DISCARDED ROW] ('consolidated','FY24',None,'finance_costs') - kept 72.0 (page 169), dropped  2.0 (page 175)
+[DISCARDED ROW] ('consolidated','FY24',None,'finance_costs') - kept 72.0 (page 169), dropped -2.0 (page 176)
+[DISCARDED ROW] ('standalone',  'FY23',None,'finance_costs') - kept 16.0 (page 285), dropped  0.0 (page 291)
+[DISCARDED ROW] ('standalone',  'FY24',None,'finance_costs') - kept 18.0 (page 285), dropped  0.0 (page 291)
+```
+
+The other six are `owners_of_the_parent` (x4), `share_of_profit_of_associate`
+and `profit_before_exceptional_items`.
+
+**THE REAL DEFECT IS AN ALIAS COLLISION, NOT A LOST LINE.** The P&L's `Finance
+costs` and the cash-flow statement's `Interest expense` are **different line
+items in different statements** sharing one canonical metric. Only one can hold
+the business key, and the discard message names where the fix belongs: `check
+registry.py aliases`. Same shape as the PAYTM `Deferred tax expense/(credit)` ->
+`tax_expense` collision recorded above, which cost three standing PAT identity
+failures.
+
+**AND `regression_check` DOES NOT SURFACE IT.** `_ExtractorCapture` collects
+three WARNING kinds - derivation overwrites, `[IDENTITY FAIL]` and `[IDENTITY
+NOT EVALUATED]`. `[DISCARDED ROW]` is not among them, so twelve scroll past
+every run inside the extractor's own log while the gate reports nothing. Any
+statement in this file or in a commit message that a run had "0 discarded rows"
+was never measured: the gate has no such counter. Closing that is a one-line
+addition to a capture list and touches no extraction logic.
+
+**WHAT THE ORIGINAL ENTRY GOT RIGHT:** -9.0 and -2.0 are real printed figures
+that reach no database row, and `finance_costs` at 49.0 / 72.0 is not them.
 
 **WHY IT WAS INVISIBLE.** Local shed these rows in the 2026-08-01 purge, and
 `regression_check` asserts on extraction output, so a line that stopped being
