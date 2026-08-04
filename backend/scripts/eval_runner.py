@@ -51,6 +51,17 @@ from typing import Optional
 
 import requests
 
+# Repo root, derived from THIS FILE rather than from the cwd:
+#   backend/scripts/eval_runner.py -> backend/scripts -> backend -> repo root
+# The old --out default was the relative path "golden_dataset/eval_results.json",
+# which resolves differently depending on where the runner is invoked from, and
+# §7 documents invocation from backend/. From there it resolved to
+# backend/golden_dataset/, which os.makedirs then CREATED. That phantom
+# directory exists in this repo and holds four tracked eval outputs dated
+# 2026-07-18 and 2026-07-25. An absolute default cannot drift with the cwd.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_DEFAULT_OUT = os.path.join(_REPO_ROOT, "eval_results", "eval_results.json")
+
 # ---------------------------------------------------------------------------
 # CLI args
 # ---------------------------------------------------------------------------
@@ -63,7 +74,10 @@ parser.add_argument("--email",    default="admin@alpha.ledgermind.test",
                          "whole sweep was Gemini-served.")
 parser.add_argument("--password", default="demo1234")
 parser.add_argument("--dataset",  default="golden_dataset/q4fy26_eternal.json")
-parser.add_argument("--out",      default="golden_dataset/eval_results.json")
+parser.add_argument("--out",      default=_DEFAULT_OUT,
+                    help="Where to write the full results JSON. Defaults into "
+                         "eval_results/ (gitignored). May NEVER resolve inside "
+                         "golden_dataset/ — see the guard below.")
 # 5 RPM = one call per 12s, and a semantic question makes TWO Gemini calls
 # (router classification, then response synthesis): 2 x 12s = 24s, rounded
 # to 25s. The previous default of 15.0 assumed one call per question, giving
@@ -93,6 +107,28 @@ parser.add_argument("--model", required=True,
                          "another. Verify with: docker compose exec backend printenv "
                          "GEMINI_MODEL")
 args = parser.parse_args()
+
+# golden_dataset/ IS INPUTS ONLY: the three q*.json files and nothing else.
+# Changing the default is not sufficient on its own -- an explicit
+# `--out golden_dataset/anything.json` would still land there, and
+# os.makedirs() below happily creates whatever directory the path names.
+#
+# WHY THIS IS WORTH A HARD ABORT. Eval outputs accumulating beside the inputs
+# is not cosmetic: that directory once held 79 output files against 3 inputs,
+# a glob over it picked up the stale ones, and the result was a crashed anchor
+# scan and a phantom category discrepancy. The same failure is already latent
+# in backend/golden_dataset/, created by the old relative default.
+#
+# Checked on the RESOLVED absolute path, so "../golden_dataset/x.json" and
+# symlinked or nested variants are caught too, and enforced at PARSE time so it
+# fails in the first second rather than after a sweep has spent its quota.
+if "golden_dataset" in os.path.abspath(args.out).split(os.sep):
+    sys.exit(
+        f"ABORT: --out resolves inside golden_dataset/ ({os.path.abspath(args.out)}).\n"
+        "That directory holds the three q*.json INPUTS and nothing else; eval\n"
+        "OUTPUTS belong in eval_results/, which is gitignored. Re-run with e.g.\n"
+        "  --out eval_results/<name>.json"
+    )
 
 API_BASE = args.api_base
 TIMEOUT  = 120
