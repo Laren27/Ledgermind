@@ -1577,6 +1577,80 @@ asserts it continuously). And a coverage report of registry metrics against
 asserted metrics would show where else the dataset is blind. Neither is a golden
 edit and neither needs an LLM call; both need proposing before building.
 
+#### Supabase ran 236 rows behind local — there is no deploy step for `financials`
+
+RESOLVED 2026-08-05. Recorded because the cause is structural, not an oversight,
+and it will recur on the next extraction change unless the obligation below is
+treated as standing.
+
+**THE DIVERGENCE, measured.** Supabase held 1201 live rows against local's 1437
+— **236 net**. The gross reconciliation:
+
+```
+360  inserted    metric keys local produced that Supabase had never seen
+  4  corrected   PAYTM tax_expense, the (I) -> (1) fix propagating
+124  orphans     names the extractor had stopped producing, purged locally
+                 on 2026-08-01 and never there
+                                    360 - 124 = 236 net
+```
+
+All three companies reconciled exactly: ETERNAL 154 net = 233 − 79, TITAN 15 =
+27 − 12, PAYTM 67 = 100 − 33.
+
+**THE CAUSE. There is no deploy step for this table.** Schema changes have one —
+a numbered file in `sql/migrations/`, hand-applied in the Supabase SQL editor,
+recorded in `schema_migrations`. Data changes have none, and **a data correction
+is not a migration**: it produces no DDL, gets no file, and appears in no
+`schema_migrations` row. So the default behaviour of every extraction fix this
+project has ever shipped is **local-only**. Nothing failed. Nothing was
+forgotten. The pipeline simply has no step that would have carried it, and the
+absence is invisible precisely because everything downstream of it is green:
+`regression_check` asserts on extraction output, and the golden datasets assert
+16 value-pinned pairs out of 269.
+
+**STANDING OBLIGATION.** *A data correction is not deployed until it has run
+against Supabase.* Concretely, after any extraction change, and in this order:
+
+1. `backfill_financials --correct-values` (preview) against **both** databases;
+2. `--apply` against both;
+3. `purge_orphaned_metrics` dry run against both, verify §1.2 pairing, apply;
+4. `check_balance_invariants` against both.
+
+Steps 1 and 3 are the mirror pair already recorded above; the point here is
+**both databases**, every time. Migrations 015–017 corrected 27 values by hand
+and were necessary only because this obligation did not exist when the parser was
+fixed — the same 27 would have been carried by step 2 for free.
+
+**A SECOND CASH MISATTRIBUTION, found the same way.** Supabase held
+`ETERNAL | FY23 | ANNUAL | consolidated | cash = −813.0`. Local carries −813.0
+for that exact group under `cash_generated_from/(used_in)_operations`. Identical
+shape to PAYTM's −710: a cash-FLOW movement line claimed for a balance-sheet
+stock, right number in the wrong row. It was among the 124 orphans and is now
+purged, and `check_balance_invariants` moved from FAIL (2 negative rows:
+ETERNAL FY23 −813, PAYTM FY25 standalone −26) to **PASS** against Supabase.
+That the invariant caught a second instance in a different company, on a database
+it had never previously been run against, is the argument for it existing.
+
+**CONNECTING TO SUPABASE FROM WSL — read this before guessing.** The direct
+endpoint `db.<ref>.supabase.co` is **IPv6-only**: it publishes an AAAA record and
+no A record, and the Docker network has no IPv6 route, so psycopg2 fails with
+`Network is unreachable` after resolving successfully. Anything reaching Supabase
+from this environment must use the **session pooler**, which is IPv4:
+
+```
+aws-0-ap-northeast-1.pooler.supabase.com:5432   user postgres.<project-ref>
+```
+
+Two traps cost real time getting there. A pooler in the **wrong region** returns
+`FATAL: (ENOTFOUND) tenant/user postgres.<ref> not found` — which reads like a
+bad username but is a routing failure, and the project ref in it is correct. And
+a password containing an unencoded `@` makes libpq split the URI at the **first**
+`@` while Python's `urlparse` splits at the **last**, so the two disagree about
+where the host starts and libpq reports a hostname with password fragments in it.
+Percent-encode with `quote(pw, safe="")`. `current_user` reads plain `postgres`
+through the pooler, not `postgres.<ref>` — the tenant suffix is stripped after
+routing, and that is expected.
+
 #### The 5% derivation guard — a read value is evidence, a derived value is inference
 
 `_compute_derived_totals` no longer overwrites a directly-read OCR value when
