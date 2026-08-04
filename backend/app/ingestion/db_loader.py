@@ -58,6 +58,21 @@ WHERE  company        = %(company)s
 FOR UPDATE
 """
 
+# Identical to _SQL_LOCK_LATEST but WITHOUT `FOR UPDATE`. For the SELECT-only
+# preview path, which must classify what a run would do while taking no row
+# locks and holding no write transaction. Kept beside its locking twin so the
+# two predicates cannot drift.
+_SQL_PEEK_LATEST = """
+SELECT id, filing_date, doc_id, value
+FROM   financials
+WHERE  company        = %(company)s
+  AND  metric         = %(metric)s
+  AND  fiscal_year    = %(fiscal_year)s
+  AND  financial_type = %(financial_type)s
+  AND  quarter        IS NOT DISTINCT FROM %(quarter)s
+  AND  is_latest      = TRUE
+"""
+
 # Step 2a: Flip old row to is_latest=FALSE (restatement case)
 _SQL_RETIRE_LATEST = """
 UPDATE financials
@@ -166,6 +181,68 @@ def _stored_value_differs(existing, new) -> bool:
     return float(existing) != float(new)
 
 
+def classify_upsert(
+    *,
+    existing_doc_id,
+    existing_value,
+    existing_filing_date,
+    record: FinancialRecord,
+    correct_values: bool = False,
+) -> str:
+    """THE single decision. Returns what a write WOULD do, and writes nothing.
+
+    Pure: no cursor, no I/O, no side effects. Given the existing is_latest row's
+    (doc_id, value, filing_date) — or existing_doc_id=None when there is no such
+    row — and the incoming record, returns exactly one of:
+
+        "inserted" | "corrected" | "skipped" | "restated" | "reingested"
+
+    WHY THIS EXISTS. `_upsert_one` used to decide and act in the same pass, so
+    anything that wanted to know what a run WOULD do had to re-implement the
+    branch order by hand. A hand-written mirror is a copy that drifts silently:
+    it agrees on the day it is written and diverges at the first change to
+    either side, and the whole value of a preview is that it tells the truth
+    about the writer. Now `_upsert_one` calls this and ACTS on the label rather
+    than re-deciding, and the preview calls the same function with rows read by
+    plain SELECT. There is one decision, in one place, exercised by both.
+
+    Adding a branch here changes the writer and the preview together. That is
+    the point.
+    """
+    # No prior is_latest row for this business key.
+    if existing_doc_id is None:
+        return "inserted"
+
+    from datetime import date
+    try:
+        new_date = date.fromisoformat(record.filing_date)
+    except (ValueError, TypeError):
+        # Unparseable filing_date: refuse rather than guess an ordering.
+        return "skipped"
+
+    # Same doc_id: the SAME document replayed (a retried Celery task, a
+    # smoke-test re-run) — not a new filing, so is_latest must not move.
+    if str(existing_doc_id) == str(record.doc_id):
+        # ...but "same document" holds for the DOCUMENT, not for our READING of
+        # it. A fixed parser legitimately yields a different figure under an
+        # unchanged business key; without correct_values that difference is
+        # discarded by ON CONFLICT DO NOTHING, which is how a misread 7,292
+        # survived an --apply backfill against a corrected parser.
+        if correct_values and _stored_value_differs(existing_value, record.value):
+            return "corrected"
+        return "skipped"
+
+    # Different doc_id, older filing: we would be regressing to a stale filing.
+    if new_date < existing_filing_date:
+        return "skipped"
+
+    # Different doc_id, newer or equal filing date. Both retire the old row —
+    # ON CONFLICT cannot help when doc_id differs, and without retirement
+    # duplicate is_latest=TRUE rows accumulate silently (root cause of a
+    # 142-row duplicate incident during Phase 3 finalization testing).
+    return "restated" if new_date > existing_filing_date else "reingested"
+
+
 def _upsert_one(
     cursor,
     record: FinancialRecord,
@@ -206,100 +283,81 @@ def _upsert_one(
         "is_latest":      record.is_latest,
     }
 
-    # --- Step 1: Lock existing is_latest row ---
+    # --- Step 1: read the existing is_latest row (locked) ---
     cursor.execute(_SQL_LOCK_LATEST, params)
     existing = cursor.fetchone()
 
-    outcome = "inserted"
-
     if existing:
         existing_id, existing_filing_date, existing_doc_id, existing_value = existing
+    else:
+        existing_id = existing_filing_date = existing_doc_id = existing_value = None
 
-        from datetime import date
-        new_date_str = record.filing_date
-        try:
-            new_date = date.fromisoformat(new_date_str)
-        except (ValueError, TypeError):
-            logger.error(
-                "Invalid filing_date '%s' for %s/%s/%s — skipping",
-                new_date_str, record.company, record.metric, record.fiscal_year,
-            )
+    # --- Step 2: DECIDE, once, in the one place that decides ---
+    # This function does not re-derive the outcome below; it acts on this label.
+    # scripts/backfill_financials.py's preview calls the SAME function against
+    # rows read by plain SELECT, which is why the preview cannot drift from this
+    # writer -- there is no second copy of the branch order to fall out of sync.
+    outcome = classify_upsert(
+        existing_doc_id=existing_doc_id,
+        existing_value=existing_value,
+        existing_filing_date=existing_filing_date,
+        record=record,
+        correct_values=correct_values,
+    )
+
+    # --- Step 3: ACT on the label ---
+    if outcome == "skipped":
+        # Nothing to write. Every route to this label -- an unparseable
+        # filing_date, an older filing, or a same-doc_id replay whose value is
+        # unchanged -- is a no-op against the table. The last of those used to
+        # issue an INSERT that ON CONFLICT DO NOTHING then swallowed; the row
+        # count effect is identical and the round-trip is not needed.
+        logger.debug(
+            "Skip: %s/%s/%s/doc_id=%s",
+            record.company, record.metric, record.fiscal_year, record.doc_id,
+        )
+        return "skipped"
+
+    if outcome == "corrected":
+        cursor.execute(_SQL_CORRECT_VALUE,
+                       {"value": record.value, "existing_id": existing_id})
+        if cursor.fetchone() is None:
             return "skipped"
+        logger.warning(
+            "CORRECTED %s | %s | %s | %s | %s : %s -> %s (doc_id %s, "
+            "is_latest untouched)",
+            record.company, record.metric, record.fiscal_year,
+            record.quarter, record.financial_type,
+            existing_value, record.value, record.doc_id,
+        )
+        return "corrected"
 
-        # Same doc_id re-ingested: this is the SAME document being replayed
-        # (e.g. a retried Celery task, or a manual smoke-test re-run) — not a
-        # new filing. Do NOT retire is_latest here. Fall through to the
-        # ON CONFLICT DO NOTHING insert, which will correctly no-op since
-        # the (doc_id, metric, period) key already exists.
-        if str(existing_doc_id) == str(record.doc_id):
-            # PARSER CORRECTION. The reasoning immediately above -- "same
-            # document replayed, so nothing can have changed" -- holds for the
-            # DOCUMENT and not for our reading of it. When the parser is fixed,
-            # the same document legitimately yields a different figure under an
-            # unchanged business key, and every path below this point is an
-            # INSERT that the (doc_id, metric, period) unique index will
-            # swallow, leaving the stale value in place. That is how a misread
-            # 7,292 survived a --apply backfill against a fixed parser.
-            if correct_values and _stored_value_differs(existing_value, record.value):
-                cursor.execute(_SQL_CORRECT_VALUE,
-                               {"value": record.value, "existing_id": existing_id})
-                if cursor.fetchone() is None:
-                    return "skipped"
-                logger.warning(
-                    "CORRECTED %s | %s | %s | %s | %s : %s -> %s (doc_id %s, "
-                    "is_latest untouched)",
-                    record.company, record.metric, record.fiscal_year,
-                    record.quarter, record.financial_type,
-                    existing_value, record.value, record.doc_id,
-                )
-                return "corrected"
-
-            cursor.execute(_SQL_INSERT_SAFE, params)
-            inserted_id = cursor.fetchone()
-            if inserted_id is None:
-                return "skipped"
-            # Should not normally happen (same doc_id + same key should always
-            # conflict), but if it somehow inserts, treat as a fresh insert.
-            return "inserted"
-
-        if new_date < existing_filing_date:
-            logger.warning(
-                "Skipping %s/%s/%s: new filing_date %s is older than existing %s",
-                record.company, record.metric, record.fiscal_year,
-                new_date, existing_filing_date,
-            )
-            return "skipped"
-
-        # Different doc_id, new_date >= existing_filing_date: this is either
-        # a genuine restatement (newer date) or a re-ingestion under a fresh
-        # doc_id with the same filing_date (e.g. iterative debugging re-runs
-        # that regenerate doc_id each time). Both require retiring the old
-        # row — the ON CONFLICT guard can't help here since doc_id differs,
-        # so without this retirement duplicate is_latest=TRUE rows
-        # accumulate silently. Confirmed root cause of a 142-row duplicate
-        # incident during Phase 3 finalization testing.
+    if outcome in ("restated", "reingested"):
+        # Both retire the old row before inserting. ON CONFLICT cannot help
+        # when doc_id differs, and without this retirement duplicate
+        # is_latest=TRUE rows accumulate silently.
         cursor.execute(_SQL_RETIRE_LATEST, {"existing_id": existing_id})
-        if new_date > existing_filing_date:
+        if outcome == "restated":
             logger.info(
-                "Restatement: retired %s/%s/%s (filing_date %s) → new filing_date %s",
+                "Restatement: retired %s/%s/%s (filing_date %s) -> new filing_date %s",
                 record.company, record.metric, record.fiscal_year,
-                existing_filing_date, new_date,
+                existing_filing_date, record.filing_date,
             )
-            outcome = "restated"
         else:
             logger.info(
                 "Re-ingestion: retired stale is_latest row for %s/%s/%s "
                 "(same filing_date %s, new doc_id) before re-inserting",
-                record.company, record.metric, record.fiscal_year, new_date,
+                record.company, record.metric, record.fiscal_year, record.filing_date,
             )
-            outcome = "reingested"
 
-    # --- Step 2: Insert new row ---
+    # "inserted", "restated" and "reingested" all end in an insert.
     cursor.execute(_SQL_INSERT_SAFE, params)
     inserted_id = cursor.fetchone()
 
     if inserted_id is None:
-        # ON CONFLICT DO NOTHING fired — exact duplicate
+        # ON CONFLICT DO NOTHING fired. For "inserted" this means the row
+        # appeared underneath us; for the retirement outcomes it should be
+        # unreachable, since the old row was just retired.
         logger.debug(
             "Duplicate skip: %s/%s/%s/doc_id=%s",
             record.company, record.metric, record.fiscal_year, record.doc_id,
