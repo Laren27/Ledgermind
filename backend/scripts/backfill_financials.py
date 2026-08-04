@@ -63,11 +63,72 @@ from app.ingestion.pdf_parser import parse_pdf
 from app.ingestion.document_classifier import detect_sections
 from app.ingestion.section_classifier import classify_blocks
 from app.ingestion.financial_extractor import extract_all_financial_records
-from app.ingestion.db_loader import get_connection, load_financial_records
+from app.ingestion.db_loader import (
+    get_connection, load_financial_records, classify_upsert, _SQL_PEEK_LATEST,
+)
 
 from scripts.regression_check import DOCUMENTS, RAW_DIR, ALPHA_TENANT
 
 logger = logging.getLogger(__name__)
+
+
+def preview_records(conn, tenant_id: str, records, correct_values: bool):
+    """SELECT-only. Report what a run WOULD do, writing nothing.
+
+    NOT A REIMPLEMENTATION OF THE WRITER. Every outcome here comes from
+    db_loader.classify_upsert — the same function _upsert_one calls to decide.
+    A hand-written mirror of that branch order would agree on the day it was
+    written and drift at the first change to either side, which would make this
+    preview worse than useless: it would be confidently wrong about a run that
+    is about to touch the database.
+
+    The ONLY difference from the write path is how the existing row is read:
+    _SQL_PEEK_LATEST instead of _SQL_LOCK_LATEST, identical predicate minus
+    `FOR UPDATE`. No locks are taken, no transaction is held open for writing,
+    and nothing is inserted, updated or retired.
+    """
+    counts = {"inserted": 0, "restated": 0, "reingested": 0, "corrected": 0,
+              "skipped": 0, "errors": 0}
+    corrections, retirements = [], []
+
+    with conn.cursor() as cur:
+        # RLS: without this every SELECT returns zero rows, which would make
+        # every record look like a fresh insert. Set once for the session.
+        cur.execute("SET app.tenant_id = %s", (str(tenant_id),))
+        for rec in records:
+            try:
+                cur.execute(_SQL_PEEK_LATEST, {
+                    "company":        rec.company,
+                    "metric":         rec.metric,
+                    "fiscal_year":    rec.fiscal_year,
+                    "financial_type": rec.financial_type,
+                    "quarter":        rec.quarter,
+                })
+                row = cur.fetchone()
+                if row:
+                    _id, existing_filing_date, existing_doc_id, existing_value = row
+                else:
+                    existing_filing_date = existing_doc_id = existing_value = None
+
+                label = classify_upsert(
+                    existing_doc_id=existing_doc_id,
+                    existing_value=existing_value,
+                    existing_filing_date=existing_filing_date,
+                    record=rec,
+                    correct_values=correct_values,
+                )
+                counts[label] += 1
+                if label == "corrected":
+                    corrections.append((rec, existing_value))
+                elif label in ("restated", "reingested"):
+                    retirements.append((rec, label, existing_doc_id,
+                                        existing_filing_date, existing_value))
+            except Exception as e:
+                counts["errors"] += 1
+                logger.error("preview failed for %s/%s/%s: %s",
+                             rec.company, rec.metric, rec.fiscal_year, e)
+
+    return counts, corrections, retirements
 
 
 def fetch_doc_id_map(conn, tenant_id: str, company: str, fiscal_year: str) -> dict:
@@ -112,6 +173,24 @@ def main():
         sys.exit(1)
 
     conn = get_connection()
+
+    # WHICH DATABASE. Every line of output carries this. The whole point of a
+    # re-sync preview is that it may be pointed at a DIFFERENT database from the
+    # one this repo usually talks to, via a one-off DATABASE_URL override -- and
+    # an unlabelled number from an unknown database is worse than no number,
+    # because it looks like a result. Read from the live connection, never from
+    # an argument, so it cannot disagree with where the SELECTs actually went.
+    with conn.cursor() as _c:
+        _c.execute("SELECT current_database(), "
+                   "coalesce(inet_server_addr()::text, 'local-socket'), "
+                   "inet_server_port(), current_user")
+        _db, _host, _port, _user = _c.fetchone()
+    db_label = f"{_db}@{_host}:{_port} as {_user}"
+    print(f"DATABASE: {db_label}")
+    print(f"TENANT  : {args.tenant}")
+    print(f"MODE    : {'APPLY (writes)' if args.apply else 'DRY RUN (SELECT-only)'}"
+          f"{' +correct-values' if args.correct_values else ''}")
+
     try:
         for doc in docs:
             pdf_path = RAW_DIR / doc["filename"]
@@ -126,8 +205,8 @@ def main():
                       f"This script backfills EXISTING documents; ingest first.")
                 sys.exit(1)
 
-            print(f"\n{doc['filename']}")
-            print(f"  existing doc_ids: {doc_id_map}")
+            print(f"\n{doc['filename']}  [{db_label}]")
+            print(f"  existing doc_ids [{db_label}]: {doc_id_map}")
 
             blocks = parse_pdf(str(pdf_path))
             sections = detect_sections(blocks)
@@ -138,15 +217,47 @@ def main():
                 company=doc["company"], ticker=doc["ticker"],
                 filing_date=doc["filing_date"], doc_id_map=doc_id_map,
             )
-            print(f"  extracted: {len(records)} records")
+            print(f"  extracted: {len(records)} records (from PDF, not from "
+                  f"any database)")
 
             if not args.apply:
-                print("  DRY RUN — nothing written. Re-run with --apply.")
+                counts, corrections, retirements = preview_records(
+                    conn, args.tenant, records, args.correct_values)
+                print(f"  DRY RUN [{db_label}] — nothing written. "
+                      f"SELECT-only preview:")
+                print(f"    {counts}")
+
+                if corrections:
+                    print(f"    would CORRECT {len(corrections)} values "
+                          f"[{db_label}]:")
+                    for rec, old in corrections:
+                        print(f"      {rec.company} | {rec.metric} | "
+                              f"{rec.fiscal_year} | {rec.quarter or 'ANNUAL'} | "
+                              f"{rec.financial_type} : {old} -> {rec.value}")
+                elif args.correct_values:
+                    print(f"    would correct nothing [{db_label}]")
+
+                # Loud and individual, per record. Reaching this path means the
+                # retirement branch would fire and is_latest = FALSE rows would
+                # appear -- the outcome the correction path exists to avoid.
+                if retirements:
+                    print(f"\n    *** {len(retirements)} RECORD(S) WOULD RETIRE AN "
+                          f"is_latest ROW [{db_label}] ***")
+                    for rec, label, ex_doc, ex_date, ex_val in retirements:
+                        print(f"      [{label.upper()}] {rec.company} | {rec.metric} | "
+                              f"{rec.fiscal_year} | {rec.quarter or 'ANNUAL'} | "
+                              f"{rec.financial_type}")
+                        print(f"         existing doc_id={ex_doc} filing_date={ex_date} "
+                              f"value={ex_val}")
+                        print(f"         incoming doc_id={rec.doc_id} "
+                              f"filing_date={rec.filing_date} value={rec.value}")
+                else:
+                    print(f"    no record would retire an is_latest row [{db_label}]")
                 continue
 
             result = load_financial_records(
                 records, args.tenant, conn, correct_values=args.correct_values)
-            print(f"  loaded: {result}")
+            print(f"  loaded [{db_label}]: {result}")
     finally:
         conn.close()
 
