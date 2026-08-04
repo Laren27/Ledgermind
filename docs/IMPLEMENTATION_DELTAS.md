@@ -1316,6 +1316,71 @@ loader bugs. A non-zero correction count is not a failure — it is the measure 
 how far the store had drifted from the parser, and the only way that distance is
 ever observable.
 
+#### PAYTM `cash`: the worst instance, and the coverage hole that hid it
+
+Of the 28 stale values, one pair is categorically worse than the rest and is
+recorded separately because its severity comes from a different place.
+
+```
+PAYTM | cash | FY26 | ANNUAL | consolidated :  -710.0  ->  3285.0
+PAYTM | cash | FY25 | ANNUAL | consolidated :  -139.0  ->  2077.0
+```
+
+Printed on **p.9** as `Cash and cash equivalents`, which reads 3285 / 2077.
+
+**A NEGATIVE CASH BALANCE IS NOT A ROUNDING ERROR, IT IS A CATEGORY ERROR.**
+Every other correction in this family is a plausible-looking number replaced by a
+better one — 175 vs 132, 14919 vs 16628. Those are wrong, but nothing about them
+announces itself. `cash` is different: `Cash and cash equivalents` is a
+balance-sheet metric and **cannot be negative**. The stored figures were negative
+because an older parser claimed a cash-flow MOVEMENT line — a net
+increase/decrease, which legitimately IS negative — for a balance-sheet metric.
+Both the sign and the magnitude were wrong, on a headline figure, and it was live
+in `financials` from the 2026-07-15 ingest until 2026-08-04.
+
+This is the most severe consequence of the loader gap recorded above. Not because
+the drift was larger, but because the value was self-evidently impossible and
+still nothing surfaced it for three weeks. `_upsert_one`'s same-`doc_id` branch
+meant a corrected reading could never reach the row; `regression_check` reads
+extraction output and never looks at the database; and validity here would not
+have needed a filing to check against — a sign test would have done it.
+
+**WHY NOTHING CAUGHT IT: THE GOLDEN DATASET HAS NO COVERAGE OF IT.** Verified
+across all three datasets, 90 questions: **zero** assert `cash`. Not as
+`expected_metric`, not in any question's text, not in any `expected_keywords`
+entry. The complete set of metrics asserted anywhere is
+
+```
+advertisement_and_sales_promotion, delivery_and_related_charges,
+depreciation_and_amortisation_expenses, employee_benefits_expense,
+finance_costs, other_income, other_operating_revenue, pat,
+profit_before_tax, revenue, total_expenses, total_income
+```
+
+and `cash` is not in it.
+
+The hole is wider than `cash` alone. **No golden question asserted ANY of the 28
+corrected values.** `cash`, `depreciation`, `profit_before_exceptional_items` and
+`changes_in_inventories` are asserted by nothing at all. TITAN's nine corrections
+are on metrics that ARE asserted — `total_income`, `total_expenses`,
+`profit_before_tax` — but every one of those corrections is **consolidated**,
+while the only TITAN questions on those metrics (TQ003, TQ004) are
+**standalone**, and both standalone figures were correct. So the golden dataset
+was green throughout, honestly, having never once looked at a drifted row.
+
+**The transferable point:** an eval score bounds the correctness of what it
+asserts and says nothing about anything else. 90 questions passing at 100% was
+compatible with 28 wrong figures in the database, including two that were
+impossible on their face. Coverage of the metric registry is a separate property
+from eval pass rate, and it is not currently measured anywhere.
+
+Two candidate follow-ups, both deliberately NOT done here. A cheap invariant —
+`cash >= 0` for every `is_latest` row — would have caught this specific defect
+with zero quota (migration 017 asserts it as a post-condition, but nothing
+asserts it continuously). And a coverage report of registry metrics against
+asserted metrics would show where else the dataset is blind. Neither is a golden
+edit and neither needs an LLM call; both need proposing before building.
+
 #### The 5% derivation guard — a read value is evidence, a derived value is inference
 
 `_compute_derived_totals` no longer overwrites a directly-read OCR value when
