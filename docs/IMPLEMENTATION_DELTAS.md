@@ -1209,12 +1209,16 @@ expands the float to its exact binary value, so `Decimal("33.33") == 33.33` is
 **False** — a Decimal comparison would "correct" every non-terminating value to
 itself, on every run, forever.
 
-**MEASURED.** `--apply --correct-values` on ETERNAL: 0 inserted / 0 restated /
-0 reingested / **4 corrected** / 456 skipped / 0 errors; ZOMATO all skipped.
-`financials` still holds **ZERO** `is_latest = FALSE` rows, 1437 rows against
-1437 distinct live business keys. The restatement path STILL has never executed
-against live data — which is the intended outcome, not a gap: a parser
-correction is not a restatement and must not register as one.
+**MEASURED**, after `--correct-values` across all four documents (see the table
+below): 0 inserted / 0 restated / 0 reingested / **28 corrected** / 0 errors.
+`financials` still holds **ZERO** `is_latest = FALSE` rows, and 1437 rows
+against 1437 distinct live business keys — unchanged, because a correction
+adds no row. `created_at` on every corrected row still reads its original
+ingest timestamp (2026-07-15 for PAYTM, 2026-07-18 for TITAN); there are no
+2026-08-04 rows, which is the proof that these were in-place UPDATEs and not
+inserts. The restatement path STILL has never executed against live data —
+the intended outcome, not a gap: a parser correction is not a restatement and
+must not register as one.
 
 **THE FOURTH CORRECTION — a second stale value nothing could previously see.**
 Three corrections were expected. Four fired. The extra one is
@@ -1226,16 +1230,91 @@ resolving through the alias table), reading `[-2042.0, -88.0]` for
 It is **not** caused by the fragment-joining fix, whose blast radius was
 measured at exactly one cell on p.31. It is a stale value from an EARLIER parser
 generation — one of the extraction fixes landed since the 2026-07-15 ingest
-re-read this cell, and no process in existence could propagate that: `backfill`
-could only ever INSERT metric names it had never seen, never correct a changed
-value. **Every extraction fix since 2026-07-15 has been silently unable to
-update any figure it improved.** Only new metric names ever landed.
+re-read this cell, and no process in existence could propagate that.
 
-The generalisation worth carrying: **the count of corrections a re-extraction
-produces is a measurement, not a formality.** It is the only instrument that
-reveals how far the database has drifted from what the current parser reads, and
-it should be run and read after every extraction change — the same standing
-obligation `purge_orphaned_metrics` already carries for the opposite direction.
+**THE EXACT MECHANISM, because it is not obvious from any one file.**
+`backfill_financials` reads existing `doc_id`s from `documents` (deliberately —
+minting a new one would orphan the rows from their source document and break
+Principle 3's lineage). That makes `record.doc_id` ALWAYS equal to the stored
+`doc_id`, so `db_loader._upsert_one` takes its same-`doc_id` branch on every
+single record. That branch reasons "same document replayed, so nothing can have
+changed" and falls through to `_SQL_INSERT_SAFE`, whose
+`ON CONFLICT DO NOTHING` is caught by `uq_financials_per_doc`
+`(doc_id, metric, fiscal_year, financial_type, COALESCE(quarter,''))`. The
+conflict key contains the METRIC but not the VALUE. So:
+
+- a metric name never seen before → no conflict → **INSERT succeeds**;
+- a metric already present whose value the parser now reads differently → the
+  key already exists → **DO NOTHING**, reported as `skipped`.
+
+**Every extraction fix between the 2026-07-15 ingest and 2026-08-04 could
+therefore add rows and could not correct one.** Only previously-unseen metric
+names ever landed. The value improvements — which is what an OCR fix actually
+produces — were dropped silently, at a rate of hundreds of `skipped` per run
+that read as success.
+
+**THE FOURTH WAS NOT THE LAST. IT WAS THE FOURTH OF TWENTY-EIGHT.** The first
+run covered only ETERNAL and ZOMATO. Running `--correct-values` across all four
+documents on 2026-08-04 found **28 stale values**, every one of them invisible
+to every process that existed before this flag:
+
+| document | corrected | skipped |
+|---|---|---|
+| ETERNAL_Q4FY26 | 4 | 456 |
+| ZOMATO_AR_2023-24 | 0 | 272 |
+| TITAN_Q1FY26 | 9 | 264 |
+| PAYTM_Q4FY26 | 15 | 417 |
+
+0 inserted / 0 restated / 0 reingested / 0 errors throughout. Traced to the
+printed row in every case — the corrected value IS what the page prints:
+
+- **TITAN, 9, all consolidated, p.14.** `total_income` (`III. Total income +II)
+  (I`) FY26 Q1 14919→16628, FY25 Q4 14013→15032, FY25 Q1 12343→13386, FY25
+  annual 57629→60942; `total_expenses` (`IV. Total expenses`) FY26 Q1
+  13439→15148, FY25 Q4 12795→13814, FY25 Q1 11370→12413, FY25 annual
+  53095→56407; `profit_before_tax` (`VII. Profit before tax (V+ VJ)`) FY25
+  annual 4534→4535. The stored figures were the derivation's output from BEFORE
+  `other_operating_revenue` was added to the `total_income` sum — the fix
+  recorded in `_compute_derived_totals`'s own comment. `total_expenses` follows
+  `total_income` through the chain, which is why both moved by the same amount
+  (1709 / 1019 / 1043 / 3313).
+- **PAYTM, 15.** `depreciation` (`Depreciation and amortization expense`)
+  consolidated p.8 — FY26 Q4 175→132, FY26 Q3 167→133, FY25 Q4 146→150, FY26
+  annual 643→568, FY25 annual 640→673 — and standalone p.17 — FY26 Q4 86→13,
+  FY26 Q3 119→96, FY25 Q4 116→146, FY26 annual 448→404, FY25 annual 514→657.
+  `profit_before_exceptional_items` consolidated p.8, FY26 Q3 231→230, FY26
+  annual 770→768, FY25 annual −1471→−1468: p.8 prints the line TWICE under
+  different labels, and the stored value now follows `Proft/(Loss) before
+  exceptional items and tax` rather than the longer associates/joint-ventures
+  variant. **`cash` consolidated p.9** (`Cash and cash equivalents`), FY26 annual
+  **−710→3285** and FY25 annual **−139→2077** — the stored figures were negative
+  because an older parser had claimed a cash-flow MOVEMENT line for a
+  balance-sheet metric. Sign-wrong and magnitude-wrong on a headline figure.
+
+**WHY A GREEN GATE NEVER CAUGHT ANY OF IT.** `regression_check` reads
+**extraction output**, not the database. It parses the PDF, runs the extractor,
+and asserts on the records in memory. Every OCR fix this week therefore passed
+4/4 PASS with 0 identity failures — correctly, because the EXTRACTOR was right
+every time. The database was never in the assertion path. So the gate was green
+and accurate about extraction while, downstream of it, `backfill --apply`
+reported hundreds of `skipped` and dropped every corrected figure on the floor.
+**A gate that validates the producer says nothing about the store.** Nothing in
+the pipeline compared what the parser reads against what `financials` holds
+until `--correct-values` existed to do it.
+
+**STANDING OBLIGATION.** Run `backfill_financials --apply --correct-values`
+across all affected companies after **any** extraction change, and read the
+correction count. It is the exact mirror of `purge_orphaned_metrics`:
+
+| | direction | what it catches |
+|---|---|---|
+| `purge_orphaned_metrics` | rows the extractor STOPPED emitting | names retired by a rename, left `is_latest = TRUE` forever |
+| `--correct-values` | values the extractor now reads DIFFERENTLY | figures improved by a fix, silently never propagated |
+
+Both are maintenance obligations created by the extraction change itself, not
+loader bugs. A non-zero correction count is not a failure — it is the measure of
+how far the store had drifted from the parser, and the only way that distance is
+ever observable.
 
 #### The 5% derivation guard — a read value is evidence, a derived value is inference
 
