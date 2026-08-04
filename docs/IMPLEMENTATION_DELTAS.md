@@ -1316,6 +1316,87 @@ loader bugs. A non-zero correction count is not a failure — it is the measure 
 how far the store had drifted from the parser, and the only way that distance is
 ever observable.
 
+#### OPEN — `nterest_expense_i`: the split-initial fix removed a line rather than renaming it
+
+Recorded BEFORE the Supabase purge deleted the evidence, because the evidence
+was the only reason this is visible at all.
+
+**THE ROWS.** Two, both ETERNAL, both from the cash-flow statement of
+`ZOMATO_ANNUAL_REPORT_2023-24.pdf`:
+
+```
+ETERNAL | FY23 | ANNUAL | consolidated | nterest_expense_i  = -9.0
+ETERNAL | FY24 | ANNUAL | consolidated | nterest_expense_i  = -2.0
+```
+
+The metric name is split-initial OCR damage of `interest_expense` — the leading
+`i` detached and re-attached as a trailing token, the family fixed in `0198e89`
+and purged locally by `4219e46`.
+
+**WHAT MAKES IT A GAP RATHER THAN AN ORPHAN.** Every other name in that purge
+family has a surviving correctly-spelled twin at an identical value —
+`p_ayment_of_interest_portion_of_lease_liabilities` = −41.0 sits beside
+`payment_of_interest_portion_of_lease_liabilities` = −41.0, and the orphan is
+simply the pre-fix spelling of a row that still exists. **This one has no twin.**
+Checked against local, the post-fix reference state: no row in
+`ETERNAL/FY23/consolidated` or `ETERNAL/FY24/consolidated` carries −9.0 or −2.0
+under any name. The current extractor produces this line under **no name at
+all**.
+
+**IT IS NOT `finance_costs`.** That metric is live and correct for the same
+groups at **49.0 (FY23)** and **72.0 (FY24)** — the P&L finance-cost figure, a
+different line in a different statement from the cash-flow adjustment being
+discussed. Do not reconcile the two; they are not the same number and neither
+substitutes for the other.
+
+So the split-initial fix appears to have **removed** the line rather than
+renamed it: before the fix the value was captured under a mangled name, after it
+the value is not captured at all. That is the opposite of the intended effect,
+and it is not what the other members of the family did.
+
+**WHY IT WAS INVISIBLE.** Local shed these rows in the 2026-08-01 purge, and
+`regression_check` asserts on extraction output, so a line that stopped being
+extracted leaves no failing assertion behind — it simply stops appearing.
+Supabase, running 236 rows behind and never purged, still held the pre-fix rows,
+and the purge dry run's §1.2 pairing check is what surfaced them: 115 of 124
+candidates paired at an identical value, and this was among the 9 that did not.
+**A row that could not be paired was the signal.** Without a second database
+retaining pre-fix state, nothing would have pointed here.
+
+Left OPEN and deliberately NOT fixed. Investigating the mechanism is item 5 of
+the current queue; a fix needs the printed row read from the PDF first, and
+`_NUMERIC_WORD_RE` / the split-initial rule are hot paths across four documents.
+
+#### The 7 `subtotal_(*)` rows — correctly discarded, recorded for contrast
+
+The other 7 of the 9 unpaired purge candidates, also ETERNAL, also from the
+ZOMATO annual report:
+
+```
+FY23 consolidated  subtotal_(x)    -107.0     FY24 consolidated  subtotal_(x)     63.0
+FY23 consolidated  subtotal_(xi)      8.0     FY24 standalone    subtotal_(ix)    -7.0
+FY23 standalone    subtotal_(ix)      8.0     FY24 standalone    subtotal_(viii)  57.0
+FY23 standalone    subtotal_(viii) -109.0
+```
+
+These are **roman-numeral subtotal labels** from the OCI block — the filing's own
+`Subtotal (VIII)`, `(IX)`, `(X)`, `(XI)` running totals. They are structural
+artifacts of the statement's numbering, not named line items, and the current
+extractor is right not to emit them: a subtotal whose only identity is its
+position in a numbered list cannot be resolved to a registry metric, and storing
+it under the literal label produces a key that means nothing outside that one
+page.
+
+They fail the §1.2 pairing test for the same reason they fail to be useful —
+nothing else carries their value, because they are sums of rows that ARE stored.
+FY23 standalone `−109 + 8` does not reconcile to that group's
+`total_comprehensive_income_for_the_year_(xi_=_vii+x)` of 16.0, so they are not
+even reliable as a checksum.
+
+Recorded explicitly so the contrast is on file: **the same unpaired set of 9 held
+2 rows of a real defect and 7 correct discards.** An unpaired purge candidate is
+a signal to look, not a verdict either way.
+
 #### Golden coverage measured: 18 of 269 — and what a 100% score therefore means
 
 `scripts/golden_coverage.py` reports, per company, which metrics live in
