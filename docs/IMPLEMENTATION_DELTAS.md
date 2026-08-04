@@ -1316,6 +1316,92 @@ loader bugs. A non-zero correction count is not a failure — it is the measure 
 how far the store had drifted from the parser, and the only way that distance is
 ever observable.
 
+#### Golden coverage measured: 18 of 269 — and what a 100% score therefore means
+
+`scripts/golden_coverage.py` reports, per company, which metrics live in
+`financials` (`is_latest = TRUE`) are asserted by any golden question. Measured
+2026-08-04 across all three datasets, 90 questions:
+
+| company | live metrics | asserted | of which pin a VALUE | unasserted |
+|---|---|---|---|---|
+| ETERNAL | 139 | 10 | 9 | 129 |
+| PAYTM | 90 | 4 | 3 | 86 |
+| TITAN | 40 | 4 | 4 | 36 |
+| **total (company, metric) pairs** | **269** | **18** | **16** | **251 (93.3%)** |
+
+The complete asserted set, which is short enough to print in full:
+
+```
+ETERNAL  advertisement_and_sales_promotion, delivery_and_related_charges,
+         depreciation (KEYWORD only), employee_benefits_expense, finance_costs,
+         other_income, pat, revenue, total_expenses, total_income
+PAYTM    impairment_of_loans_and_investments_in_associates (TEXT only),
+         pat, profit_before_tax, revenue
+TITAN    other_operating_revenue, profit_before_tax, revenue, total_income
+```
+
+**THE THREE MATCH KINDS ARE NOT EQUALLY STRONG, and collapsing them overstates
+coverage.** `expected_metric` is the only kind that pins a VALUE — a failure
+there means the number is wrong. A `expected_keywords` hit asserts that a string
+appears in prose. A question-text hit asserts nothing at all; it means the
+question is *about* the metric, which is evidence the area is exercised and no
+evidence any stored figure was checked. ETERNAL's `depreciation` is keyword-only
+and PAYTM's `impairment_of_loans_and_investments_in_associates` is text-only, so
+the honest value-pinning count is **16**, not 18.
+
+Coverage is computed **company-scoped**: a question asserting ETERNAL's revenue
+protects ETERNAL's row and nothing of PAYTM's.
+
+**WHAT THIS MEANS FOR A GOLDEN SCORE, PLAINLY. A 100% golden score is compatible
+with arbitrary drift in every unasserted row.** It bounds the correctness of the
+16 value-pinned pairs and says nothing whatever about the other 253. This is not
+a hypothetical: the 28 corrections recorded above were found on 2026-08-04 while
+the datasets scored 100%, and **not one of the 28 was asserted by any question**.
+`cash`, `depreciation`, `profit_before_exceptional_items` and
+`changes_in_inventories` are asserted by nothing at all; TITAN's nine are on
+metrics that ARE asserted, but every one of those corrections is *consolidated*
+while the only TITAN questions on those metrics (TQ003, TQ004) are *standalone*,
+and both standalone figures were correct. The dataset was green throughout,
+honestly, having never once looked at a drifted row.
+
+Coverage of the metric registry is a property entirely separate from eval pass
+rate, it was never previously measured, and it is now measurable on demand at
+zero quota cost. Deciding what to do about the 251 is a golden-dataset decision
+and is deliberately left open here.
+
+#### OPEN — metric-name fragmentation inflates the 269
+
+Not fixed, recorded as its own problem because it is upstream of coverage rather
+than part of it, and because the coverage number cannot be interpreted without
+it. The end-of-year cash line is stored as **four distinct metrics**:
+
+```
+cash_and_cash_equivalents_as_at_the_end_of_the_year      ETERNAL  2 rows
+cash_and_cash_equivalents_as_at_end_of_the_year          ETERNAL  2 rows   ("the" dropped)
+cash_and_cash_equivalents_as_at_the_end_of_the__year     ETERNAL  2 rows   (DOUBLE underscore)
+cash_and_cash_equivalents_at_the_end_of_the_year         PAYTM    4 rows   ("as" dropped)
+```
+
+and the same filing also yields
+`cash_and_cash_equiva]ents_for_the_purpose_of_statement_of_cash_f1ows`
+alongside its clean twin — `]` for `l`, `1` for `l`, the OCR-substitution family
+already recorded for `(I)`.
+
+These are one printed concept scattered across several registry keys. Three
+consequences, in increasing order of seriousness: the 269 denominator is
+inflated, so true coverage is somewhat better than 18/269 suggests; any
+per-metric assertion covers only whichever spelling it names, so a golden
+question pinning one variant silently leaves the others unguarded; and
+`check_balance_invariants` currently protects exactly ONE of these four names,
+which is why that script's metric list is explicit rather than inferred — a
+name-pattern rule would be the wrong fix for the same reason it is unsafe in
+general.
+
+The fix is not a similarity rule. `_OCR_DUPLICATE_METRICS` already establishes
+the standard for collapsing OCR variants: named, evidenced, and only where the
+variants are demonstrably the same printed line — same period groups, same
+values, traced to one row. Nothing here has been through that evidence yet.
+
 #### PAYTM `cash`: the worst instance, and the coverage hole that hid it
 
 Of the 28 stale values, one pair is categorically worse than the rest and is
@@ -1337,6 +1423,35 @@ because an older parser claimed a cash-flow MOVEMENT line — a net
 increase/decrease, which legitimately IS negative — for a balance-sheet metric.
 Both the sign and the magnitude were wrong, on a headline figure, and it was live
 in `financials` from the 2026-07-15 ingest until 2026-08-04.
+
+**THE DEFECT WAS MISATTRIBUTION, NOT MISREADING — and this is the part that
+generalises.** Both figures were read CORRECTLY. They still exist, correctly, in
+the database right now, under the metric they actually belong to:
+
+```
+cash_generated_(used_in)/from_operations  PAYTM  FY26 ANNUAL consolidated  -710
+cash_generated_(used_in)/from_operations  PAYTM  FY25 ANNUAL consolidated  -139
+cash_generated_(used_in)/from_operations  PAYTM  FY25 ANNUAL standalone     -26
+cash_generated_from/(used_in)_operations  ETERNAL FY23 ANNUAL consolidated -813
+```
+
+−710 and −139 are the *correct values of the cash-flow line*. An older parser
+claimed that line for the balance-sheet metric as well: right number, wrong row.
+Nothing about the digits was corrupt.
+
+That is why no extraction-level check could ever have caught it. Every guard in
+this file — the fragment join, the `(I)` fix, the 5% derivation tripwire,
+identity validation — asks *is this number read correctly?* and the answer here
+was yes. Only a **semantic claim about the metric** ("a stock cannot be
+negative") separates a correct number in the wrong row from a correct number in
+the right one. `scripts/check_balance_invariants.py` encodes exactly that claim,
+deliberately outside `regression_check` so the extraction gate stays hermetic.
+
+It also explains why the four legitimately-negative rows above are not a bug and
+must never be swept into the same rule: cash FLOWS are movements. A
+name-pattern invariant over "cash" would fail on all four immediately, which is
+why that script names its two metrics explicitly and requires evidence of
+stock-vs-flow before another is added.
 
 This is the most severe consequence of the loader gap recorded above. Not because
 the drift was larger, but because the value was self-evidently impossible and
