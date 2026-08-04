@@ -62,6 +62,14 @@ services:
     volumes:
       - ./backend:/app
       - ./docs/raw:/app/docs/raw:ro
+      # READ-ONLY, and read-only is the point. golden_dataset/ holds the three
+      # q*.json INPUTS and nothing else; :ro means nothing running in this
+      # container can write an eval output beside them, which is the failure
+      # that once left 79 outputs against 3 inputs and crashed an anchor scan.
+      # Needed by scripts/golden_coverage.py, which requires the database and
+      # the datasets at the same time — the host has no psycopg2, so it must run
+      # in here, and without this mount /app/golden_dataset does not exist.
+      - ./golden_dataset:/app/golden_dataset:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
