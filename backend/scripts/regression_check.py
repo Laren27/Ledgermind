@@ -135,10 +135,12 @@ ALPHA_TENANT = "a0000000-0000-0000-0000-000000000001"
 
 class _ExtractorCapture(logging.Handler):
     """
-    Collects three kinds of extractor WARNING for one document:
+    Collects four kinds of extractor WARNING for one document:
     _compute_derived_totals' overwrite messages (printed, NOT asserted),
-    validate_financial_identities' [IDENTITY FAIL] lines (ASSERTED), and its
-    [IDENTITY NOT EVALUATED] lines (printed, NOT asserted).
+    validate_financial_identities' [IDENTITY FAIL] lines (ASSERTED), its
+    [IDENTITY NOT EVALUATED] lines (printed, NOT asserted), and
+    extract_all_financial_records' [DISCARDED ROW] lines (printed, NOT
+    asserted).
 
     These are NOT asserted on. A count-pinned gate would fail on
     improvements as readily as regressions — this session shrank one
@@ -163,6 +165,18 @@ class _ExtractorCapture(logging.Handler):
         # produce for WHICH period. Reported, never asserted -- see the print
         # block in run_one().
         self.not_evaluated: list[str] = []
+        # Fourth bucket, added 2026-08-05. extract_all_financial_records'
+        # seen_keys guard is first-wins: when two source rows resolve to the
+        # same canonical metric with DIFFERENT values, the later one is thrown
+        # away and a [DISCARDED ROW] warning names both. Twelve of them fire on
+        # ZOMATO alone and not one was visible here, because this handler did
+        # not collect them and nothing else printed them.
+        #
+        # That invisibility had a cost beyond the rows: every "0 discarded
+        # rows" written into a commit message or IMPLEMENTATION_DELTAS was
+        # UNMEASURED, since no counter existed to produce a zero. A figure
+        # nothing computes is worse than an absent one.
+        self.discarded_rows: list[str] = []
 
     def emit(self, record):
         msg = record.getMessage()
@@ -172,6 +186,8 @@ class _ExtractorCapture(logging.Handler):
             self.identity_failures.append(msg.strip())
         elif "[IDENTITY NOT EVALUATED]" in msg:
             self.not_evaluated.append(msg.strip())
+        elif "[DISCARDED ROW]" in msg:
+            self.discarded_rows.append(msg.strip())
 
 
 def run_one(doc: dict) -> bool:
@@ -310,6 +326,22 @@ def run_one(doc: dict) -> bool:
     # scrolling past unread in a 400-line log.
     print(f"\n  Identities NOT EVALUATED (missing components): {len(_cap.not_evaluated)}")
     for m in _cap.not_evaluated:
+        print(f"    {m}")
+
+    # NOT ASSERTED, and deliberately absent from `overall` below, for exactly
+    # the reason the derivation overwrites are: a pinned count goes red on an
+    # IMPROVEMENT as readily as a regression. Adding a registry alias so two
+    # rows stop colliding REMOVES discards; splitting a canonical so a second
+    # line gets its own metric removes them too. Either is good news, and a
+    # gate that reddens on good news gets switched off.
+    #
+    # Each line names the canonical metric, both values and both source pages,
+    # which is enough to tell a benign repeat from a destructive collision
+    # without re-running anything. What it cannot name is the raw label —
+    # FinancialRecord does not carry the source text — so a non-zero count is
+    # an instruction to go look at those pages, not a diagnosis.
+    print(f"\n  Rows DISCARDED to a metric collision: {len(_cap.discarded_rows)}")
+    for m in _cap.discarded_rows:
         print(f"    {m}")
 
     records_ok = len(records) > 0
