@@ -790,7 +790,8 @@ restatement path therefore STILL has never executed against live data, and the
 latent gap recorded above stands untouched.
 
 MEASURED, not assumed: `regression_check` 2026-08-03, 4/4 PASS, zero identity
-failures, zero discarded rows, and identities NOT EVALUATED 10 / 8 / 7 / 4
+failures, ~~zero discarded rows~~ (UNMEASURED — see the discard-class entry
+below; the real figure is 182), and identities NOT EVALUATED 10 / 8 / 7 / 4
 (ETERNAL Q4FY26 / TITAN / PAYTM / ZOMATO) = 29, down from 30. The single group
 that moved is the PAYTM one named above. Every other NOT EVALUATED verdict in
 the corpus is still an absent `adjustment_of_tax_relating_to_earlier_years`,
@@ -1055,7 +1056,8 @@ figure, changing a tax identity from unevaluable-for-the-wrong-reason to
 unevaluable-for-the-right-one.
 
 MEASURED. `regression_check` 2026-08-03: 4/4 PASS, 0 identity failures, 0
-discarded rows, NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged, and the same 6
+~~discarded rows~~ (UNMEASURED — real figure 182), NOT EVALUATED
+10 / 8 / 7 / 4 = 29 unchanged, and the same 6
 derivation overwrites at identical values -- nothing derived moved. **That
 last clause was WRONG; see "A comma-bearing fragment is not proof of a complete
 number" below.** One of those 6 was ETERNAL FY26 Q4 consolidated
@@ -1123,7 +1125,8 @@ ZOMATO  15 pages, 149 rows,  0
 ```
 
 One cell corpus-wide. `regression_check` 2026-08-04: 4/4 PASS, 0 identity
-failures, 0 discarded rows, NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged,
+failures, ~~0 discarded rows~~ (UNMEASURED — real figure 182),
+NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged,
 produced counts unchanged at 460 / 273 / 432 / 272 = **1437**.
 
 **THE PRIOR ENTRY WAS WRONG, AND THE SYSTEM HAD BEEN SAYING SO ALL ALONG.**
@@ -1419,6 +1422,90 @@ retaining pre-fix state, nothing would have pointed here.
 Left OPEN and deliberately NOT fixed. Investigating the mechanism is item 5 of
 the current queue; a fix needs the printed row read from the PDF first, and
 `_NUMERIC_WORD_RE` / the split-initial rule are hot paths across four documents.
+
+#### The alias-collision CLASS — two source rows, one canonical, first wins
+
+Not an incident. Two confirmed instances with different causes and the same
+mechanism, plus a third population of 120 rows found the moment a counter was
+attached. Recorded as a class so the next one is recognised rather than
+re-derived.
+
+**THE MECHANISM.** `extract_all_financial_records` keys records on
+`(financial_type, fiscal_year, quarter, metric)` in `seen_keys` and is
+**first-wins**. When two genuinely different printed rows resolve to the same
+canonical metric, the first to be reached holds the slot and every later
+claimant is discarded. Same value = a benign repeat (ZOMATO restates whole
+statements; this fires constantly and is silent by design). DIFFERENT value = a
+real defect, logged as `[DISCARDED ROW]` naming the metric, both values and both
+pages.
+
+**INSTANCE 1 — PAYTM, `tax_expense`.** Recorded above. `Deferred tax expense/
+(credit)` resolved to `tax_expense` on a coverage tie, won the slot by appearing
+first on page 8, and the genuine `Total Tax expense` row was discarded. Left
+consolidated `tax_expense` holding the deferred figure (FY26 annual 10 against a
+true 30) and three standing PAT identity failures.
+
+**INSTANCE 2 — ETERNAL, `finance_costs`.** The P&L's `Finance costs` and the
+cash-flow statement's `Interest expense` are different line items in different
+statements, and both resolve to `finance_costs`:
+
+```
+p169 consolidated  'Finance costs 26'    [FY24 72.0, FY23  49.0]   P&L      <- KEPT
+p175 consolidated  'Interest expense'    [FY24  2.0, FY23   5.0]   cash flow <- discarded
+p176 consolidated  'nterest expense I'   [FY24 -2.0, FY23  -9.0]   cash flow <- discarded
+p285 standalone    'Finance costs 25'    [FY24 18.0, FY23  16.0]   P&L      <- KEPT
+p291 standalone    'Interest expense'    [FY24  0.0, FY23   0.0]   cash flow <- discarded
+```
+
+The P&L page is lower-numbered, so it always wins. **ETERNAL FY23 consolidated
+−9.0 and FY24 consolidated −2.0 reach no database row.** This is what the
+`nterest_expense_i` orphan was pointing at: the split-initial fix worked, the
+row normalizes and resolves correctly, and it dies at the collision instead.
+
+**INSTANCE 3 — TITAN, the segment tables, 120 rows.** Found immediately on
+attaching the counter. TITAN prints Segment Revenue, Segment Results, Segment
+Assets and Segment Liabilities as four sub-tables sharing one set of segment
+names, so all four resolve to the same `segment_revenue_*` canonical — 24
+discards each for `_watches`, `_jewellery`, `_eyecare`, `_others`,
+`_unallocated`, on pages 8 and 15. The kept and dropped figures are not variants
+of one number: Q1FY26 watches keeps 1264.0 and drops 286.0, which is the segment
+*result*. Whether the other three sub-tables should have their own canonicals is
+a registry decision and is NOT taken here.
+
+**MEASURED per document**, first run with the counter attached:
+
+```
+ETERNAL_Q4FY26     9      PAYTM_Q4FY26    9
+TITAN_Q1FY26     152      ZOMATO_AR      12        total 182
+```
+
+**THE FIX IS AN ALIAS DECISION, NEVER A CHANGE TO first-wins.** Which row is
+correct is a per-document judgement; last-wins or a merge would guess. The
+`[DISCARDED ROW]` message already names where the work belongs —
+`check registry.py aliases` — and the correct remedy is that the two rows stop
+colliding at all. Splitting a canonical changes what every existing assertion on
+it means, so it is not done casually.
+
+#### CORRECTION — every prior "0 discarded rows" in this document was unmeasured
+
+`regression_check`'s `_ExtractorCapture` collected three WARNING kinds:
+derivation overwrites, `[IDENTITY FAIL]` and `[IDENTITY NOT EVALUATED]`.
+`[DISCARDED ROW]` was **not** among them, and nothing else printed it. So the
+gate had no discard counter at all, and **no run could ever have produced a
+zero.**
+
+Three claims in this file stated one anyway. They are struck through and
+annotated in place rather than deleted, at lines recording the `(I)` fix, the
+all-zero row guard, and the fragment-joining fix. The correct figure for every
+one of those runs is **182**, not 0 — the extraction changes they describe did
+not alter the discard population.
+
+The claims were not fabricated so much as inherited: a phrase repeated from one
+commit message into the next, describing a counter that did not exist. That is
+the failure mode worth naming — **a number with no producer propagates exactly
+as easily as a measured one**, and neither the gate nor the reader can tell them
+apart. Closed 2026-08-05 by adding the fourth bucket; the count is printed per
+document and deliberately not asserted.
 
 #### The 7 `subtotal_(*)` rows — correctly discarded, recorded for contrast
 
