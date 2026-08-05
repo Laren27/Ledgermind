@@ -1486,6 +1486,101 @@ correct is a per-document judgement; last-wins or a merge would guess. The
 colliding at all. Splitting a canonical changes what every existing assertion on
 it means, so it is not done casually.
 
+#### TITAN's segment tables — 120 discards, the largest instance of the class
+
+The biggest single population of the alias-collision class, and the one that
+makes the case that first-wins is holding the slot by accident rather than by
+judgement.
+
+**THE SHAPE.** TITAN's quarterly filing prints **four** segment sub-tables —
+Segment **Revenue**, Segment **Results**, Segment **Assets**, Segment
+**Liabilities** — each listing the same five segment names. Every one of the four
+resolves to the same `segment_revenue_*` canonical, so for each segment and each
+period only one of four survives and three are discarded:
+
+```
+segment_revenue_watches      24 discards       pages 8 (standalone)
+segment_revenue_jewellery    24 discards             15 (consolidated)
+segment_revenue_eyecare      24 discards
+segment_revenue_others       24 discards
+segment_unallocated          24 discards
+                            ---
+                            120
+```
+
+**THE KEPT VALUE IS CORRECT BY PAGE ORDER, NOT BY DESIGN.** Segment Revenue
+happens to be printed first, so it happens to win. Nothing in the code prefers
+it, nothing asserts it, and nothing would notice if the filing reordered its
+sub-tables next quarter — the stored figure would silently become segment
+results, at the same business key, with the same metric name. That is the part
+worth carrying: the current values are right, and their rightness rests on
+layout.
+
+Q1FY26 watches, standalone, page 8:
+
+```
+kept     1264.0     Segment Revenue  — Watches & Wearables
+dropped   286.0     Segment Results  — Watches & Wearables
+```
+
+1264 and 286 are not two readings of one figure. They are revenue and profit,
+and the discard log is the only place the second one appears at all.
+
+**PROPOSED RESOLUTION — OPEN, not done.** Separate canonicals per sub-table
+(`segment_result_*`, `segment_assets_*`, `segment_liabilities_*` alongside
+`segment_revenue_*`), which needs registry expansion **plus** a re-extraction to
+populate them, and then a `--correct-values` run against both databases per the
+deploy obligation recorded above. Roughly 120 rows would stop being discarded and
+start being stored, so this is an insert-scale change, not a correction-scale
+one.
+
+**WHAT IT WOULD DO TO THE GOLDEN DATASET — measured, because the obvious
+assumption is wrong.** No question in any dataset pins a segment value:
+`expected_metric` never takes a `segment_*` value anywhere in the 90. Three TITAN
+questions are *about* segments, and all three are semantic or adversarial with
+`expected_metric=None` and `expected_value=None`:
+
+```
+TQ006  semantic_business   "How did Titan's Watches division perform in Q1FY26?"
+TQ007  semantic_business   "What new store openings and closures did Titan's EyeCare division report...?"
+TQ012  adversarial         "Is Titan a good long-term investment based on its Watches segment momentum?"
+```
+
+So a split would change **what those three answers are built from** — the
+retrieval and synthesis inputs — without changing any pinned figure. The risk is
+a semantic drift that no assertion would catch, which is a weaker constraint than
+"the split changes what they assert" but a more slippery one. Re-running the
+TITAN dataset after any split is therefore mandatory even though nothing there
+should numerically move.
+
+#### `finance_costs` is deliberately NOT split
+
+Recorded as a decision, so it is not revisited as an oversight.
+
+The collision is real — the cash-flow statement's `Interest expense` is lost to
+the P&L's `Finance costs` on page order — but **the stored value is the one
+queries want**, and it is correct:
+
+```
+Q007  quantitative_point  ETERNAL FY26 consolidated finance_costs = 392.0   DB: 392.0  ✓
+Q015  quantitative_point  ETERNAL FY25 consolidated finance_costs = 154.0   DB: 154.0  ✓
+Q019  quantitative_yoy    ETERNAL FY25 -> FY26 finance costs                 ✓
+```
+
+All three pass. "What were ETERNAL's consolidated finance costs" means the P&L
+line, not the cash-flow adjustment, and the P&L line is what is stored.
+
+So this instance differs from TITAN's in the one way that matters: **here the
+accident of page order lands on the right answer, and the lost row is one nobody
+queries.** Splitting would add a `interest_expense_cashflow` canonical carrying
+−9.0 / −2.0, gain no query, and put the three passing assertions above through a
+re-extraction for nothing. The cost is that the cash-flow figure remains
+unavailable — accepted, and recorded here so the trade is visible rather than
+forgotten.
+
+Revisit only if a question is ever written that needs the cash-flow interest
+line. Until then the collision stays, and the discard counter keeps it visible.
+
 #### CORRECTION — every prior "0 discarded rows" in this document was unmeasured
 
 `regression_check`'s `_ExtractorCapture` collected three WARNING kinds:
