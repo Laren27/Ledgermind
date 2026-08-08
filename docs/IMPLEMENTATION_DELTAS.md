@@ -1553,6 +1553,201 @@ a semantic drift that no assertion would catch, which is a weaker constraint tha
 TITAN dataset after any split is therefore mandatory even though nothing there
 should numerically move.
 
+#### The section-context mechanism — investigated 2026-08-08, NOT fixed
+
+Read-only investigation of what a split would actually have to thread through.
+Nothing was changed. Instruments: `scripts/_titan_segment_probe.py` (pages 8 and
+15 in full) and `scripts/_repeated_label_scan.py` (all four documents).
+
+**CORRECTION — the sub-table headings are not what this document said above.**
+The paragraph above names them "Segment **Revenue**, Segment **Results**, Segment
+**Assets**, Segment **Liabilities**". Those four strings **do not appear in the
+filing**. The real headings are a two-level, lettered structure, and they are not
+parallel in form — read verbatim off page 8:
+
+```
+L009  Segment revenues and profit and loss                      <- group heading
+L010  a) Revenue (including other income)                       <- sub-table 1
+L011    Watches / Jewellery (refer note 3) / Eyecare / Others /
+        Corporate (unallocated) / Total
+L017  b) Profit from segments before finance costs and taxes    <- sub-table 2
+L023    (unlabelled total row: 1,596 1,411 1,203 5,248)
+L024    Finance costs / Profit before taxes
+L026  c) Segment assets and liabilities                         <- group heading
+L027  Segment assets                                            <- sub-table 3
+L034  Segment liabilities                                       <- sub-table 4
+```
+
+Page 15 (consolidated) differs in wording: `b) Profit/ (Loss) from segments
+before finance costs and taxes`, `Profit before taxes including share from
+Associate`, and `Corporate (Unallocated)` with a capital U. So revenue and result
+are `a)`/`b)` items under one group heading while assets and liabilities are bare
+labels under a third — any rule keyed on the four assumed strings matches
+nothing, and any rule assuming one uniform heading shape matches half.
+
+**WHERE THE HEADINGS STOP EXISTING — `pdf_parser.py:503`**, inside
+`extract_financials_positional`:
+
+```python
+non_empty = [b for b in buckets if b]
+if len(non_empty) < MIN_VALUE_COLUMNS:   # MIN_VALUE_COLUMNS = 2, pdf_parser.py:44
+    continue
+```
+
+A heading carries no numeric words, so `buckets=0` and it is consumed here. This
+is **before the row list is built**: headings never become rows and never reach
+`_rows_to_records`, so nothing downstream skips them — there is no later filter
+to relax. `resolve_metric(raw: str)` therefore cannot be given sub-table identity
+by any change confined to the registry or the resolver.
+
+Two neighbouring exits, for completeness. `:436` (the `parsing_started` gate)
+discards the ten title/date rows above the table — note `Segment revenues and
+profit and loss` is what *flips* `parsing_started` true at `:434`, because it
+contains "revenue", and is then dropped at `:503` anyway. `:507` (empty
+description) discards page 8's unlabelled results total.
+
+Established by a shadow pass that re-walks the function's own decision points
+using its real helpers and is **validated against the real return value** rather
+than trusted: 25/25 rows on page 8, 26/26 on page 15, exact match.
+
+**THE HEADINGS ARE TABLE ROWS, NOT A SEPARATE BLOCK.** `parse_pdf()` emits
+exactly **one `PageBlock` per page** (18 blocks / 18 pages); page 8's is
+`block_type=TABLE`, `table=None`, `is_continuation=False`. `find_tables()` finds
+**one** table object per page — p8 `bbox=(42.1, 164.3, 570.4, 699.5)`, p15
+`bbox=(63.9, 138.4, 544.4, 627.8)` — and all four sub-tables *and* all four
+headings sit inside it. The headings are geometrically **within** the single
+detected table, not above it, and at the positional layer they are ordinary
+physical rows grouped by the same 3.0pt rule as every data row, differing only in
+carrying no numbers.
+
+`PageBlock.content` **does** retain the heading text, because `parse_pdf` stores
+`page.extract_text()` wholesale. So the strings survive at **page granularity
+with no row association** — which is the precise shape of the problem: the text
+is not lost, the *binding between a heading and the rows beneath it* is what was
+never built.
+
+**A PROPERTY WORTH KEEPING IF THIS IS BUILT.** "Most recent row dropped at
+`:503`" yields the correct family for **all eight** sub-tables across both pages,
+with no exceptions. It picks `Segment assets` over the group heading `c) Segment
+assets and liabilities` purely by being later, which is why recency beats
+pattern-matching the heading text here.
+
+**Its caveat, which is not optional.** `Finance costs` and `Profit before taxes`
+sit inside the `b)` region and would inherit its family under a naive recency
+rule, renaming two correct P&L metrics. Section context must be applied **only to
+labels already resolving into the segment family**, never to every row — which
+also keeps it clear of the `finance_costs` decision recorded immediately below.
+
+**The 120 reconciles exactly**: 5 canonicals × 3 losing occurrences × 4 columns ×
+2 pages = 120. `Total` is not part of it, for the reason in the next entry.
+
+#### The repeated-label shape is corpus-wide, not TITAN-specific
+
+Measured 2026-08-08 by `_repeated_label_scan.py`: for every page in all four
+documents, does a data-row label repeat — the exact condition under which two
+distinct source rows collide on `(financial_type, fiscal_year, quarter, metric)`
+and first-wins silently drops one.
+
+```
+TITAN     5 / 18  pages
+ETERNAL   7 / 44
+PAYTM     6 / 21
+ZOMATO  101 / 371
+```
+
+The detector is cheap (text-based, not the positional path), so it was validated
+against a known-true case rather than believed: TITAN p8 and p15 are flagged with
+exactly the segment names established by the positional probe.
+
+**The same cause appears in all four documents**, most cleanly as the balance
+sheet's non-current / current split — one page, several sub-tables, identical
+labels, family determined only by a section header discarded at `:503`:
+
+```
+PAYTM   p7 (consolidated) / p16 (standalone)  Statement of Assets and Liabilities
+        Other investments, Loans, Other financial assets,
+        Lease liabilities, Contract liabilities, Provisions   — all x2
+ETERNAL p32 (consolidated) / p41 (standalone)  Balance Sheet
+        Other financial assets, Lease liabilities, Provisions — all x2
+        p31: Owners of the parent x3
+ZOMATO  p167/168 and p283/284  Balance Sheet + Balance Sheet (Contd.)
+        segment notes: Others x2 -> segment_revenue_others,
+        All other segments (Residual) x2
+```
+
+**Consequence for the design: a TITAN-only fix leaves every one of those live.**
+Splitting the segment families by section context and stopping there would fix
+120 rows in one document and none of the balance-sheet collisions in the other
+three. Whatever carries sub-table identity from `:503` to `resolve_metric` should
+be built as a general mechanism, not as a segment-table special case.
+
+**THE ZOMATO 101 IS NOT 101 DEFECTS — two qualifications, both required.**
+First, the count is dominated by ESOP and note tables (`Outstanding at April`,
+`Exercised during the year`, `Forfeited/expired during the year`), which are not
+financial statement pages at all. Second, the scan reads raw page text, whereas
+only blocks classified into a detected consolidated/standalone section ever reach
+`_rows_to_records` — so most of those pages are never processed. **How many
+survive section classification was not measured** and would need a pipeline run.
+Read the per-page detail in the scan output, not the tally.
+
+#### OPEN DEFECT, higher severity than the segment split — `Total` resolves to `revenue`
+
+Found 2026-08-08 in the same pass. **This is a wrong-value risk, not a
+lost-row risk, and it is the more serious of the two.**
+
+`resolve_metric("Total")` returns `revenue`, on a tie the resolver itself
+declares:
+
+```
+[METRIC TIE] 'Total' (normalized: 'total') — 4 aliases matched at 4 words;
+kept 'revenue' by registry declaration order,
+rejected ['total_income', 'total_other_comprehensive_income'].
+```
+
+TITAN page 8 prints **three** `Total` rows with three different meanings, and all
+three resolve to `revenue`:
+
+```
+Total  14,671  13,594  12,171  55,335   <- segment revenue total
+Total  41,607  41,075  35,829  41,075   <- segment ASSETS total
+Total  23,757  24,264  20,592  24,264   <- segment LIABILITIES total
+```
+
+Page 15 does the same at 16,628 / 41,588 / 28,867. These compete for the
+`revenue` slot against the genuine P&L line under first-wins.
+
+**Section context does not fix this.** Tagging by sub-table would separate the
+three `Total` rows from each other, but every one of them would still be
+resolving to `revenue` for the wrong reason — the defect is the tie in the
+registry's alias set, not the missing section. It needs a longer alias, and it
+needs to be fixed independently of any segment work.
+
+**Why nothing has caught it: the correct value is winning by page order.**
+`Revenue from operations` is printed on **p7** (standalone) and **p14**
+(consolidated), both *ahead* of segment pages 8 and 15, so the genuine row takes
+the `seen_keys` slot first and the three `Total` rows lose. `revenue` **is**
+asserted — TQ001 (`Titan standalone revenue Q1FY26`) and TQ002 (consolidated)
+both pin `expected_metric=revenue` and both pass. So a passing assertion is
+currently resting on layout, exactly as the segment values are. If TITAN ever
+prints its segment tables ahead of its P&L, TQ001 and TQ002 begin asserting
+segment assets.
+
+#### `.1_203` is a stored metric
+
+TITAN page 15's unlabelled segment-results total reads
+`1,751 1,470 .1,203 5,488`. OCR leaves a stray `.1,203` that is not recognised as
+numeric, so it becomes the row's **description** rather than a value, and the row
+is stored under metric `.1_203` with values
+`[1751.0, 1470.0, NOT_PRINTED, 5488.0]` — a garbage metric carrying three real
+figures, with the third column lost.
+
+Page 8's equivalent row (`1,596 1,411 1,203 5,248`) has no such artefact, ends up
+with an empty description, and is correctly discarded at `pdf_parser.py:507`. The
+difference between the two pages is OCR noise alone.
+
+Recorded, not fixed. Any cleanup is a `purge_orphaned_metrics` obligation, not a
+parser change — see the orphan-retirement rule in §9 of `CLAUDE.md`.
+
 #### `finance_costs` is deliberately NOT split
 
 Recorded as a decision, so it is not revisited as an oversight.
