@@ -2321,7 +2321,7 @@ Note `min=5 max=5` on the current figures: every response now receives exactly `
 
 The default `--out` is a single path, so each dataset's detail JSON overwrites the previous one. A three-dataset sweep therefore ends holding only the LAST dataset's detail. Eternal's JSON from the 2026-08-08 sweep is gone; the human-readable report survives only because each run was `tee`d to its own `/tmp/sweep_<dataset>.txt`.
 
-Distinct from the already-recorded `--out` defect (a path resolving into `golden_dataset/`, fixed with a parse-time guard). This one destroys the instrument's own output silently, and a sweep costs an hour of wall time and real quota to reproduce. Fix is to default the filename from the dataset, not to a constant. NOT DONE.
+Distinct from the already-recorded `--out` defect (a path resolving into `golden_dataset/`, fixed with a parse-time guard). This one destroys the instrument's own output silently, and a sweep costs an hour of wall time and real quota to reproduce. RESOLVED 2026-08-08: `--out` defaults to None and is derived after parse_args as `eval_results/eval_<dataset-stem>.json`. Derived BEFORE the golden_dataset guard, deliberately — a derivation placed after it would skip the check for the default case, which is a check that inspects nothing. Verified by loading the real module and reading `args.out`, not by reasoning about the code: both earlier test runs exited before the path was ever used.
 
 #### Two false `ingestion_state` values, found by the new integrity check on its first run
 
