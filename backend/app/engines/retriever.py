@@ -278,6 +278,7 @@ def hybrid_search(
             rrf_score=point.score,
             reranker_score=float("-inf"),
             reranker_backend="none",
+            speaker_role=payload.get("speaker_role", "unknown"),
         )
         chunks.append(chunk)
 
