@@ -1,0 +1,12 @@
+[
+  {
+    "id": "ETQ001",
+    "category": "cross_examination",
+    "question": "What did Eternal management say about whether Hyperpure is included in the billion-dollar profit target?",
+    "expected_path": "cross",
+    "expected_sql_verified": false,
+    "expected_contradictions": 0,
+    "expected_keywords": ["Hyperpure", "Akshant Goyal"],
+    "notes": "FIRST golden question against a non-filing document (ETERNAL Q4FY26 earnings call transcript, doc_id 65ee6ef4). Verified stable across two consecutive runs on gemini-3.1-flash-lite 2026-08-08: path=cross, tier=medium, sql_verified=False, dsl_object=None, 0 contradictions, both keywords present. WHAT IT ACTUALLY GUARDS: the retrieval returns TWO page-13 chunks -- Akshant's answer (management) at 0.9999 and Garima Mishra's question (analyst) at 0.9244 -- and the answer keeps them straight, attributing the claim to Goyal and the mistaken premise to 'an analyst'. That distinction exists only because speaker-turn chunking landed 2026-08-08; under the previous 187-chunk layout the premise and the refutation shared overlapping windows with mixed attribution. 'Akshant Goyal' is therefore not decoration -- it is the assertion that attribution survived. NO expected_tier: a transcript query has no quant half, so cross_engine caps it at medium by construction (min(qual, 0.75), high demoted). Asserting high would fail structurally, and asserting medium would pin a cap rather than a retrieval property. NOT ASSERTED ON 'billion-dollar': hyphenation is unstable ('billion dollar', '$1 billion') and the golden keyword rule forbids pinning a form the model may vary. expected_contradictions=0 is CORRECT but weak -- this corpus contains no testable narrative-vs-figure contradiction, so 0 is what every cross question asserts and it does not demonstrate the detector can fire."
+  }
+]
