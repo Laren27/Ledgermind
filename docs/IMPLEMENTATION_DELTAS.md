@@ -11,7 +11,7 @@ therefore never appeared in a diff. A design document that cannot be reviewed
 alongside the code it describes will drift silently. Any change that makes a
 blueprint statement untrue must add an entry here in the same commit.
 
-Last verified: 2026-08-02.
+Last verified: 2026-08-08.
 
 ---
 
@@ -543,6 +543,34 @@ candidate pool at all is a chunker/classifier question, not a retrieval one; the
 naive fix (filter by page number) is exactly the per-document hack this project
 rejects.
 
+#### FALSIFIED 2026-08-08 — the floor filters citations but not context, and that produced an untraceable figure
+
+The premise recorded above — *"a weak chunk in the model's context is harmless and occasionally useful; the defect is presenting it as evidence"* — is FALSE, and the counterexample is a live answer.
+
+Query: *"What did Eternal management say when asked about the warehousing capacity across dark stores a quarter or a year earlier?"* The generated answer stated **"warehousing capacity was 4.8 million square feet in FY24"**. It carried ONE citation, the ETERNAL Q4FY26 transcript p7 at 0.9919, which contains no such figure.
+
+The log line:
+
+    Citation floor: dropped 4 of 5 below 0.05 | scores=[0.0419, 0.0219, 0.0165, 0.0094] pages=[31, 4, 19, 4]
+
+Page 19 at **0.0165** is ZOMATO FY24 AR p19: `Stores at the end of the period Warehouse capacity # million square feet ... 4.8 ... 3.7 ... Mar-23 Mar-24`. The number is REAL and correctly extracted. It was retrieved, entered the model's context, supplied a value, a unit and a fiscal year to the answer, and the floor removed it from `citations`. **The answer was built on five passages and cited one.** Deterministic — the identical drop set appeared on two consecutive runs.
+
+**THE 0.05 CONSTANT IS NOT THE DEFECT.** The measurement behind it stands: the two clusters are real and 0.05 sits in the empty band. The defect is that `retrieved_chunks` (what the model reads) and `citations` (what the user is shown) were allowed to DIVERGE AT ALL. The floor did not prevent an unsupported claim; it GUARANTEED the claim could not be traced, by deleting the evidence while leaving its source in play. That inverts Principle 2.
+
+The guarantee recorded above — that the floor cannot move the confidence tier, because `_score_confidence` runs first — HOLDS and is beside the point. The harm is to traceability, not to the tier. `confidence_score` on this answer was **0.9969**.
+
+The entry above anticipated the display half of this exactly ("a false positive would surface as a missing citation, not a log line") and named the tell as a suspiciously short citation list. What it did not anticipate is that the model keeps using the chunk after the citation is gone, so the visible symptom is not a short list — it is a NORMAL-LOOKING answer carrying a figure no citation supports.
+
+TWO CANDIDATE FIXES, DECISION OPEN, NEITHER APPLIED:
+
+- **Delete the floor; cite everything the model sees.** Keeps Principle 2 exact. The noise problem it was built for is a DISPLAY-WEIGHT problem and belongs in the UI — render a 0.0165 citation differently, do not hide it. Preferred.
+- **Apply the floor to `retrieved_chunks` too.** Closes the hole but changes what the model sees on every semantic and cross query, risking the 89/90 baseline for a reason unrelated to the defect, and silently narrowing context where a weak chunk genuinely helped.
+
+Either is a measured-constant change against a live baseline and requires a full sweep. NOT a patch.
+
+SECOND, INDEPENDENT PROBLEM IN THE SAME RESPONSE: `fiscal_year` resolved to `null`, so no year filter applied and a **FY24 annual report answered a FY26 question** with no temporal disclosure. §4.2's problem arriving through the entity resolver rather than through restatements.
+
+FOUND BY: ingesting the transcript. Not a transcript defect — the transcript behaved correctly, and its own chunk was cited. Adding a fifth document made cross-document mixing likely enough to surface a pre-existing hole.
 ### §10 — Stage 0 guards: refusing beats substituting
 Blueprint §10's DSL self-healing loop assumes an invalid metric produces an
 invalid DSL that the validator rejects. It does not. Constrained to emit some
@@ -1690,7 +1718,7 @@ only blocks classified into a detected consolidated/standalone section ever reac
 survive section classification was not measured** and would need a pipeline run.
 Read the per-page detail in the scan output, not the tally.
 
-#### OPEN DEFECT, higher severity than the segment split — `Total` resolves to `revenue`
+#### ~~OPEN DEFECT, higher severity than the segment split — `Total` resolves to `revenue`~~ — CORRECTED 2026-08-08, was never live
 
 Found 2026-08-08 in the same pass. **This is a wrong-value risk, not a
 lost-row risk, and it is the more serious of the two.**
@@ -1732,6 +1760,47 @@ currently resting on layout, exactly as the segment values are. If TITAN ever
 prints its segment tables ahead of its P&L, TQ001 and TQ002 begin asserting
 segment assets.
 
+**CORRECTION 2026-08-08. The central claim above is wrong.** These rows do not
+compete under `seen_keys` first-wins, and page order is irrelevant. `"total"` is
+an explicit member of `_SKIP_DESCRIPTIONS`, so `_should_skip_row` returns True
+and `_rows_to_records` `continue`s at `financial_extractor.py:441` — BEFORE the
+`resolve_metric` call at `:444`. All 8 TITAN rows come back flagged
+`SKIPPED by _should_skip_row`. The consequence drawn above ("if TITAN ever
+prints its segment tables ahead of its P&L, TQ001 and TQ002 begin asserting
+segment assets") does not follow.
+
+**Corrected census — 43 rows, not 3.** TITAN 8 (p8 x3, p10, p15 x3, p17),
+ETERNAL 2 (p34, OCR-garbled), ZOMATO AR 33, PAYTM 0. Every one has raw label
+literally `Total`. Two independent reasons none is the kept row for any live
+tuple: **35 never reach the extractor** (their pages are never classified
+FINANCIAL_STATEMENT — ETERNAL p34 is not among its FS pages, and none of
+ZOMATO's 20 are among its 15), and **the 8 that do are skipped before
+resolution**. The live TITAN `revenue` rows share no value with any `Total`.
+
+**CAUSE.** `resolve_metric("Total")` was called DIRECTLY and pipeline behaviour
+was reasoned from the result, instead of testing through the real entry point —
+the rule this document states, violated by this document. The `[METRIC TIE]`
+line quoted above is genuine, but it only ever fires for a caller that reaches
+the resolver, and for these rows the extractor never does.
+
+**WHAT SURVIVES, at much lower severity** — moved to section D:
+`_should_skip_row` matches `desc_lower` EXACTLY against `_SKIP_DESCRIPTIONS`
+while the rest of the pipeline reasons about the NORMALISED form, so `Total:` /
+`Total*` / `Total (1)` would clear the skip and reach the resolver. Zero
+instances in this corpus — all 43 are literally `Total`. Second defence added
+2026-08-08 (commit `1f87aa6`): `resolve_metric` returns `"total"` rather than
+letting the 4-way tie pick `revenue`. Verified `Total income` and
+`Total expenses` still resolve correctly.
+
+**CORRECTION 2026-08-08. The central claim above is wrong.** These rows do not compete under `seen_keys` first-wins, and page order is irrelevant. `"total"` is an explicit member of `_SKIP_DESCRIPTIONS`, so `_should_skip_row` returns True and `_rows_to_records` `continue`s at `financial_extractor.py:441` — BEFORE the `resolve_metric` call at `:444`. All 8 TITAN rows come back flagged `SKIPPED by _should_skip_row`. The consequence drawn above ("if TITAN ever prints its segment tables ahead of its P&L, TQ001 and TQ002 begin asserting segment assets") does not follow.
+
+**Corrected census — 43 rows, not 3.** TITAN 8 (p8 x3, p10, p15 x3, p17), ETERNAL 2 (p34, OCR-garbled), ZOMATO AR 33, PAYTM 0. Every one has raw label literally `Total`. Two independent reasons none is the kept row for any live tuple: **35 never reach the extractor** — their pages are never classified FINANCIAL_STATEMENT (ETERNAL p34 is not among its FS pages `[31,32,33,40,41,42]`, and none of ZOMATO's 20 are among its 15) — and **the 8 that do are skipped before resolution**. The live TITAN `revenue` rows share no value with any `Total`.
+
+**CAUSE.** `resolve_metric("Total")` was called DIRECTLY and pipeline behaviour was reasoned from the result, instead of testing through the real entry point — the rule this document states, violated by this document. The `[METRIC TIE]` line quoted above is genuine, but it only ever fires for a caller that reaches the resolver, and for these rows the extractor never does.
+
+**WHAT SURVIVES, at much lower severity** — moved to section D: `_should_skip_row` matches `desc_lower` EXACTLY against `_SKIP_DESCRIPTIONS` while the rest of the pipeline reasons about the NORMALISED form, so `Total:` / `Total*` / `Total (1)` would clear the skip and reach the resolver. Zero instances in this corpus — all 43 are literally `Total`. Second defence added 2026-08-08 (commit `1f87aa6`): `resolve_metric` returns `"total"` rather than letting the 4-way tie pick `revenue`. Verified `Total income` and `Total expenses` still resolve correctly.
+
+**ALSO RECORDED FROM THE SAME CENSUS**, and not acted on: ETERNAL p34's two rows read `Total 17.292 16.315 ~.833 54.364 Z0.?43` — decimal points where commas belong, on the Q4 revenue trio. That page yields no rows today so there is no live exposure, but `17.292` would parse as seventeen-point-two-nine-two, not 17,292. A fourth member of the OCR family after `(I)`→`(1)`, `(I 18)`→`(118)` and `I`+`7,292`→`17,292`. Do not write a decimal-separator heuristic on one unqueried page.
 #### `.1_203` is a stored metric
 
 TITAN page 15's unlabelled segment-results total reads
@@ -2717,3 +2786,73 @@ read from the same response.** Do not compare scores across runs without
 checking it, and do not compare API scores against
 `cohere_score_dump.py` output without checking it — that script has a hard
 abort for non-Cohere backends and the API does not.
+
+### Orphaned vector rows — Qdrant has no purge, and deterministic IDs only help while boundaries hold
+
+Collection held 2268 chunks before 2026-08-08 and 2560 after. The transcript
+added 129. **The other +163 are orphans.**
+
+`_make_chunk_id` hashes `doc_id:page:position:text[:100]`. A chunker change that
+shifts boundaries therefore produces NEW UUIDs rather than overwriting — the old
+points persist. The ETERNAL letter now shows 236 + 33 = 269 across its two
+doc_ids, matching the current parse; the previous, smaller cut is still resident
+alongside it.
+
+The stranded points are `is_latest=True` and fully retrievable, so they compete
+in every ETERNAL search. Live evidence in the same session's logs:
+
+    Near-duplicate suppressed | page=19 score=0.0086 overlap=98.6% with page=19 score=0.0165
+
+`_deduplicate_near_identical` absorbs most of it at retrieval, which is why this
+was invisible.
+
+**`purge_orphaned_metrics.py` has no vector-side counterpart.** MUST HAVE:
+`purge_orphaned_chunks.py` — scroll the collection, re-parse each document,
+delete any point whose chunk_id the current parse does not produce; dry-run
+first, same shape as the metrics purge. Deferred because it requires a
+corpus-wide re-parse, which has taken the WSL distro down twice.
+
+Also corrected: TITAN's four doc_ids now total **48** chunks (14/14/10/10), not
+the 24 recorded previously.
+
+### Wait on process exit, never on content appearing in output
+
+The `Total` census was first reported as **10 rows**. The real figure is **43**.
+A background scan's completion was detected by waiting for a section header to
+appear in the output file; the file was read mid-write.
+
+A partial read is INDISTINGUISHABLE from a complete one at the point of reading.
+Only the exit code carries that information. Same family as the
+empty-candidate-set network signature: a signal that looks like data.
+
+The corrected census STRENGTHENED the conclusion — 35 more rows, all still
+non-competing. That is the lucky case. The unlucky one is a truncated read that
+happens to agree with the hypothesis, and nothing in the method distinguishes
+them.
+
+### Comment-vs-behaviour drift — four instances, one cause
+
+Each of these states an intent the code does not implement. Each was true when
+written.
+
+1. **`_upsert_one`** — comment reasons a same-doc_id replay cannot have changed.
+   True of the document, false of the parser. (Defect 2, prior entry.)
+2. **`segments_to_skip`** (`_rows_to_records`) — the set held RAW label text and
+   was tested against `resolve_metric`'s CANONICAL output. Measured 2026-08-08:
+   9 of 10 members cannot match; the 10th (`segment results`) is an unmapped
+   self-identity no row reaches. **The guard has never fired.** `segment_revenue_*`
+   rows exist and are wanted, so it was DELETED rather than corrected — a working
+   version would discard data the system intends to keep.
+3. **`detect_sections` docstring** — claims the no-marker path "never silently
+   defaults to wrong financial_type" and sets `needs_review=True`. It does
+   neither. A transcript, a press release and a filing whose markers failed to
+   parse all take it identically. WARNING added 2026-08-08; the default itself is
+   correct for a transcript and was left in place.
+4. **`pipeline.py --doc-type` help** — advertises `transcript`; the CHECK
+   constraint requires `earnings_transcript`. Cost one failed ingest. The schema
+   is the older artifact and matches §8's registry; the help string is what is
+   wrong. **Not fixed as of this entry.**
+
+The constraint in (4) is also unenforced in code: `doc_type` is a free string
+until the INSERT, so an expensive parse precedes a cheap validation. Loud and
+pre-commit, so acceptable — recorded, not queued.
