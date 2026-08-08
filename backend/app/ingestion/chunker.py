@@ -396,7 +396,7 @@ def chunk_blocks(
         ticker:        e.g. "ETERNAL"
         fiscal_year:   e.g. "FY26"
         quarter:       e.g. "Q4" or None for annual reports
-        document_type: "quarterly_result" | "annual_report" | "drhp" | "transcript"
+        document_type: "quarterly_result" | "annual_report" | "drhp" | "earnings_transcript"
         filing_date:   ISO date string "YYYY-MM-DD"
         version:       Filing version, default "v1"
 
