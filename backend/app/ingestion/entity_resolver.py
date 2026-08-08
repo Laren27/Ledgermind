@@ -160,6 +160,40 @@ def resolve_metric(raw: str) -> str:
     canonical = METRIC_ALIASES.get(normalized_text)
     if canonical: return canonical
 
+    # A LABEL THAT IS ONLY THE WORD "TOTAL" NAMES NO METRIC.
+    #
+    # "total" is not an alias of anything, so it falls to Tier 2 and matches
+    # four different canonicals at one word each -- a declared tie broken by
+    # registry declaration order, which returns `revenue`. That is the
+    # resolver asserting something it cannot know: a bare Total carries no
+    # meaning without its section, and the same label means revenue, segment
+    # assets and segment liabilities on a single TITAN page.
+    #
+    # NO LIVE VICTIM TODAY. Census 2026-08-08: 43 rows in the corpus have
+    # desc_lower == "total" (TITAN 8, ETERNAL 2, ZOMATO AR 33, PAYTM 0), and
+    # none is the kept row for any tuple -- 35 sit on pages never classified
+    # FINANCIAL_STATEMENT, and the other 8 are caught by _should_skip_row,
+    # for which "total" is an explicit _SKIP_DESCRIPTIONS member.
+    #
+    # THIS IS THE SECOND DEFENCE, AND IT EXISTS BECAUSE THE FIRST IS EXACT.
+    # _should_skip_row tests `desc_lower in _SKIP_DESCRIPTIONS`, an equality
+    # test on the RAW-lowercased label, while everything else here reasons
+    # about the NORMALISED form. A label normalising to "total" but not
+    # lowercasing to exactly "total" -- "Total:", "Total*", "Total (1)" --
+    # clears the skip and reaches this function. Zero such labels exist
+    # today; the OCR family that produced (I)->(1) and I+7,292->17,292 is
+    # how one appears.
+    #
+    # Returns the unmapped form rather than raising: an unrecognised label is
+    # a normal outcome here, and "total" as a stored metric name is visible
+    # and harmless, where a silent `revenue` is neither.
+    if normalized_text == "total":
+        logger.warning(
+            "Refusing to resolve bare 'Total' (raw: %r) — a total row names no "
+            "metric without its section. Storing as-is.", raw,
+        )
+        return "total"
+
     # Tier 2 — whole-word (token-set) matching, longest-alias-first.
     #
     # WHY THIS REPLACED RAW SUBSTRING MATCHING: `alias in normalized_text`
