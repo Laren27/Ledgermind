@@ -1773,9 +1773,10 @@ segment assets") does not follow.
 ETERNAL 2 (p34, OCR-garbled), ZOMATO AR 33, PAYTM 0. Every one has raw label
 literally `Total`. Two independent reasons none is the kept row for any live
 tuple: **35 never reach the extractor** (their pages are never classified
-FINANCIAL_STATEMENT — ETERNAL p34 is not among its FS pages, and none of
-ZOMATO's 20 are among its 15), and **the 8 that do are skipped before
-resolution**. The live TITAN `revenue` rows share no value with any `Total`.
+FINANCIAL_STATEMENT — ETERNAL p34 is not among its FS pages
+`[31,32,33,40,41,42]`, and none of ZOMATO's 20 are among its 15), and **the 8
+that do are skipped before resolution**. The live TITAN `revenue` rows share no
+value with any `Total`.
 
 **CAUSE.** `resolve_metric("Total")` was called DIRECTLY and pipeline behaviour
 was reasoned from the result, instead of testing through the real entry point —
@@ -1792,15 +1793,14 @@ instances in this corpus — all 43 are literally `Total`. Second defence added
 letting the 4-way tie pick `revenue`. Verified `Total income` and
 `Total expenses` still resolve correctly.
 
-**CORRECTION 2026-08-08. The central claim above is wrong.** These rows do not compete under `seen_keys` first-wins, and page order is irrelevant. `"total"` is an explicit member of `_SKIP_DESCRIPTIONS`, so `_should_skip_row` returns True and `_rows_to_records` `continue`s at `financial_extractor.py:441` — BEFORE the `resolve_metric` call at `:444`. All 8 TITAN rows come back flagged `SKIPPED by _should_skip_row`. The consequence drawn above ("if TITAN ever prints its segment tables ahead of its P&L, TQ001 and TQ002 begin asserting segment assets") does not follow.
+**ALSO RECORDED FROM THE SAME CENSUS**, and not acted on: ETERNAL p34's two rows
+read `Total 17.292 16.315 ~.833 54.364 Z0.?43` — decimal points where commas
+belong, on the Q4 revenue trio. That page yields no rows today so there is no
+live exposure, but `17.292` would parse as seventeen-point-two-nine-two, not
+17,292. A fourth member of the OCR family after `(I)`->`(1)`, `(I 18)`->`(118)`
+and `I`+`7,292`->`17,292`. Do not write a decimal-separator heuristic on one
+unqueried page.
 
-**Corrected census — 43 rows, not 3.** TITAN 8 (p8 x3, p10, p15 x3, p17), ETERNAL 2 (p34, OCR-garbled), ZOMATO AR 33, PAYTM 0. Every one has raw label literally `Total`. Two independent reasons none is the kept row for any live tuple: **35 never reach the extractor** — their pages are never classified FINANCIAL_STATEMENT (ETERNAL p34 is not among its FS pages `[31,32,33,40,41,42]`, and none of ZOMATO's 20 are among its 15) — and **the 8 that do are skipped before resolution**. The live TITAN `revenue` rows share no value with any `Total`.
-
-**CAUSE.** `resolve_metric("Total")` was called DIRECTLY and pipeline behaviour was reasoned from the result, instead of testing through the real entry point — the rule this document states, violated by this document. The `[METRIC TIE]` line quoted above is genuine, but it only ever fires for a caller that reaches the resolver, and for these rows the extractor never does.
-
-**WHAT SURVIVES, at much lower severity** — moved to section D: `_should_skip_row` matches `desc_lower` EXACTLY against `_SKIP_DESCRIPTIONS` while the rest of the pipeline reasons about the NORMALISED form, so `Total:` / `Total*` / `Total (1)` would clear the skip and reach the resolver. Zero instances in this corpus — all 43 are literally `Total`. Second defence added 2026-08-08 (commit `1f87aa6`): `resolve_metric` returns `"total"` rather than letting the 4-way tie pick `revenue`. Verified `Total income` and `Total expenses` still resolve correctly.
-
-**ALSO RECORDED FROM THE SAME CENSUS**, and not acted on: ETERNAL p34's two rows read `Total 17.292 16.315 ~.833 54.364 Z0.?43` — decimal points where commas belong, on the Q4 revenue trio. That page yields no rows today so there is no live exposure, but `17.292` would parse as seventeen-point-two-nine-two, not 17,292. A fourth member of the OCR family after `(I)`→`(1)`, `(I 18)`→`(118)` and `I`+`7,292`→`17,292`. Do not write a decimal-separator heuristic on one unqueried page.
 #### `.1_203` is a stored metric
 
 TITAN page 15's unlabelled segment-results total reads
