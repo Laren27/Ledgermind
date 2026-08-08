@@ -2281,6 +2281,57 @@ against produced 460 + 273 + 432 + 272), and ZERO `is_latest = FALSE` rows. Any
 future comparison against 87/88 must first confirm that state; a differing row
 count means the two numbers are not comparable.
 
+#### Sweep 2026-08-08 — 89/90 held across fourteen commits, and what that does NOT establish
+
+Full three-dataset sweep on `gemini-3.1-flash-lite`, `--delay 35`, launched detached. All three gates clean — single provider, single model, no fallback:
+ETERNAL q4fy26_eternal.json Providers {'gemini': 48} (+7 blocked) 55/55 100.0%
+PAYTM q_paytm.json Providers {'gemini': 18} (+2 blocked) 19/20 95.0%
+TITAN q_titan.json Providers {'gemini': 13} (+2 blocked) 15/15 100.0%
+aggregate 89/90
+
+Single failure is **PQ012**, `expected_path=semantic` against actual `cross` — the standing `known_deliberate_failure`, unchanged in reason and category. No failure at a fixed position, so no quota signature.
+
+**WHAT THIS VALIDATES.** Two changes made the same day, both against a live baseline:
+
+1. `CITATION_RELEVANCE_FLOOR` removed. **Eternal is the clean single-variable gate for this** — it is untouched by the PAYTM re-label, it is 55 of the 90 questions, and it is the largest semantic surface in the corpus. 55/55.
+2. PAYTM re-labelled `annual_report` / `quarter=None`. This made the quarter-filter latent risk live for the first time (`quarter` is a hard `must` when set, so a Q4-resolving query now excludes PAYTM's annual chunks on the first attempt, recovering via CRAG rung 1). Paytm held at 19/20 — the exposure cost nothing measurable.
+
+**WHAT THIS DOES NOT ESTABLISH, and the distinction is the entry.** The suite scores ANSWERS, not CITATION SETS. It confirms the floor removal broke nothing scored; it does not measure whether the now-unfiltered citation lists became longer or noisier. That is precisely the property the removal changed, and nothing in the golden set observes it.
+
+Same shape as the golden-coverage finding: **an eval score bounds the correctness of what it asserts and says nothing about anything else.** Not one of the four defects found on 2026-08-08 was assertable by any question in the suite — the citation floor divergence, 139 dangling doc_ids, the transcript's page-boundary attribution loss, and the `Total` census error were all invisible to a green sweep, and the sweep was green throughout the entire session.
+
+**A green sweep after this much change is evidence of no regression, not evidence the work was unnecessary.**
+
+OPEN, cheap, not done: count citations per response across the corpus now versus the floor era. If typical lists went from ~2 to ~5, that is the display-weight problem the removal deliberately handed to the UI, and it should be recorded as a number rather than a prediction.
+
+#### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
+
+The default `--out` is a single path, so each dataset's detail JSON overwrites the previous one. A three-dataset sweep therefore ends holding only the LAST dataset's detail. Eternal's JSON from the 2026-08-08 sweep is gone; the human-readable report survives only because each run was `tee`d to its own `/tmp/sweep_<dataset>.txt`.
+
+Distinct from the already-recorded `--out` defect (a path resolving into `golden_dataset/`, fixed with a parse-time guard). This one destroys the instrument's own output silently, and a sweep costs an hour of wall time and real quota to reproduce. Fix is to default the filename from the dataset, not to a constant. NOT DONE.
+
+#### Two false `ingestion_state` values, found by the new integrity check on its first run
+
+Neither was the defect `check_citation_integrity.py` was written for, and both were introduced by tooling that registers documents without completing them:
+
+- **`sql/seed.sql`'s two ZOMATO fixtures** carried `ingestion_state='indexed'` having never been ingested — synthetic `a1000000-…` doc_ids, placeholder checksums (`abc123_zomato_fy24`), zero chunks, zero financials. Corrected to `uploaded`, which is the honest state for a registered-but-unprocessed document.
+- **ETERNAL's two `quarterly_result` rows** sat at `processing` with 236 and 33 live chunks. Caused by running `chunker.py`'s smoke test, which calls `classify_and_register` (setting PROCESSING) and never reaches the pipeline stage that flips it to INDEXED. Corrected to `indexed`.
+
+**The fix was to the DATA, not to the checker.** Teaching the check to tolerate a placeholder checksum would have made it pass over exactly the condition it exists to catch, on a rule a genuinely broken document could also satisfy. A document that was never ingested is not `indexed`, and the fixture claiming otherwise was itself the defect.
+
+Nothing reads `ingestion_state` for retrieval, so neither was a live defect. **Both corrections are LOCAL ONLY** — Supabase carries its own `documents` rows and may hold the same two false states. Per the standing obligation, a data correction is not deployed until it has run against Supabase.
+
+#### A watcher whose pattern matches itself never exits
+
+The PAYTM sweep monitor ran:
+
+    while pgrep -f "eval_runner.*q_paytm" >/dev/null; do sleep 15; done
+
+`pgrep -f` matches full command lines, and the monitor's own command line CONTAINS that pattern. It matched itself and spun for ~90 minutes after PAYTM had already finished at 21:55. Reproduced deliberately: `pgrep` returned four matches, including the wrapper shells.
+
+Second instance in one day of a completion signal that cannot distinguish the thing being watched from the act of watching — the first read an output file mid-write and reported 10 rows where there were 43.
+
+**STANDING RULE, now in two forms: wait on a PID (`kill -0 <pid>`, or `wait`), never on a string pattern and never on content appearing in a file.** A pattern that can match the watcher cannot signal the watched. Cost here was wall-clock only; the eval process, the datasets and every threshold were untouched.
 #### Truth Resolution / restatement handling — UNTESTED, not verified
 
 This consolidates and supersedes the shorter note recorded earlier in this file
