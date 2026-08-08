@@ -496,7 +496,7 @@ if __name__ == "__main__":
     parser.add_argument("--quarter", required=True,
                          help="Q1/Q2/Q3/Q4, or 'none' for annual reports")
     parser.add_argument("--doc-type", required=True,
-                         help="quarterly_result | annual_report | drhp | transcript")
+                         help="quarterly_result | annual_report | drhp | earnings_transcript")
     parser.add_argument("--filing-date", required=True,
                          help="YYYY-MM-DD, from the PDF cover page")
     parser.add_argument("--version", default="v1")
