@@ -251,6 +251,32 @@ _ROSTER_ENTRY_RE = re.compile(r"^\d+[.)]\s*(.+?)\s*[\u2013\u2014-]\s*.+$")
 
 MODERATOR_SPEAKER = "Moderator"
 
+# ZERO, and the zero is the point.
+#
+# OVERLAP_CHARS (600) exists to stop a chunk boundary severing a fact from its
+# subject -- it was raised from 50 to 150 tokens specifically for PAYTM's PPBL
+# impairment line. That reasoning holds for a FILING, where a split can orphan
+# a fact with nothing left to reconnect it.
+#
+# IT DOES NOT HOLD FOR A TRANSCRIPT TURN, AND ONLY BECAUSE OF THE CHANGE THAT
+# LANDED FIRST. Speaker threading + the "(cont.)" prefix reconnect a
+# continuation by ATTRIBUTION rather than by repeated text, so the overlap is
+# now doing no work here. The sequence matters: dropping this before threading
+# existed would have created the orphans it was protecting against.
+#
+# It was also actively harmful. 600 against max_chars 800 leaves 200 chars of
+# forward progress, so _recursive_split's separator loop overflows repeatedly
+# and falls through to its `sep == ""` character-slice branch -- which cuts
+# inside words. Measured 2026-08-08 before this change: continuation chunks
+# opening 'usiness to work', 'urav's previous question', 'een the principle'.
+#
+# Zero rather than a smaller non-zero value: ~100 chars does not reliably span
+# a sentence, so it would not deliver the safety it implies, and an unmeasured
+# constant chosen "just in case" is the habit this project has already paid
+# for. Applies to transcript turns only; OVERLAP_CHARS is unchanged everywhere
+# else.
+TRANSCRIPT_TURN_OVERLAP_CHARS = 0
+
 
 def _parse_management_roster(blocks: list[PageBlock]) -> set[str]:
     """Names declared under the transcript's own 'Management representatives:'.
@@ -304,7 +330,7 @@ def _split_long_turn(speaker: str, turn: str, max_chars: int) -> list[str]:
     pieces = _recursive_split(
         text=turn,
         max_chars=max_chars,
-        overlap_chars=OVERLAP_CHARS,
+        overlap_chars=TRANSCRIPT_TURN_OVERLAP_CHARS,
         separators=SPLIT_SEPARATORS,
     )
     if not pieces:
