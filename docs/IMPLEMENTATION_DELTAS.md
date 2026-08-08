@@ -2907,6 +2907,84 @@ Found 2026-08-08 while scoping `purge_orphaned_chunks.py`. **139 of 2555 points 
 **CONSTRAINT THAT GOVERNS ANY VERSION OF (1):** `financials_doc_id_fkey` is `ON DELETE CASCADE`. Deleting a `documents` row destroys its `financials` rows silently — 1437 per database, no warning, recoverable only by re-ingest. **The migration must UPDATE `doc_id` in place, never delete-and-reinsert**, and must run inside a transaction with a row-count guard, as migration 017 did. A delete-based rewrite wipes the corpus on both sides.
 
 **ALSO FOUND, and NOT acted on:** Supabase carries no transcript row and no ZOMATO seed fixtures, so the local-only corrections recorded elsewhere in this session have no counterpart there. Its PAYTM rows still read `quarterly_result` / `quarter=Q4` while local now reads `annual_report` / `quarter=None` — a metadata divergence created by the 2026-08-08 re-ingest and not yet deployed. Nothing further was written to either database once this was found.
+### CORRECTION — the "139 dangling chunks" were not orphans, and the repair degraded production
+
+**The entry above is wrong on its central claim, and the fix it describes made production worse.** Kept in place with this correction attached rather than rewritten, because the reasoning error is the useful part.
+
+**WHAT IS ACTUALLY TRUE.** Local Postgres and Supabase hold the SAME documents under COMPLETELY DISJOINT doc_ids. Same PDFs, same `sha256_checksum`, same 1437 `financials` rows on each side, different primary keys throughout:
+
+| document | local | Supabase |
+|---|---|---|
+| ETERNAL FY24 consolidated | `bd300f21` | `823639b3` |
+| ETERNAL FY26 Q4 consolidated | `b50dc351` | `b8a89f63` |
+| PAYTM consolidated | `a529de7a` | `55e1549e` |
+| PAYTM standalone | `f6390981` | `5862fad6` |
+| TITAN standalone | `ab1cb2fb` | `ba7e525b` |
+| TITAN consolidated | `7f3f7eb2` | `919ea7e3` |
+
+`register_sections` mints a fresh `uuid4()` per call and preserves an existing one ONLY via `ON CONFLICT (sha256_checksum) DO UPDATE ... RETURNING doc_id`. That conflict is per-database. Each database therefore minted its own ids on first ingest, and **there is ONE Qdrant collection serving both.**
+
+**A single vector store cannot satisfy two databases with different primary keys.** Whichever side Qdrant matches, the other side's citations dangle.
+
+**SO THE 139 CHUNKS WERE CORRECT — for Supabase.** `55e1549e`, `5862fad6`, `ba7e525b`, `919ea7e3` are Supabase's PAYTM and TITAN doc_ids, and they were deleted from Qdrant on 2026-08-08 as orphans on the strength of a lookup against LOCAL only. Before that deletion, Qdrant's PAYTM and TITAN doc_ids matched Supabase; they now match local instead. The practical impact is narrower than it first appears, and that matters: nothing in the backend joins a citation's doc_id back to documents at runtime — retrieval filters on tenant/company/fiscal_year/quarter/financial_type and never on doc_id, and no frontend component resolves one. So the divergence produces no error and no failed query. It degrades offline verifiability and audit lineage only, which is exactly why the 2026-08-08 sweep passed 89/90 with 139 points dangling. The defect is real and worth fixing; describing it as "production citations are broken" overstates it.
+
+**THE ERROR: one store was read as the truth and everything disagreeing with it as corruption.** The measurement was correct — those doc_ids genuinely had no row in the database that was consulted. The inference was not. Nothing in the method distinguished "absent from `documents`" from "absent from THIS `documents`", and the entry above states a mechanism (re-registration minting new ids, Qdrant keeping the old) that did not occur.
+
+**`check_citation_integrity.py` WOULD HAVE CAUGHT THIS, AND DID NOT, BECAUSE OF HOW IT WAS RUN.** It takes a tenant and reads whatever `get_connection()` returns — one database, never asked which. A checker that structurally can only inspect one of two stores is the same "passes having inspected nothing" shape the script's own docstring warns about, arrived at from a different direction. **It must be run against BOTH databases, and should say which one it inspected.**
+
+**WHY THIS IS RECORDED AS AN ARCHITECTURAL PROBLEM AND NOT A BUG WITH A FIX.** Three options, genuinely different:
+
+1. **Make `doc_id` deterministic** from `sha256_checksum + financial_type`, so both databases agree by construction rather than by discipline. Fixes the class permanently. Requires rewriting every `doc_id` in both databases plus a full Qdrant re-ingest. **PREFERRED**, not done.
+2. **A Qdrant collection per environment.** Simple, doubles the footprint on a free tier and doubles every ingest.
+3. **Declare one database canonical** and point Qdrant at it, treating the other as read-only against those ids.
+
+**CONSTRAINT THAT GOVERNS ANY VERSION OF (1):** `financials_doc_id_fkey` is `ON DELETE CASCADE`. Deleting a `documents` row destroys its `financials` rows silently — 1437 per database, no warning, recoverable only by re-ingest. **The migration must UPDATE `doc_id` in place, never delete-and-reinsert**, and must run inside a transaction with a row-count guard, as migration 017 did. A delete-based rewrite wipes the corpus on both sides.
+
+**AND A SECOND HAZARD IN THE SAME FILE.** `db_loader._cleanup_test_data` runs DELETE FROM documents WHERE company = 'ETERNAL' AND fiscal_year = 'FY26' — scoped by company and year, not by the test's own doc_ids. Combined with the cascade, running python -m app.ingestion.db_loader against a populated database destroys real ETERNAL FY26 documents and every financials row beneath them. Unrelated to doc_id, found while enumerating for it, and it lives in the file any doc_id migration must be tested against.
+
+**ALSO FOUND, and NOT acted on:** Supabase carries no transcript row and no ZOMATO seed fixtures, so the local-only corrections recorded elsewhere in this session have no counterpart there. Its PAYTM rows still read `quarterly_result` / `quarter=Q4` while local now reads `annual_report` / `quarter=None` — a metadata divergence created by the 2026-08-08 re-ingest and not yet deployed. Nothing further was written to either database once this was found.
+
+**THE MAPPING IS DERIVABLE WITHOUT RE-PARSING ANYTHING.** `section_checksum`(file_sha256, financial_type) already computes f"{sha256}_{financial_type}" and stores it in documents.sha256_checksum, which is UNIQUE and is already the ON CONFLICT target. The proposed deterministic doc_id is a pure function of a column both databases already hold, so the local↔Supabase correspondence can be produced by a join — no PDF parse, no ingest. Note also that sha256_checksum is the existing unique key, so a deterministic doc_id adds no new uniqueness guarantee; it makes the two databases agree, which is the whole point.
+
+### CORRECTION — the "139 dangling chunks" were not orphans, and the repair degraded production
+
+**The entry above is wrong on its central claim, and the fix it describes made production worse.** Kept in place with this correction attached rather than rewritten, because the reasoning error is the useful part.
+
+**WHAT IS ACTUALLY TRUE.** Local Postgres and Supabase hold the SAME documents under COMPLETELY DISJOINT doc_ids. Same PDFs, same `sha256_checksum`, same 1437 `financials` rows on each side, different primary keys throughout:
+
+| document | local | Supabase |
+|---|---|---|
+| ETERNAL FY24 consolidated | `bd300f21` | `823639b3` |
+| ETERNAL FY26 Q4 consolidated | `b50dc351` | `b8a89f63` |
+| PAYTM consolidated | `a529de7a` | `55e1549e` |
+| PAYTM standalone | `f6390981` | `5862fad6` |
+| TITAN standalone | `ab1cb2fb` | `ba7e525b` |
+| TITAN consolidated | `7f3f7eb2` | `919ea7e3` |
+
+`register_sections` mints a fresh `uuid4()` per call and preserves an existing one ONLY via `ON CONFLICT (sha256_checksum) DO UPDATE ... RETURNING doc_id`. That conflict is per-database. Each database therefore minted its own ids on first ingest, and **there is ONE Qdrant collection serving both.**
+
+**A single vector store cannot satisfy two databases with different primary keys.** Whichever side Qdrant matches, the other side's citations dangle.
+
+**SO THE 139 CHUNKS WERE CORRECT — for Supabase.** `55e1549e`, `5862fad6`, `ba7e525b`, `919ea7e3` are Supabase's PAYTM and TITAN doc_ids, and they were deleted from Qdrant on 2026-08-08 as orphans on the strength of a lookup against LOCAL only. Before that deletion, Qdrant's PAYTM and TITAN doc_ids matched Supabase; they now match local instead. The practical impact is narrower than it first appears, and that matters: nothing in the backend joins a citation's doc_id back to documents at runtime — retrieval filters on tenant/company/fiscal_year/quarter/financial_type and never on doc_id, and no frontend component resolves one. So the divergence produces no error and no failed query. It degrades offline verifiability and audit lineage only, which is exactly why the 2026-08-08 sweep passed 89/90 with 139 points dangling. The defect is real and worth fixing; describing it as "production citations are broken" overstates it.
+
+**THE ERROR: one store was read as the truth and everything disagreeing with it as corruption.** The measurement was correct — those doc_ids genuinely had no row in the database that was consulted. The inference was not. Nothing in the method distinguished "absent from `documents`" from "absent from THIS `documents`", and the entry above states a mechanism (re-registration minting new ids, Qdrant keeping the old) that did not occur.
+
+**`check_citation_integrity.py` WOULD HAVE CAUGHT THIS, AND DID NOT, BECAUSE OF HOW IT WAS RUN.** It takes a tenant and reads whatever `get_connection()` returns — one database, never asked which. A checker that structurally can only inspect one of two stores is the same "passes having inspected nothing" shape the script's own docstring warns about, arrived at from a different direction. **It must be run against BOTH databases, and should say which one it inspected.**
+
+**WHY THIS IS RECORDED AS AN ARCHITECTURAL PROBLEM AND NOT A BUG WITH A FIX.** Three options, genuinely different:
+
+1. **Make `doc_id` deterministic** from `sha256_checksum + financial_type`, so both databases agree by construction rather than by discipline. Fixes the class permanently. Requires rewriting every `doc_id` in both databases plus a full Qdrant re-ingest. **PREFERRED**, not done.
+2. **A Qdrant collection per environment.** Simple, doubles the footprint on a free tier and doubles every ingest.
+3. **Declare one database canonical** and point Qdrant at it, treating the other as read-only against those ids.
+
+**CONSTRAINT THAT GOVERNS ANY VERSION OF (1):** `financials_doc_id_fkey` is `ON DELETE CASCADE`. Deleting a `documents` row destroys its `financials` rows silently — 1437 per database, no warning, recoverable only by re-ingest. **The migration must UPDATE `doc_id` in place, never delete-and-reinsert**, and must run inside a transaction with a row-count guard, as migration 017 did. A delete-based rewrite wipes the corpus on both sides.
+
+**AND A SECOND HAZARD IN THE SAME FILE.** `db_loader._cleanup_test_data` runs DELETE FROM documents WHERE company = 'ETERNAL' AND fiscal_year = 'FY26' — scoped by company and year, not by the test's own doc_ids. Combined with the cascade, running python -m app.ingestion.db_loader against a populated database destroys real ETERNAL FY26 documents and every financials row beneath them. Unrelated to doc_id, found while enumerating for it, and it lives in the file any doc_id migration must be tested against.
+
+**ALSO FOUND, and NOT acted on:** Supabase carries no transcript row and no ZOMATO seed fixtures, so the local-only corrections recorded elsewhere in this session have no counterpart there. Its PAYTM rows still read `quarterly_result` / `quarter=Q4` while local now reads `annual_report` / `quarter=None` — a metadata divergence created by the 2026-08-08 re-ingest and not yet deployed. Nothing further was written to either database once this was found.
+
+**THE MAPPING IS DERIVABLE WITHOUT RE-PARSING ANYTHING.** `section_checksum`(file_sha256, financial_type) already computes f"{sha256}_{financial_type}" and stores it in documents.sha256_checksum, which is UNIQUE and is already the ON CONFLICT target. The proposed deterministic doc_id is a pure function of a column both databases already hold, so the local↔Supabase correspondence can be produced by a join — no PDF parse, no ingest. Note also that sha256_checksum is the existing unique key, so a deterministic doc_id adds no new uniqueness guarantee; it makes the two databases agree, which is the whole point.
+
 ### Orphaned vector rows — Qdrant has no purge, and deterministic IDs only help while boundaries hold
 
 Collection held 2268 chunks before 2026-08-08 and 2560 after. The transcript
