@@ -2302,7 +2302,12 @@ Same shape as the golden-coverage finding: **an eval score bounds the correctnes
 
 **A green sweep after this much change is evidence of no regression, not evidence the work was unnecessary.**
 
-OPEN, cheap, not done: count citations per response across the corpus now versus the floor era. If typical lists went from ~2 to ~5, that is the display-weight problem the removal deliberately handed to the UI, and it should be recorded as a number rather than a prediction.
+CLOSED SAME DAY, and the prediction was wrong. Measured over 33 cited responses in `audit_log` (26 semantic, 7 cross), zero quota — the pre-removal count is recoverable from the post-removal one, since the floor dropped everything below 0.05 and kept top-1 when all fell below:
+**The floor was a NO-OP on 25 of 33 responses.** Three quarters of traffic saw no change, the median did not move, and the total rose 17%. The "noisier citation lists" cost is not a broad degradation — it is 8 responses out of 33.
+
+**And those 8 are the responses that needed the removal most. THREE would have shown a SINGLE citation while the model read five** — four chunks in context, invisible, which is exactly the configuration that produced the untraceable "4.8 million square feet" figure. One instance was found by accident; this says three more were sitting in six hours of ordinary traffic.
+
+Note `min=5 max=5` on the current figures: every response now receives exactly `TOP_K_RERANK=5`, so citation COUNT carries no information at all. Any UI signal about evidence quality has to come from the scores, not the length of the list.
 
 #### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
 
