@@ -117,7 +117,7 @@ class ChunkMetadata:
     fiscal_year: str
     quarter: Optional[str]
     financial_type: str
-    document_type: str                  # quarterly_result / annual_report / drhp
+    document_type: str                  # quarterly_result / annual_report / drhp / earnings_transcript
     reporting_standard: str = "Ind AS"
 
     # Temporal
@@ -135,6 +135,21 @@ class ChunkMetadata:
 
     # Table header (populated only for TABLE chunks)
     table_header: Optional[list[str]] = None
+
+    # Speaker attribution (earnings_transcript only; "unknown" elsewhere)
+    #
+    # WHY THIS IS A STORED FIELD AND NOT DERIVED AT QUERY TIME. A transcript
+    # chunk carries a claim only if MANAGEMENT made it. Analyst turns are
+    # questions, and this document denies several of their premises in the very
+    # next turn -- inventory days (p10), A&P flat sequentially (p9), orders per
+    # customer (p8). Treating an analyst premise as a company claim is how a
+    # contradiction detector manufactures disagreement, which is the one
+    # failure that inverts this system's stated value.
+    #
+    # The roster is parsed from the document's own page-1 declaration, not
+    # inferred and not hardcoded. "unknown" is a real third outcome, never a
+    # silent default to either side.
+    speaker_role: str = "unknown"       # management / analyst / moderator / unknown
 
     # Flags
     needs_review: bool = False          # True if header detection failed
