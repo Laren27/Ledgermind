@@ -2851,7 +2851,8 @@ written.
 4. **`pipeline.py --doc-type` help** — advertises `transcript`; the CHECK
    constraint requires `earnings_transcript`. Cost one failed ingest. The schema
    is the older artifact and matches §8's registry; the help string is what is
-   wrong. **Not fixed as of this entry.**
+   wrong. **FIXED 2026-08-08** in `pipeline.py` and in `chunk_blocks`'s
+   docstring, which carried the same list.
 
 The constraint in (4) is also unenforced in code: `doc_type` is a free string
 until the INSERT, so an expensive parse precedes a cheap validation. Loud and
