@@ -155,6 +155,47 @@ def _is_narrative(chunk: ChunkResult) -> bool:
     return (chunk.get("chunk_type") or "").upper() in NARRATIVE_CHUNK_TYPES
 
 
+# Speaker roles whose statements count as the COMPANY's claims. See
+# _is_claim_eligible.
+CLAIMANT_SPEAKER_ROLES = frozenset({"management"})
+
+
+def _speaker_permits_claim(chunk: ChunkResult) -> bool:
+    """True unless the chunk names a speaker whose claims do not count.
+
+    THE RULE IS NOT "transcript chunks must be management". It is: a chunk that
+    DECLARES a speaker role other than "unknown" must declare a claimant one.
+    A filing chunk names no speaker and carries "unknown", so it passes exactly
+    as before — gating on "unknown" would silence the entire filings corpus,
+    which is the empty-roster failure in a different costume.
+
+    WHY ANALYST TURNS ARE EXCLUDED. An analyst turn is a QUESTION, and its
+    premises are frequently wrong — the Q4FY26 call denies three of them in the
+    turn immediately following: inventory days rising (p10, "fairly steady...
+    unlike what you suggested"), A&P flat sequentially (p9), orders per
+    customer falling to 3.35 (p8). Counting an analyst's premise as a company
+    claim would let the detector flag the company for disagreeing with a
+    question it answered correctly. That is a FABRICATED contradiction, and the
+    module docstring is explicit that fabricating disagreement is the one
+    failure which inverts this system's stated value.
+
+    Moderator turns are procedural. "unknown" transcript chunks (the cover
+    page) pass here and are filtered by metric anchoring downstream.
+    """
+    role = (chunk.get("speaker_role") or "unknown").lower()
+    return role == "unknown" or role in CLAIMANT_SPEAKER_ROLES
+
+
+def _is_claim_eligible(chunk: ChunkResult) -> bool:
+    """Both conditions a chunk must meet to hold a comparable claim.
+
+    Deliberately two predicates rather than one widened test: they fail for
+    different reasons (wrong chunk TYPE vs wrong SPEAKER) and the counters
+    below report them separately, so a suppressed detection can be attributed.
+    """
+    return _is_narrative(chunk) and _speaker_permits_claim(chunk)
+
+
 def _near(text: str, start: int, end: int, pattern: re.Pattern) -> bool:
     """True if `pattern` matches within PROXIMITY_WINDOW chars of [start, end)."""
     window = text[max(0, start - PROXIMITY_WINDOW):min(len(text), end + PROXIMITY_WINDOW)]
@@ -263,10 +304,14 @@ def detect_magnitude_contradictions(
         return flags
 
     skipped_non_narrative = 0
+    skipped_non_claimant = 0
 
     for chunk in chunks:
         if not _is_narrative(chunk):
             skipped_non_narrative += 1
+            continue
+        if not _speaker_permits_claim(chunk):
+            skipped_non_claimant += 1
             continue
 
         claims = extract_numeric_claims(chunk["text"], anchor=anchor)
@@ -304,6 +349,15 @@ def detect_magnitude_contradictions(
             "chunks are the extraction source, not independent claims)",
             skipped_non_narrative,
         )
+    if skipped_non_claimant:
+        # INFO, not debug: this one suppresses a detection that would otherwise
+        # have fired, and a suppression nobody can see is indistinguishable
+        # from a detector that found nothing.
+        logger.info(
+            "Magnitude check skipped %d chunk(s) on speaker role — a question "
+            "is not a company claim",
+            skipped_non_claimant,
+        )
 
     return flags
 
@@ -336,7 +390,7 @@ def detect_directional_contradictions(
         return flags
 
     for chunk in chunks:
-        if not _is_narrative(chunk):
+        if not _is_claim_eligible(chunk):
             continue
 
         text_direction = extract_direction(chunk["text"], anchor=anchor)
