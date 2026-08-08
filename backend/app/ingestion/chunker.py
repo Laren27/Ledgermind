@@ -192,14 +192,29 @@ TRANSCRIPT_DOC_TYPE = "earnings_transcript"
 # still applies inside a single speaker's answer.
 
 
-def _split_speaker_turns(text: str) -> list[tuple[str, str]]:
+def _split_speaker_turns(
+    text: str, incoming_speaker: str = ""
+) -> tuple[list[tuple[str, str]], str]:
     """Segment transcript text into (speaker, turn_text) pairs.
 
-    Text before the first speaker line (cover page, disclaimers) is returned
-    with an empty speaker rather than discarded.
+    Returns the pairs AND the speaker still talking at the end of the text, so
+    the caller can thread it into the next block.
+
+    WHY THE THREAD EXISTS. parse_pdf emits ONE BLOCK PER PAGE, so a turn
+    spanning a page break has its speaker line on the previous page and its
+    remainder starts bare. Measured 2026-08-08 before this parameter existed:
+    10 of 129 chunks classified "unknown" that way, and they were not cover
+    text -- they included Akshant's 3,000-store guidance (p3), Albinder on
+    unhealthy growth (p10) and Akshant on customer retention (p12). Real
+    management speech, attribution lost at the page boundary, which is the
+    exact failure this whole mechanism exists to prevent.
+
+    incoming_speaker="" is correct for the first block: text before any speaker
+    line (cover page, disclaimers) genuinely has no speaker and must classify
+    "unknown" rather than inheriting one.
     """
     turns: list[tuple[str, str]] = []
-    speaker = ""
+    speaker = incoming_speaker
     buf: list[str] = []
 
     for line in text.split("\n"):
@@ -215,7 +230,63 @@ def _split_speaker_turns(text: str) -> list[tuple[str, str]]:
     if buf and "\n".join(buf).strip():
         turns.append((speaker, "\n".join(buf).strip()))
 
-    return turns
+    return turns, speaker
+
+
+# Carries the speaker still talking at the end of one block into the next.
+# A module-level cell rather than a return value because _chunk_text_block is
+# called through a shared **kwargs dict alongside _chunk_unsplittable_block,
+# and changing its return type would change both call sites for one document
+# type. Written and read only within a single chunk_blocks() call, which is
+# synchronous and single-threaded; chunk_blocks resets it before the loop.
+_OUTGOING: dict[str, str] = {"speaker": ""}
+
+ROSTER_ANCHOR = "Management representatives:"
+
+# "1. Albinder Singh Dhindsa - Chief Executive Officer, Eternal Limited"
+# EN DASH (U+2013), which is what the filing prints -- verified against the
+# parsed page-1 text, not assumed. A hyphen is accepted too so a differently
+# typeset transcript is not silently unparseable.
+_ROSTER_ENTRY_RE = re.compile(r"^\d+[.)]\s*(.+?)\s*[\u2013\u2014-]\s*.+$")
+
+MODERATOR_SPEAKER = "Moderator"
+
+
+def _parse_management_roster(blocks: list[PageBlock]) -> set[str]:
+    """Names declared under the transcript's own 'Management representatives:'.
+
+    Returns an EMPTY SET when the block is absent or unparseable. The caller
+    must treat that as a hard failure for a transcript, never as a default:
+    an empty roster classifies every speaker as an analyst, which suppresses
+    every claim and produces a clean-looking "no contradictions" result for
+    entirely the wrong reason.
+    """
+    names: set[str] = set()
+    for block in blocks:
+        text = block.content or ""
+        if ROSTER_ANCHOR not in text:
+            continue
+        lines = text.split("\n")
+        start = next(i for i, ln in enumerate(lines) if ROSTER_ANCHOR in ln)
+        for line in lines[start + 1:]:
+            m = _ROSTER_ENTRY_RE.match(line.strip())
+            if not m:
+                break          # the list is contiguous; first miss ends it
+            names.add(m.group(1).strip())
+        if names:
+            break
+    return names
+
+
+def _classify_speaker(speaker: str, roster: set[str]) -> str:
+    """management / analyst / moderator / unknown."""
+    if not speaker:
+        return "unknown"       # cover page, disclaimers, pre-roster text
+    if speaker == MODERATOR_SPEAKER:
+        return "moderator"
+    if speaker in roster:
+        return "management"
+    return "analyst"
 
 
 def _split_long_turn(speaker: str, turn: str, max_chars: int) -> list[str]:
@@ -261,6 +332,7 @@ def _build_metadata(
     filing_date: str,
     version: str,
     chunk_id: str,
+    speaker_role: str = "unknown",
 ) -> ChunkMetadata:
     financial_type = getattr(block, "financial_type", FinancialType.UNKNOWN)
 
@@ -284,6 +356,7 @@ def _build_metadata(
         section=SECTION_LABELS.get(block.block_type, "General"),
         subsection="",
         chunk_type=block.block_type,
+        speaker_role=speaker_role,
         table_header=None,
         needs_review=getattr(block, "needs_review", False),
     )
@@ -331,6 +404,8 @@ def _chunk_text_block(
     document_type: str,
     filing_date: str,
     version: str,
+    roster: Optional[set[str]] = None,
+    incoming_speaker: str = "",
 ) -> list[Chunk]:
     """TEXT, RISK_DISCLOSURE, MANAGEMENT_DISCUSSION: recursive split.
 
@@ -340,20 +415,40 @@ def _chunk_text_block(
     target_tokens = TARGET_TOKENS.get(block.block_type, 200)
     max_chars = target_tokens * CHARS_PER_TOKEN
 
+    # (piece_text, speaker_role) pairs. The role must be carried from the turn
+    # that produced the piece -- re-deriving it from the chunk text downstream
+    # would fail on every continuation piece, which is exactly the population
+    # whose attribution matters most.
+    pieces: list[tuple[str, str]] = []
     if document_type == TRANSCRIPT_DOC_TYPE:
-        text_pieces = []
-        for speaker, turn in _split_speaker_turns(block.content.strip()):
-            text_pieces.extend(_split_long_turn(speaker, turn, max_chars))
+        turns, outgoing = _split_speaker_turns(
+            block.content.strip(), incoming_speaker=incoming_speaker
+        )
+        for idx, (speaker, turn) in enumerate(turns):
+            role = _classify_speaker(speaker, roster or set())
+            # A first turn carrying an INHERITED speaker is the tail of a turn
+            # that began on the previous page: the text does not name its
+            # speaker, so mark it, exactly as _split_long_turn does. Same
+            # honesty constraint -- a carried attribution is inferred, not
+            # printed, and must not read as verbatim.
+            if idx == 0 and incoming_speaker and speaker == incoming_speaker:
+                if not turn.startswith(f"{speaker}:"):
+                    turn = f"{speaker} (cont.): {turn}"
+            for piece in _split_long_turn(speaker, turn, max_chars):
+                pieces.append((piece, role))
+        _OUTGOING["speaker"] = outgoing
     else:
-        text_pieces = _recursive_split(
+        for piece in _recursive_split(
             text=block.content.strip(),
             max_chars=max_chars,
             overlap_chars=OVERLAP_CHARS,
             separators=SPLIT_SEPARATORS,
-        )
+        ):
+            pieces.append((piece, "unknown"))
+    text_pieces = [t for t, _ in pieces]
 
     chunks: list[Chunk] = []
-    for position, piece in enumerate(text_pieces):
+    for position, (piece, role) in enumerate(pieces):
         if len(piece.strip()) < MIN_CHUNK_CHARS:
             continue
 
@@ -363,6 +458,7 @@ def _chunk_text_block(
             company=company, ticker=ticker, fiscal_year=fiscal_year,
             quarter=quarter, document_type=document_type,
             filing_date=filing_date, version=version, chunk_id=chunk_id,
+            speaker_role=role,
         )
         chunks.append(Chunk(chunk_id=chunk_id, text=piece, metadata=metadata))
 
@@ -403,6 +499,27 @@ def chunk_blocks(
     Returns:
         List[Chunk] — ready to pass to embedder.py
     """
+    # ROSTER IS PARSED ONCE, OVER ALL BLOCKS, BEFORE THE PER-BLOCK LOOP.
+    # It is declared on page 1 and needed on every page, so a per-block
+    # function cannot see it.
+    #
+    # RAISES ON AN EMPTY ROSTER rather than warning. An empty roster
+    # classifies every speaker as an analyst, the gate then suppresses every
+    # claim, and contradiction detection reports a clean "none found" -- the
+    # correct-looking answer for entirely the wrong reason. An ingest that
+    # cannot identify management is not a successful transcript ingest.
+    roster: set[str] = set()
+    if document_type == TRANSCRIPT_DOC_TYPE:
+        roster = _parse_management_roster(blocks)
+        if not roster:
+            raise ValueError(
+                f"No management roster found: expected a '{ROSTER_ANCHOR}' block "
+                f"with a numbered 'Name - Title' list. Without it every speaker "
+                f"is classified analyst and every claim is suppressed silently."
+            )
+        logger.info("Management roster (%d): %s", len(roster), sorted(roster))
+    _OUTGOING["speaker"] = ""
+
     page_to_doc_id: dict[int, str] = {}
     for section in sections:
         if section.doc_id is None:
@@ -421,6 +538,13 @@ def chunk_blocks(
         doc_id = page_to_doc_id.get(block.page_number)
         if not doc_id:
             skipped_blocks += 1
+            # ADVANCE THE SPEAKER ANYWAY. A skipped page still contains speech,
+            # and dropping it here would hand the NEXT page a stale speaker from
+            # two pages back -- a wrong attribution, which is worse than none.
+            if document_type == TRANSCRIPT_DOC_TYPE:
+                _, _OUTGOING["speaker"] = _split_speaker_turns(
+                    (block.content or "").strip(), _OUTGOING["speaker"]
+                )
             continue
 
         kwargs = dict(
@@ -433,7 +557,9 @@ def chunk_blocks(
         if block.block_type in (BlockType.FINANCIAL_STATEMENT, BlockType.TABLE):
             chunks = _chunk_unsplittable_block(**kwargs)
         else:
-            chunks = _chunk_text_block(**kwargs)
+            chunks = _chunk_text_block(
+                roster=roster, incoming_speaker=_OUTGOING["speaker"], **kwargs
+            )
 
         all_chunks.extend(chunks)
 
