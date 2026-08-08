@@ -6,7 +6,8 @@ structured evaluation report with per-category metrics.
 
 Usage:
   cd ~/ledgermind
-  python3 scripts/eval_runner.py [--api-base http://localhost:8000] [--out eval_results.json]
+  python3 scripts/eval_runner.py --model <model> [--dataset golden_dataset/q_titan.json]
+  Results default to eval_results/eval_<dataset-stem>.json — one file per dataset.
 
 Scoring logic by category:
   quantitative_point                → PASS if sql_verified AND returned value == expected_value
@@ -60,7 +61,10 @@ import requests
 # directory exists in this repo and holds four tracked eval outputs dated
 # 2026-07-18 and 2026-07-25. An absolute default cannot drift with the cwd.
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_DEFAULT_OUT = os.path.join(_REPO_ROOT, "eval_results", "eval_results.json")
+# No single default filename: see the per-dataset derivation after
+# parse_args(). _REPO_ROOT is still the anchor -- an absolute base cannot
+# drift with the cwd, which is what created the phantom
+# backend/golden_dataset/ described above.
 
 # ---------------------------------------------------------------------------
 # CLI args
@@ -74,10 +78,11 @@ parser.add_argument("--email",    default="admin@alpha.ledgermind.test",
                          "whole sweep was Gemini-served.")
 parser.add_argument("--password", default="demo1234")
 parser.add_argument("--dataset",  default="golden_dataset/q4fy26_eternal.json")
-parser.add_argument("--out",      default=_DEFAULT_OUT,
-                    help="Where to write the full results JSON. Defaults into "
-                         "eval_results/ (gitignored). May NEVER resolve inside "
-                         "golden_dataset/ — see the guard below.")
+parser.add_argument("--out",      default=None,
+                    help="Where to write the full results JSON. When omitted, "
+                         "derived from the dataset filename into eval_results/ "
+                         "(gitignored). May NEVER resolve inside golden_dataset/ "
+                         "— see the guard below.")
 # 5 RPM = one call per 12s, and a semantic question makes TWO Gemini calls
 # (router classification, then response synthesis): 2 x 12s = 24s, rounded
 # to 25s. The previous default of 15.0 assumed one call per question, giving
@@ -107,6 +112,23 @@ parser.add_argument("--model", required=True,
                          "another. Verify with: docker compose exec backend printenv "
                          "GEMINI_MODEL")
 args = parser.parse_args()
+
+# PER-DATASET DEFAULT. A single constant default meant every dataset in a
+# multi-dataset sweep overwrote the previous one, so a three-dataset run ended
+# holding only the LAST dataset's detail. Measured 2026-08-08: a full sweep
+# (Eternal 55Q, Paytm 20Q, Titan 15Q) finished with Eternal's and Paytm's JSON
+# destroyed, and only the tee'd human-readable reports survived. That sweep
+# cost roughly an hour of wall time and ~80 Gemini calls against a 500/day
+# bucket, so silently discarding two thirds of its structured output is
+# expensive, not cosmetic.
+#
+# Derived BEFORE the guard below, deliberately: the guard must run on whatever
+# path is actually written, and a derivation placed after it would skip it
+# entirely for the default case -- the exact shape of a check that inspects
+# nothing.
+if args.out is None:
+    _stem = os.path.splitext(os.path.basename(args.dataset))[0]
+    args.out = os.path.join(_REPO_ROOT, "eval_results", f"eval_{_stem}.json")
 
 # golden_dataset/ IS INPUTS ONLY: the three q*.json files and nothing else.
 # Changing the default is not sufficient on its own -- an explicit
@@ -720,8 +742,15 @@ def main():
                 # Q026 into a six-command detour through psql, and on
                 # 2026-08-02 it forced a live re-query twice to answer a
                 # question about citation scores this record should hold.
-                # citation_scores is what a relevance floor is calibrated
-                # against — see semantic_engine.CITATION_RELEVANCE_FLOOR.
+                # citation_scores was what CITATION_RELEVANCE_FLOOR was
+                # calibrated against. That constant was REMOVED 2026-08-08 --
+                # it filtered citations but not retrieved_chunks, so a chunk
+                # could supply a figure to an answer and be deleted from the
+                # evidence list. These scores are still the only per-question
+                # record of citation quality and are now the input to any UI
+                # display-weight decision, since every response receives
+                # exactly TOP_K_RERANK citations and the COUNT carries no
+                # information.
                 "confidence_score": result.get("confidence_score") if result else None,
                 "citation_count":  len(result.get("citations") or []) if result else None,
                 "citation_scores": [
