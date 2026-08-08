@@ -2787,6 +2787,28 @@ checking it, and do not compare API scores against
 `cohere_score_dump.py` output without checking it — that script has a hard
 abort for non-Cohere backends and the API does not.
 
+### Qdrant holds chunks whose doc_id has no row in `documents` — citations resolve to nothing
+
+Found 2026-08-08 while scoping `purge_orphaned_chunks.py`. **139 of 2555 points carry a `doc_id` absent from `documents`**: all 115 PAYTM chunks (`55e1549e` 76, `5862fad6` 39) and 24 of TITAN's 48 (`ba7e525b` 14, `919ea7e3` 10).
+
+**PAYTM has no other chunks. Its entire semantic corpus is unciteable.** Live query, "What regulatory risks does Paytm disclose in its FY26 filing?" — `path=semantic`, **`tier=high`**, five citations, every one pointing at a doc_id that returns `None` from `documents`:
+0.6783 p8 55e1549e-... -> None
+0.6125 p21 5862fad6-... -> None
+0.4152 p5 55e1549e-... -> None
+0.4029 p11 55e1549e-... -> None
+0.2200 p6 55e1549e-... -> None
+
+**IT FAILS SILENTLY AND CONFIDENTLY.** `Citation` is constructed entirely from the Qdrant payload — `semantic_engine._build_citations` reads `chunk["doc_id"]` and never joins back to `documents`. So a dangling reference renders identically to a good one, and no code path anywhere can notice. The answer was fluent, well-sourced in appearance, and every source reference was dead.
+
+**THIRD INSTANCE OF ONE CLASS TONIGHT.** The citation floor produced a figure with no citation; this produces citations with no document. Both are Principle 2 violations, both were invisible, and both for the same structural reason: **nothing verifies that a citation resolves.** That absence is the finding, not either instance.
+
+**MECHANISM.** Both live PAYTM rows carry `created_at` 2026-07-06 07:31:47 — identical to the microsecond, so they were registered together, later than the Qdrant chunks they should own. `register_sections` mints a fresh UUID per call and only preserves the existing one via `ON CONFLICT (sha256_checksum) DO UPDATE ... RETURNING doc_id`. A registration that did NOT hit that conflict — a changed checksum, or rows deleted and re-created — produces new doc_ids while old vector points keep the old ones. `financials` re-pointed (432 rows, all on the live doc_ids); Qdrant did not. TITAN's 24 match its recorded Q4-mislabel-then-re-ingest history.
+
+**THE REPAIR IS A RE-INGEST, NOT A PURGE.** Deleting the orphans removes PAYTM from retrieval entirely. The chunks must land under the live doc_ids: scoped delete of the orphan doc_id, then `pipeline` with metadata from `regression_check.DOCUMENTS` and `--skip-financials`, since the relational rows are correct and must not be re-derived. This is why `purge_orphaned_chunks.py` was NOT written first — the orphan population turned out to contain two classes with opposite remedies, and a blind diff-and-delete would have destroyed a company's corpus.
+
+**OPEN, and the more important half:** nothing asserts that a citation's `doc_id` exists. A cheap continuous check — every `is_latest` Qdrant `doc_id` appears in `documents` — would have caught this the day it happened, costs zero quota, and is the vector-side sibling of `check_balance_invariants`. Not built here.
+
+**ALSO FOUND, minor:** ETERNAL's two `quarterly_result` rows sit at `ingestion_state='processing'` while every other document reads `indexed`. Caused by running `chunker.py`'s smoke test, which calls `classify_and_register` (setting PROCESSING) and never reaches the pipeline stage that flips it. Nothing reads `ingestion_state` for retrieval, so it is a false state rather than a live defect.
 ### Orphaned vector rows — Qdrant has no purge, and deterministic IDs only help while boundaries hold
 
 Collection held 2268 chunks before 2026-08-08 and 2560 after. The transcript
