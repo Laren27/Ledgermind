@@ -24,6 +24,9 @@ class ChunkResult(TypedDict):
     rrf_score: float
     reranker_score: float
     reranker_backend: str  # "cohere" | "local" | "none" — scores are on different scales per backend
+    # "management" | "analyst" | "moderator" | "unknown". Populated from the
+    # Qdrant payload; "unknown" for every filing chunk, which has no speaker.
+    speaker_role: str
 
 
 class Citation(TypedDict):
