@@ -124,6 +124,27 @@ def detect_sections(blocks: list[PageBlock]) -> list[DocSection]:
     # ... (Keep the rest of the detect_sections logic exactly the same) ...
     
     if first_standalone_page is None and first_consolidated_page is None:
+        # NO MARKER OF EITHER KIND. The module docstring claims this path
+        # "never silently defaults to wrong financial_type" and sets
+        # needs_review=True -- it does neither; it defaults to CONSOLIDATED
+        # over the whole document with no signal at all. Measured 2026-08-08.
+        #
+        # Correct for a transcript or press release, which have no statutory
+        # financial_type: CONSOLIDATED is true at document level even though no
+        # row-level type exists. NOT correct for a filing whose markers failed
+        # to parse, which is indistinguishable from here.
+        #
+        # Logged rather than blocked: the default is right more often than it
+        # is wrong, and refusing would break the transcript path. But it must
+        # be audible -- a wrongly-typed document is invisible downstream, where
+        # the retrieval filter silently excludes it.
+        logger.warning(
+            "No standalone OR consolidated marker found in any TABLE block "
+            "(%d pages) — defaulting to CONSOLIDATED for the whole document. "
+            "Expected for transcripts/press releases; for a filing this means "
+            "marker detection FAILED and financial_type is unverified.",
+            total_pages,
+        )
         return [DocSection(financial_type=FinancialType.CONSOLIDATED, page_start=1, page_end=total_pages)]
 
     if first_standalone_page is None:
