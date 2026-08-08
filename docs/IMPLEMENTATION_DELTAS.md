@@ -2303,6 +2303,14 @@ Same shape as the golden-coverage finding: **an eval score bounds the correctnes
 **A green sweep after this much change is evidence of no regression, not evidence the work was unnecessary.**
 
 CLOSED SAME DAY, and the prediction was wrong. Measured over 33 cited responses in `audit_log` (26 semantic, 7 cross), zero quota — the pre-removal count is recoverable from the post-removal one, since the floor dropped everything below 0.05 and kept top-1 when all fell below:
+
+    NOW  (no floor): min=5 median=5 mean=5.00 max=5
+    THEN (floor)   : min=1 median=5 mean=4.27 max=5
+    total 165 vs 141  (+24, 1.17x)
+
+    distribution now : {5: 33}
+    distribution then: {1: 3, 2: 2, 3: 3, 5: 25}
+
 **The floor was a NO-OP on 25 of 33 responses.** Three quarters of traffic saw no change, the median did not move, and the total rose 17%. The "noisier citation lists" cost is not a broad degradation — it is 8 responses out of 33.
 
 **And those 8 are the responses that needed the removal most. THREE would have shown a SINGLE citation while the model read five** — four chunks in context, invisible, which is exactly the configuration that produced the untraceable "4.8 million square feet" figure. One instance was found by accident; this says three more were sitting in six hours of ordinary traffic.
