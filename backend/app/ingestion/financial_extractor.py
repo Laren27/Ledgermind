@@ -421,13 +421,6 @@ def _rows_to_records(
 ) -> list[FinancialRecord]:
     
     records: list[FinancialRecord] = []
-    
-    # Advanced filter to ensure segment breakdowns don't corrupt main P&L
-    segments_to_skip = {
-        "watches", "jewellery", "eyecare", "others", 
-        "corporate (unallocated)", "india", "rest of the world",
-        "segment revenue", "total segment revenue", "segment results"
-    }
 
     for row in rows:
         if not row or len(row) < 2: continue
@@ -442,9 +435,6 @@ def _rows_to_records(
             continue
 
         normalized_metric = resolve_metric(description)
-
-        if normalized_metric in segments_to_skip:
-            continue
 
         # One measured OCR duplicate of an already-captured line. See
         # _OCR_DUPLICATE_METRICS for the evidence and why this is a named list.
