@@ -24,6 +24,7 @@ Called by: pipeline.py
 
 import hashlib
 import logging
+import re
 import uuid
 from typing import Optional
 from app.ingestion.models import normalize_quarter
@@ -160,6 +161,91 @@ def _recursive_split(
 
 
 # ---------------------------------------------------------------------------
+# Speaker-turn splitting (earnings_transcript only)
+# ---------------------------------------------------------------------------
+# A transcript's natural unit is the speaker turn, not an arbitrary character
+# window. Measured 2026-08-08 on ETERNAL Q4FY26: the generic TEXT path produced
+# 187 chunks from 17 pages, and chunk 92 opened mid-sentence on an ANALYST'S
+# premise ("your advertising promotion cost ... was flat sequentially") with no
+# attribution, while carrying a different speaker's name later in the same
+# chunk. That is the false-contradiction generator for Path 3: an analyst's
+# assertion, unowned, reads as a company claim -- and in this document several
+# such premises are DENIED by management in the next turn (inventory days p10,
+# A&P flat p9, orders per customer p8).
+#
+# The pattern is deliberately bounded: line-initial, at most 5 capitalised
+# words before the colon. Validated across all 532 lines of the transcript --
+# 127 matches, 17 distinct names (3 management + Moderator + 13 analysts),
+# ZERO spurious hits inside prose. Moderator is treated as a speaker: its
+# turns carry the analyst's name and firm, which is the attribution for the
+# question that follows.
+SPEAKER_LINE_RE = re.compile(
+    r"^([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,4}):\s"
+)
+
+TRANSCRIPT_DOC_TYPE = "earnings_transcript"
+
+# Overlap between TURNS is zero -- a turn is complete on its own, and overlap
+# across turns is exactly what orphaned the premise above. Overlap WITHIN a
+# long turn keeps the normal value: the 50->150 raise was made to stop a
+# mid-sentence split orphaning Paytm's PPBL impairment fact, and that reason
+# still applies inside a single speaker's answer.
+
+
+def _split_speaker_turns(text: str) -> list[tuple[str, str]]:
+    """Segment transcript text into (speaker, turn_text) pairs.
+
+    Text before the first speaker line (cover page, disclaimers) is returned
+    with an empty speaker rather than discarded.
+    """
+    turns: list[tuple[str, str]] = []
+    speaker = ""
+    buf: list[str] = []
+
+    for line in text.split("\n"):
+        m = SPEAKER_LINE_RE.match(line.strip())
+        if m:
+            if buf and "\n".join(buf).strip():
+                turns.append((speaker, "\n".join(buf).strip()))
+            speaker = m.group(1)
+            buf = [line]
+        else:
+            buf.append(line)
+
+    if buf and "\n".join(buf).strip():
+        turns.append((speaker, "\n".join(buf).strip()))
+
+    return turns
+
+
+def _split_long_turn(speaker: str, turn: str, max_chars: int) -> list[str]:
+    """Split one turn, re-prepending the speaker to every continuation piece.
+
+    "(cont.)" IS LOAD-BEARING AND MUST NOT BE DROPPED. The source does not
+    repeat the speaker's name; a continuation piece that reads as a fresh
+    verbatim attribution is text this system invented at the data-entry point.
+    The marker keeps the synthesis visible to anything reading the chunk,
+    including the model that will quote it.
+    """
+    if len(turn) <= max_chars:
+        return [turn]
+
+    pieces = _recursive_split(
+        text=turn,
+        max_chars=max_chars,
+        overlap_chars=OVERLAP_CHARS,
+        separators=SPLIT_SEPARATORS,
+    )
+    if not pieces:
+        return []
+    if not speaker:
+        return pieces
+
+    prefix = f"{speaker} (cont.): "
+    return [pieces[0]] + [prefix + p.lstrip() for p in pieces[1:]]
+
+
+# ---------------------------------------------------------------------------
 # Metadata builder
 # ---------------------------------------------------------------------------
 
@@ -246,16 +332,25 @@ def _chunk_text_block(
     filing_date: str,
     version: str,
 ) -> list[Chunk]:
-    """TEXT, RISK_DISCLOSURE, MANAGEMENT_DISCUSSION: recursive split."""
+    """TEXT, RISK_DISCLOSURE, MANAGEMENT_DISCUSSION: recursive split.
+
+    earnings_transcript splits on speaker turns instead -- see
+    _split_speaker_turns for why attribution cannot be left to chance.
+    """
     target_tokens = TARGET_TOKENS.get(block.block_type, 200)
     max_chars = target_tokens * CHARS_PER_TOKEN
 
-    text_pieces = _recursive_split(
-        text=block.content.strip(),
-        max_chars=max_chars,
-        overlap_chars=OVERLAP_CHARS,
-        separators=SPLIT_SEPARATORS,
-    )
+    if document_type == TRANSCRIPT_DOC_TYPE:
+        text_pieces = []
+        for speaker, turn in _split_speaker_turns(block.content.strip()):
+            text_pieces.extend(_split_long_turn(speaker, turn, max_chars))
+    else:
+        text_pieces = _recursive_split(
+            text=block.content.strip(),
+            max_chars=max_chars,
+            overlap_chars=OVERLAP_CHARS,
+            separators=SPLIT_SEPARATORS,
+        )
 
     chunks: list[Chunk] = []
     for position, piece in enumerate(text_pieces):
