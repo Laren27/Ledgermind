@@ -79,6 +79,29 @@ def compute_pdf_checksum(pdf_path: str | Path) -> str:
     return sha.hexdigest()
 
 
+# Namespace for deterministic doc_ids. Derived from a readable string rather
+# than a random literal so it is reconstructible if this line is ever lost;
+# the ".v1" suffix leaves room to change the scheme without reusing ids.
+# uuid5(NAMESPACE_DNS, "ledgermind.doc_id.v1") == 7d252b65-ca68-559a-b80c-47363c5df49e
+LEDGERMIND_DOC_NS = uuid.uuid5(uuid.NAMESPACE_DNS, "ledgermind.doc_id.v1")
+
+
+def derive_doc_id(checksum: str) -> str:
+    """doc_id as a pure function of the section checksum.
+
+    Previously uuid4(): every database that ingested a PDF minted its own id
+    for it, so local and Supabase held the same documents under disjoint
+    primary keys while ONE Qdrant collection served both -- only one side's
+    citations could resolve to a documents row. Deriving from the checksum
+    means any database, ingesting the same PDF, lands on the same id without
+    coordination.
+
+    The input is section_checksum()'s output, i.e. "{file_sha256}_{type}", so
+    the two sections of one PDF get distinct ids.
+    """
+    return str(uuid.uuid5(LEDGERMIND_DOC_NS, checksum))
+
+
 def section_checksum(file_sha256: str, financial_type: str) -> str:
     """
     Per-section checksum: allows two documents rows from one PDF
@@ -249,8 +272,8 @@ def register_sections(
         cur.execute(_SQL_SET_TENANT, (str(tenant_id),))
 
         for section in sections:
-            doc_id = str(uuid.uuid4())
             checksum = section_checksum(file_sha256, section.financial_type)
+            doc_id = derive_doc_id(checksum)
 
             params = {
                 "doc_id":           doc_id,
