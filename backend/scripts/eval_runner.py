@@ -632,6 +632,20 @@ def print_report(results: list[dict], model: str):
 
     print(f"Models served: {dict(models)}")
 
+    # Reranker integrity gate — a THIRD gate, same shape as providers and
+    # models above and separate for the same reason: a mixed-backend run and a
+    # mixed-provider run are different faults with different remedies.
+    # None is excluded rather than counted: refusal paths score no citations,
+    # so reranker_backend is legitimately absent there, exactly as
+    # llm_provider is legitimately absent on blocked queries.
+    backends = Counter(
+        b for b in ((r.get("api_response") or {}).get("reranker_backend")
+                    for r in scored)
+        if b is not None
+    )
+    backend_mixed = len(backends) > 1
+    print(f"Reranker backends: {dict(backends) or '(none recorded)'}")
+
     if model_mismatch:
         print(f"\n  *** SCORE WITHHELD — MODEL MISMATCH ***")
         print(f"  --model says '{model}', but calls were served by: "
@@ -654,7 +668,15 @@ def print_report(results: list[dict], model: str):
             print(f"  'groq' means the fallback fired (rate limit / timeout). "
                   f"Wait for quota and re-run.")
         print(f"  Raw tally (DO NOT publish): {passed}/{total}")
-    elif not model_mismatch:
+    if backend_mixed:
+        print(f"\n  *** SCORE WITHHELD — MIXED RERANKER BACKENDS ***")
+        print(f"  {dict(backends)}. Cohere scores are probabilities in [0,1];")
+        print(f"  local ONNX scores are unbounded logits. A run spanning both")
+        print(f"  is two systems, and the questions that flipped are the ones")
+        print(f"  whose top-5 ordering differs between the scales.")
+        print(f"  Check the Cohere key, then re-run. Raw tally (DO NOT publish): {passed}/{total}")
+
+    elif not model_mismatch and not contaminated:
         print(f"Total:  {total}  |  Pass: {passed}  |  Fail: {failed}  |  Score: {passed/total*100:.1f}%")
 
     from collections import defaultdict
@@ -758,6 +780,22 @@ def main():
                     for c in (result.get("citations") or [])
                     if c.get("reranker_score") is not None
                 ] if result else None,
+                # WHICH RERANKER SERVED THIS. Cohere returns probabilities in
+                # [0,1]; the local ONNX cross-encoder returns unbounded logits
+                # that are frequently negative. The two scales are not
+                # comparable, so a sweep that silently changes backend produces
+                # citation_scores from two different systems in one file.
+                #
+                # That happened on 2026-08-09: the Cohere account lost rerank
+                # access mid-sweep, rerank() fell through to ONNX exactly as
+                # designed and logged an ERROR per query, and the only trace in
+                # THIS file was the sign of the scores. Q038 failed because ONNX
+                # ranked three duplicate page-166 chunks above page 164; on
+                # Cohere the same question cites 164-166 at 0.87-0.98 and passes.
+                # Three hours went into inferring the backend from minus signs.
+                # None here means nothing was scored (a refusal path), which is
+                # NOT the same as "backend unknown".
+                "reranker_backend": result.get("reranker_backend") if result else None,
                 "sql_verified":    result.get("sql_verified") if result else None,
                 "error":           result.get("error") if result else None,
                 "response_preview": (result.get("response_text") or "")[:200] if result else None,
