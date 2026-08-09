@@ -18,13 +18,17 @@ Read-only. No DB writes, no Qdrant calls.
 import logging
 import os
 import sys
+import uuid
 from collections import Counter
 from pathlib import Path
 
 from app.ingestion.pdf_parser import parse_pdf
-from app.ingestion.document_classifier import detect_sections
+from app.ingestion.document_classifier import (
+    compute_pdf_checksum, derive_doc_id, detect_sections, section_checksum,
+)
 from app.ingestion.section_classifier import classify_blocks, get_blocks_by_type
 from app.ingestion.financial_extractor import extract_all_financial_records
+from app.ingestion.chunker import chunk_blocks
 from app.ingestion.models import BlockType
 
 def _resolve_raw_dir() -> Path:
@@ -50,6 +54,14 @@ RAW_DIR = _resolve_raw_dir()
 # One entry per reference document. min_fs / max_fs bound the expected
 # FINANCIAL_STATEMENT page count — catches both under- and over-classification
 # regressions in a single assertion, rather than eyeballing Counters by hand.
+#
+# EVERY expect_* KEY IS OPTIONAL AND OPT-IN. They are not a schema each entry
+# must satisfy; they are what THAT entry asserts. Four filing entries with an
+# identical key set made them look mandatory, and run_one() read three of them
+# with a bare subscript, so a document that could not satisfy them could not be
+# added at all. An absent key means the assertion is SKIPPED, and run_one()
+# prints both the checked and the skipped list for every document — a silently
+# skipped assertion is worse than a failing one, because it reads as a pass.
 DOCUMENTS = [
     {
         "filename": "ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf",
@@ -57,6 +69,7 @@ DOCUMENTS = [
         "quarter": "Q4", "doc_type": "quarterly_result",
         "filing_date": "2026-04-28",
         "min_fs_pages": 5, "max_fs_pages": 30,
+        "expect_records": "nonzero",
         "expect_revenue_min": 10000, "expect_revenue_max": 70000,  # covers standalone (10899) + consolidated (54364)
         # EXACT-VALUE assertion, unlike the revenue BANDS above. Added
         # 2026-08-03. Until now this figure survived in a commit message and
@@ -87,6 +100,7 @@ DOCUMENTS = [
         # reference file is exactly where a wrong constant gets trusted later.
         "filing_date": "2025-08-07",
         "min_fs_pages": 5, "max_fs_pages": 25,
+        "expect_records": "nonzero",
         "expect_revenue_min": 1000, "expect_revenue_max": 20000,  # already covers both (13040, 14814)
     },
     {
@@ -118,6 +132,7 @@ DOCUMENTS = [
         # because a real change here (a missing statement, a classifier
         # regression) moves the count by a whole block of 3, not by 1.
         "min_fs_pages": 4, "max_fs_pages": 10,
+        "expect_records": "nonzero",
         "expect_revenue_min": 1000, "expect_revenue_max": 10000,
     },
     {
@@ -126,7 +141,52 @@ DOCUMENTS = [
         "quarter": None, "doc_type": "annual_report",
         "filing_date": "2024-08-31",
         "min_fs_pages": 10, "max_fs_pages": 20,
+        "expect_records": "nonzero",
         "expect_revenue_min": 6000, "expect_revenue_max": 16000,  # covers standalone (6622) + consolidated (12114)
+    },
+    {
+        # ADDED 2026-08-10. Until now this roster held four FILINGS and the
+        # transcript was in docs/raw but in no reference list, so 1d8061a3 was
+        # the one corpus doc_id purge_orphaned_chunks could never evaluate --
+        # its 124 points could only ever report NOT EVALUATED.
+        #
+        # It asserts nothing about financial statements because it has none.
+        # That is the whole reason the expect_* keys had to become opt-in.
+        "filename": "Q4FY26-earnings-call-transcript.pdf",
+        "company": "ETERNAL", "ticker": "ETERNAL", "fiscal_year": "FY26",
+        "quarter": "Q4", "doc_type": "earnings_transcript",
+        "filing_date": "2026-04-28",
+
+        # REQUIRED, and deliberately wrong as a description of the document.
+        # financial_type is a COMPONENT OF THE DOCUMENT KEY: doc_id is
+        # derive_doc_id(section_checksum(file_sha256, financial_type)), so this
+        # string is hashed into 1d8061a3-cb75-5524-a897-48a7baa81a1a. It is NOT
+        # a semantic claim -- an earnings call has no statement type at all.
+        # "Correcting" it to something truthful RE-KEYS the document, orphans
+        # its 124 chunks under the old id, and reopens the split that
+        # migrations 018-020 closed. It stays as it is.
+        #
+        # Its consequence downstream is handled, not inherited:
+        # propagate_financial_type.py skips this doc_id by EXPLICIT id so the
+        # label is never stamped onto chunk payloads, which leaves them
+        # "unknown" and therefore retrievable under BOTH filter values via
+        # _build_filter's unknown OR -- the correct behaviour for a transcript.
+        "financial_type": "consolidated",
+
+        # No FS-page bounds and no revenue band: a transcript has no financial
+        # statements to count and no revenue line to read. Zero extracted
+        # records is the assertion, not an exemption -- if this ever starts
+        # producing records, something has been misclassified.
+        "expect_records": "zero",
+
+        # The only test coverage speaker-turn chunking has anywhere. All four
+        # numbers reproduced exactly across two independent full re-ingests.
+        # unknown=1 is the cover page / disclaimer text that precedes the first
+        # speaker line, which _classify_speaker maps to "unknown" by design.
+        "expect_chunk_count": 124,
+        "expect_speaker_roles": {
+            "management": 54, "analyst": 54, "moderator": 15, "unknown": 1,
+        },
     },
 ]
 
@@ -200,6 +260,12 @@ def run_one(doc: dict) -> bool:
     print(f"{doc['filename']}  ({doc['company']}/{doc['fiscal_year']}/{doc['quarter']})")
     print(f"{'='*70}")
 
+    # Every assertion this document actually ran, and every one its entry did
+    # not opt into. Printed before OVERALL. A skipped assertion that prints
+    # nothing reads exactly like one that passed.
+    checked: list[str] = []
+    skipped: list[str] = []
+
     blocks = parse_pdf(str(pdf_path))
     sections = detect_sections(blocks)
     blocks = classify_blocks(blocks, sections)
@@ -210,10 +276,16 @@ def run_one(doc: dict) -> bool:
 
     fs_pages = [b.page_number for b in get_blocks_by_type(blocks, BlockType.FINANCIAL_STATEMENT)]
     fs_count = len(fs_pages)
-    fs_ok = doc["min_fs_pages"] <= fs_count <= doc["max_fs_pages"]
     print(f"  FINANCIAL_STATEMENT pages ({fs_count}): {fs_pages[:10]}"
           f"{' ...' if fs_count > 10 else ''}")
-    print(f"  [{'PASS' if fs_ok else 'FAIL'}] expected {doc['min_fs_pages']}-{doc['max_fs_pages']} pages")
+    fs_ok = True
+    if "min_fs_pages" in doc:
+        fs_ok = doc["min_fs_pages"] <= fs_count <= doc["max_fs_pages"]
+        checked.append(f"fs_page_bounds({doc['min_fs_pages']}-{doc['max_fs_pages']})")
+        print(f"  [{'PASS' if fs_ok else 'FAIL'}] expected "
+              f"{doc['min_fs_pages']}-{doc['max_fs_pages']} pages")
+    else:
+        skipped.append("fs_page_bounds")
 
     md_count = counts.get(BlockType.MANAGEMENT_DISCUSSION, 0)
     risk_count = counts.get(BlockType.RISK_DISCLOSURE, 0)
@@ -250,20 +322,25 @@ def run_one(doc: dict) -> bool:
         target_quarter = doc["quarter"]
         label = f"quarterly ({doc['quarter']})"
 
-    revenue_records = [
-        r for r in records
-        if r.metric == "revenue" and r.fiscal_year == doc["fiscal_year"]
-        and r.quarter == target_quarter
-    ]
-    revenue_ok = False
-    if revenue_records:
-        for r in revenue_records:
-            in_range = doc["expect_revenue_min"] <= r.value <= doc["expect_revenue_max"]
-            revenue_ok = revenue_ok or in_range
-            print(f"    revenue ({label}) | {r.financial_type:13s} | {r.value:>10.1f} cr "
-                  f"{'✓' if in_range else '✗ OUT OF RANGE'}")
-    print(f"  [{'PASS' if revenue_ok else 'FAIL'}] annual revenue in expected range "
-          f"({doc['expect_revenue_min']}-{doc['expect_revenue_max']} cr)")
+    revenue_ok = True
+    if "expect_revenue_min" in doc:
+        revenue_records = [
+            r for r in records
+            if r.metric == "revenue" and r.fiscal_year == doc["fiscal_year"]
+            and r.quarter == target_quarter
+        ]
+        revenue_ok = False
+        if revenue_records:
+            for r in revenue_records:
+                in_range = doc["expect_revenue_min"] <= r.value <= doc["expect_revenue_max"]
+                revenue_ok = revenue_ok or in_range
+                print(f"    revenue ({label}) | {r.financial_type:13s} | {r.value:>10.1f} cr "
+                      f"{'✓' if in_range else '✗ OUT OF RANGE'}")
+        checked.append(f"revenue_band({doc['expect_revenue_min']}-{doc['expect_revenue_max']})")
+        print(f"  [{'PASS' if revenue_ok else 'FAIL'}] annual revenue in expected range "
+              f"({doc['expect_revenue_min']}-{doc['expect_revenue_max']} cr)")
+    else:
+        skipped.append("revenue_band")
 
     # Exact-value assertion on the derived total_income, for documents that
     # declare one. Scoped to a single financial_type because standalone and
@@ -272,8 +349,11 @@ def run_one(doc: dict) -> bool:
     # because the value is a float that has been through round(); the intent
     # is exact equality, not a band.
     total_income_ok = True
+    if "expect_total_income" not in doc:
+        skipped.append("total_income_exact")
     if "expect_total_income" in doc:
         want = doc["expect_total_income"]
+        checked.append(f"total_income_exact({doc['expect_total_income']})")
         want_type = doc["expect_total_income_type"]
         ti_records = [
             r for r in records
@@ -344,8 +424,86 @@ def run_one(doc: dict) -> bool:
     for m in _cap.discarded_rows:
         print(f"    {m}")
 
-    records_ok = len(records) > 0
-    overall = fs_ok and records_ok and revenue_ok and identity_ok and total_income_ok
+    # EXPLICIT on every entry rather than implied. This was `len(records) > 0`
+    # with no way to opt out -- a hardcoded assumption that every reference
+    # document yields financial records, which is why a transcript could not
+    # be added to this roster at all. "zero" is a real assertion, not an
+    # exemption: an earnings call that starts extracting financial records has
+    # had something misclassified, and that should go red.
+    records_ok = True
+    want_records = doc.get("expect_records")
+    if want_records == "nonzero":
+        records_ok = len(records) > 0
+        checked.append("records(nonzero)")
+        print(f"  [{'PASS' if records_ok else 'FAIL'}] extractor produced records")
+    elif want_records == "zero":
+        records_ok = len(records) == 0
+        checked.append("records(zero)")
+        print(f"  [{'PASS' if records_ok else 'FAIL'}] extractor produced NO records "
+              f"(got {len(records)}) — an earnings call has no financial statements")
+    elif want_records is None:
+        skipped.append("records")
+    else:
+        print(f"  [FAIL] unknown expect_records value {want_records!r}")
+        records_ok = False
+
+    # --- Layer 3: chunking, for entries that assert on it ---
+    # Only runs when the entry opts in. Chunking ZOMATO to assert nothing would
+    # add a 1620-chunk pass to every run of this gate for no assertion.
+    chunk_ok = True
+    if "expect_chunk_count" in doc or "expect_speaker_roles" in doc:
+        # doc_id is derived, not registered: register_sections() WRITES to
+        # `documents`, and this script is read-only. derive_doc_id o
+        # section_checksum is a pure function and lands on the same ids a real
+        # ingest uses, so chunk_ids here are the production chunk_ids.
+        sha = compute_pdf_checksum(str(pdf_path))
+        for sec in sections:
+            sec.doc_id = uuid.UUID(derive_doc_id(section_checksum(sha, sec.financial_type)))
+
+        declared = doc.get("financial_type")
+        if declared is not None:
+            got = sorted({sec.financial_type for sec in sections})
+            ft_ok = got == [declared]
+            chunk_ok = chunk_ok and ft_ok
+            checked.append(f"financial_type({declared})")
+            print(f"  [{'PASS' if ft_ok else 'FAIL'}] sections carry financial_type "
+                  f"{declared!r} (got {got}) — doc_id key component")
+
+        chunks = chunk_blocks(
+            blocks=blocks, sections=sections, tenant_id=ALPHA_TENANT,
+            company=doc["company"], ticker=doc["ticker"],
+            fiscal_year=doc["fiscal_year"], quarter=doc["quarter"],
+            document_type=doc["doc_type"], filing_date=doc["filing_date"],
+        )
+        print(f"\n  Chunks produced: {len(chunks)}")
+
+        if "expect_chunk_count" in doc:
+            want = doc["expect_chunk_count"]
+            hit = len(chunks) == want
+            chunk_ok = chunk_ok and hit
+            checked.append(f"chunk_count({want})")
+            print(f"  [{'PASS' if hit else 'FAIL'}] chunk_count == {want} "
+                  f"(got {len(chunks)})")
+
+        if "expect_speaker_roles" in doc:
+            want_roles = doc["expect_speaker_roles"]
+            got_roles = dict(Counter(c.metadata.speaker_role for c in chunks))
+            hit = got_roles == want_roles
+            chunk_ok = chunk_ok and hit
+            checked.append(f"speaker_roles({want_roles})")
+            print(f"  [{'PASS' if hit else 'FAIL'}] speaker_role distribution")
+            print(f"    expected {want_roles}")
+            print(f"    actual   {got_roles}")
+    else:
+        skipped.append("chunk_count/speaker_roles")
+
+    print(f"\n  Assertions checked ({len(checked)}): "
+          f"{', '.join(checked) if checked else 'NONE'}")
+    print(f"  Assertions skipped ({len(skipped)}): "
+          f"{', '.join(skipped) if skipped else 'none'}")
+
+    overall = (fs_ok and records_ok and revenue_ok and identity_ok
+               and total_income_ok and chunk_ok)
     print(f"\n  OVERALL: {'✅ PASS' if overall else '❌ FAIL'}")
     return overall
 
