@@ -1,0 +1,393 @@
+{
+  "meta": {
+    "run_at": "2026-08-09T17:02:48",
+    "tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "note": "One pool per question, scored once, partitioned by doc_id. fiscal_year=None -- widest honest pool."
+  },
+  "questions": [
+    {
+      "id": "Q032",
+      "question": "What accounting standard does ETERNAL follow for its financial reporting?",
+      "requested_financial_type": "consolidated",
+      "n_correct": 12,
+      "n_opposite": 7,
+      "n_transcript": 1,
+      "best_correct": 0.95379424,
+      "best_opposite": 0.9874721,
+      "gap": -0.03367785999999995,
+      "correct_top3": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 25,
+          "score": 0.9538,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL CONSOLIDATED FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Consolidated Financial Results for the year ended March 31, 2026 and (b) reviewed the Consolidated Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Consolidated Financial Results for the Quarter and Year Ended March 31, 2026 of Eternal Limited (the \"Parent\", its subsidiaries and its trust (the Parent, its subsidiaries and its trust together referred to as the \"Group\"), (the \"Statement\"), being submitted by the Parent pursuant to the requirements of (Regulation 33) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Consolidated"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 23,
+          "score": 0.4438,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "text": "se (ii) other income (iii) depreciation and amortization expense (iv) finance cost and (v) exceptional items These metrics have certain limitations and hence should be considered in addition to, not as substitutes for, or in isolation from, measures prepared in accordance with IND AS. Forward looking statements This document contains certain statements that are or may be forward-looking statements. These statements include descriptions regarding the intent, belief or current expectations of the senior management of Eternal Limited (formerly known as Zomato Limited) (\u201cCompany\u201d) subject to board approval, wherever applicable with respect to the results of operations and financial condition of the"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 23,
+          "score": 0.3915,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "text": "ed EBITDA = Consolidated EBITDA (+) share-based payment expense (-) rental paid for the period pertaining to \u2018Ind AS 116 leases\u2019 \u25cf EBITDA = Profit/loss as per financials excluding (i) tax expense (ii) other income (iii) depreciation and amortization expense (iv) finance cost and (v) exceptional items These metrics have certain limitations and hence should be considered in addition to, not as substitutes for, or in isolation from, measures prepared in accordance with IND AS. Forward looking statements This document contains certain statements that are or may be forward-looking statements. These statements include descriptions regarding the intent, belief or current expectations of the senior management of Eternal Limited (formerly known as Zomato Limited) (\u201cCompany\u201d) subject to board"
+        }
+      ],
+      "opposite_top3": [
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 43,
+          "score": 0.9875,
+          "chunk_type": "RISK_DISCLOSURE",
+          "text": "... Eternal Limited (Formerly known as Zomato Limited) Notes to the stand:donc financial results I The statement of standalone financial results of Eternal Limited (Formerly known as Zomato Limited) ('\"the Company'\") for the quarter (unaudi1ed) and year (audited) ended March 31. 2026 (. .F inancial Resu\\1s\u00b7\u00b7) have been reviewed by the Audit Conm1i11cc and approved by the Board of Directors at their respective tncclings held on April 28. 2026. The Financial Results have been prepared ln accordance wilh lhe recognition and measurement principles laid down in the Indian Accounting Standard 3\u2794 ..I nterim Financial Reporting\u00b7\u00b7 (\"Ind AS 34\"), prescribed \\mder Section 133 of the Companies Act. 2013 read with relevant rules issued thereunder and other accounting principles generally acccp1cd in India and in compliance with Rcgulaiion 33 of the Securities and Exchange Board oflndia (Lis1ing Obligations and Disclosure Requirements) Rcgula1ions, 2015, as amended (\"LODR Regulations\")."
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 36,
+          "score": 0.9574,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL STANDALONE FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Standalone Financial Results for the year ended March 31, 2026 and (b) reviewed the Standalone Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Standalone Financial Results for the Quarter and Year Ended March 31, 2026\" of Eternal Limited (the \"Company\"), which includes Foodie Bay Employee Trust (\"trust\") (the \"Statement\"), being submitted by the Company pursuant to the requirements of (Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Standalone Financial Results In our opinion and to the best of our information "
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 44,
+          "score": 0.9172,
+          "chunk_type": "TABLE",
+          "text": "eternal eternal.com info@eternal.com Department of Corporate Services, Listing Department, SSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers, Dalal Street, C-1, G-Slock, Sandra-Kurla Complex Mumbai - 400 001 Sandra ( E), Mumbai - 400 051 Scrip Code: 543320, Scrip Symbol: ETERNAL ISIN: INE758T01015 Sub.: Declaration pursuant to Regulation 33 of SEBI (Listing Obligation and Disclosure Requirements) Regulations. 2015 (\"Listing Regulations\") Dear Sir/ Ma'am, Pursuant to Regulation 33 of Listing Regulations read with circulars issued by SESI, we, Albinder Singh Dhinsa, Chief Executive Officer and Akshant Goyal, Chief Financial Officer of the Company hereby declare that M/s. Deloitte Haskins & Sells, Chartered Accountants, statutory auditors of the Company have issued the audit report with unmodified opinion on the financial results of the Company (standalone and consolidated) for the financial year ended March 31, 2026. For Eternal Limited (Formerly known as Zomato Limited) r Albind~ hi~sa Akshant Goyal Chief Executive Officer Chief Financial Officer Date: April 28, 2026 Date: April 28, 2026 ETERNAL LIMITED (Formerly known as Zomato Limited) Registered Addre"
+        }
+      ],
+      "final_five_doc_ids": [
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q034",
+      "question": "Who audited ETERNAL's financial results?",
+      "requested_financial_type": "consolidated",
+      "n_correct": 14,
+      "n_opposite": 4,
+      "n_transcript": 2,
+      "best_correct": 0.99909604,
+      "best_opposite": 0.99903405,
+      "gap": 6.198999999995625e-05,
+      "correct_top3": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 25,
+          "score": 0.9991,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL CONSOLIDATED FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Consolidated Financial Results for the year ended March 31, 2026 and (b) reviewed the Consolidated Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Consolidated Financial Results for the Quarter and Year Ended March 31, 2026 of Eternal Limited (the \"Parent\", its subsidiaries and its trust (the Parent, its subsidiaries and its trust together referred to as the \"Group\"), (the \"Statement\"), being submitted by the Parent pursuant to the requirements of (Regulation 33) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Consolidated"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 33,
+          "score": 0.9085,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "text": "Eternal Limited (Formerly known as Zomato Limited) Consolidated Statement of Cash Flows (INR crore) Year ended Particulars March 31, 2026 March 31, 2025 Audited Audited A) Cash flows from operating activities Profit before tax 615 697 Adjustments to reconcile profit before tax to net cash flows: -Interest income on bank deposits and others (473) (262) -interest income on government securities (120) (100) -Amortisation of premium/ (discount) on government securities (102) (89) -lntcrcst income on debentures or bonds (484) (436) -Amortisation of premium/ (discount) on debentures or bonds 0 (4) -Interest income on income tax refund (9) (17) -Net gain on mutual fund units (155) (151) -Net gain on sale of government securities (7) -Liabilities written back (18) (10) -(Profit)/ loss on sale of property, plant and equipment (net)/ asset written off (3) II -Gain on tcm1ination oflcasc contrncts (13) (3) -Inventories write-down (net) 37 - -Share-based payment expense 819 798 -Interest expense on lease liabilities 367 147 -Interest expense others 16 4 -Depreciation on property. plant and equipment and depreciation on right-of-use assets 1,291 576 -Amortisation on intangible assets 306 287 -l"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 32,
+          "score": 0.8886,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "text": "Eternal Limited (Formerly known as Zomato Limited) Consolidated Balance Sheet (INR crore) As at As at Particulars March 31, 2026 March 31, 2025 Audited Audited Assets Non-current assets Property, plant and equipment 2,033 965 Capital work-in-progress 136 51 Right-of-use assets 4,294 1,918 Goodwill 5,737 5,737 Other intangible assets 611 912 Financial assets -Investments 9,742 10,920 -Other financial assets 1,606 2,744 Tax assets (net) 202 129 Defe1Ted tax assets (net) 14 - Other non-cu1Tent assets 661 546 Total non-current assets 25,036 23,922 Current assets Inventories 2,181 176 Financial assets -Investments 5,091 2,272 -Trade receivables 1,764 1,946 -Cash and cash equivalents 996 666 -Bank balances other than cash and cash equivalents 527 2,948 -Other financial assets 3,537 2,769 Other current assets 1,604 924 Total current assets 15,700 11,701 Total assets 40,736 35,623 Equity and liabilities Equity Equity share capital 919 907 Other equity 30,061 29,410 Equity attributable to owners of the Parent 30,980 30,317 Non-controlling interests (7) (7) Total equity 30 973 30,310 Liabilities Non-current liabilities Financial liabilities -Lease liabilities 3,833 1,654 -Other financial lia"
+        }
+      ],
+      "opposite_top3": [
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 36,
+          "score": 0.999,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL STANDALONE FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Standalone Financial Results for the year ended March 31, 2026 and (b) reviewed the Standalone Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Standalone Financial Results for the Quarter and Year Ended March 31, 2026\" of Eternal Limited (the \"Company\"), which includes Foodie Bay Employee Trust (\"trust\") (the \"Statement\"), being submitted by the Company pursuant to the requirements of (Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Standalone Financial Results In our opinion and to the best of our information "
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 44,
+          "score": 0.999,
+          "chunk_type": "TABLE",
+          "text": "eternal eternal.com info@eternal.com Department of Corporate Services, Listing Department, SSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers, Dalal Street, C-1, G-Slock, Sandra-Kurla Complex Mumbai - 400 001 Sandra ( E), Mumbai - 400 051 Scrip Code: 543320, Scrip Symbol: ETERNAL ISIN: INE758T01015 Sub.: Declaration pursuant to Regulation 33 of SEBI (Listing Obligation and Disclosure Requirements) Regulations. 2015 (\"Listing Regulations\") Dear Sir/ Ma'am, Pursuant to Regulation 33 of Listing Regulations read with circulars issued by SESI, we, Albinder Singh Dhinsa, Chief Executive Officer and Akshant Goyal, Chief Financial Officer of the Company hereby declare that M/s. Deloitte Haskins & Sells, Chartered Accountants, statutory auditors of the Company have issued the audit report with unmodified opinion on the financial results of the Company (standalone and consolidated) for the financial year ended March 31, 2026. For Eternal Limited (Formerly known as Zomato Limited) r Albind~ hi~sa Akshant Goyal Chief Executive Officer Chief Financial Officer Date: April 28, 2026 Date: April 28, 2026 ETERNAL LIMITED (Formerly known as Zomato Limited) Registered Addre"
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 43,
+          "score": 0.9947,
+          "chunk_type": "RISK_DISCLOSURE",
+          "text": "... Eternal Limited (Formerly known as Zomato Limited) Notes to the stand:donc financial results I The statement of standalone financial results of Eternal Limited (Formerly known as Zomato Limited) ('\"the Company'\") for the quarter (unaudi1ed) and year (audited) ended March 31. 2026 (. .F inancial Resu\\1s\u00b7\u00b7) have been reviewed by the Audit Conm1i11cc and approved by the Board of Directors at their respective tncclings held on April 28. 2026. The Financial Results have been prepared ln accordance wilh lhe recognition and measurement principles laid down in the Indian Accounting Standard 3\u2794 ..I nterim Financial Reporting\u00b7\u00b7 (\"Ind AS 34\"), prescribed \\mder Section 133 of the Companies Act. 2013 read with relevant rules issued thereunder and other accounting principles generally acccp1cd in India and in compliance with Rcgulaiion 33 of the Securities and Exchange Board oflndia (Lis1ing Obligations and Disclosure Requirements) Rcgula1ions, 2015, as amended (\"LODR Regulations\")."
+        }
+      ],
+      "final_five_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q035",
+      "question": "What level of assurance does the ETERNAL audit provide?",
+      "requested_financial_type": "consolidated",
+      "n_correct": 14,
+      "n_opposite": 6,
+      "n_transcript": 0,
+      "best_correct": 0.09619516,
+      "best_opposite": 0.19178137,
+      "gap": -0.09558621,
+      "correct_top3": [
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "page": 68,
+          "score": 0.0962,
+          "chunk_type": "TEXT",
+          "text": "etarial Audit Report is neither an assurance letter. as to the future viability of the company nor of the efficacy or effectiveness with which the management 1. Maintenance of secretarial record is the has conducted the affairs of the Company. responsibility of the management of the Company. Our responsibility is to express an opinion on these secretarial records based on our audit. 2. We have followed the audit practices and For Chandrasekaran Associates processes as were appropriate to obtain reasonable Company Secretaries assurance about the correctness of the contents of FRN: P1988DE002500 the secretarial records. The verification was done on Peer Review Certificate No.: 5715/2024 the random test basis to ensure that correct facts"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 25,
+          "score": 0.0333,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL CONSOLIDATED FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Consolidated Financial Results for the year ended March 31, 2026 and (b) reviewed the Consolidated Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Consolidated Financial Results for the Quarter and Year Ended March 31, 2026 of Eternal Limited (the \"Parent\", its subsidiaries and its trust (the Parent, its subsidiaries and its trust together referred to as the \"Group\"), (the \"Statement\"), being submitted by the Parent pursuant to the requirements of (Regulation 33) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Consolidated"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 26,
+          "score": 0.0226,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Haskins & Sells these requirements and the ICAI's Code of Ethics. We believe that the audit evidence obtained by us and the audit evidence obtained by the other auditors in terms of their reports referred to in Other Matters section below, is sufficient and appropriate to provide a basis for our audit opinion. Emphasis of Matter We draw attention to Note 6 to the consolidated financial results relating to the show cause notices (SCNs) and orders received by the Company from GST authorities in respect of GST on delivery charges. The Company, supported by the external expert's advice, is of the view that, it has a strong case on merits. Given the uncertainty involved, the ultimate outcome will be ascertained on the disposal of the above matter. Our opinion and conclusion is not modified in respect of this matter. Management's and Board of Directors' Responsibilities for the Statement This Statement, which includes the Consolidated Financial Results is the responsibility of the Parent Board of Directors and has been approved by them for the issuance. The Consolidated Financial Results for the year ended March 31, 2026, has been compiled from the related audited consolidated f"
+        }
+      ],
+      "opposite_top3": [
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "page": 271,
+          "score": 0.1918,
+          "chunk_type": "TEXT",
+          "text": "e an 720 \u2018The Auditor\u2019s responsibilities Relating to auditor\u2019s report that includes our opinion. Reasonable Other Information\u2019. assurance is a high level of assurance, but is not a guarantee that an audit conducted in accordance Responsibilities of Management and with SAs will always detect a material misstatement Those Charged with Governance for the when it exists. Misstatements can arise from fraud or Standalone Financial Statements error and are considered material if, individually or in The Company\u2019s Board of Directors is responsible for the aggregate, they could reasonably be expected to the matters stated in section 134(5) of the Act with influence the economic decisions of users taken on"
+        },
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "page": 271,
+          "score": 0.0565,
+          "chunk_type": "TEXT",
+          "text": "nt therein, we about whether the standalone financial statements are required to communicate the matter to those as a whole are free from material misstatement, charged with governance as required under SA whether due to fraud or error and to issue an 720 \u2018The Auditor\u2019s responsibilities Relating to auditor\u2019s report that includes our opinion. Reasonable Other Information\u2019. assurance is a high level of assurance, but is not a guarantee that an audit conducted in accordance Responsibilities of Management and with SAs will always detect a material misstatement Those Charged with Governance for the when it exists. Misstatements can arise from fraud or Standalone Financial Statements error and are considered material if, individually or in"
+        },
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "page": 271,
+          "score": 0.0158,
+          "chunk_type": "TEXT",
+          "text": ". the Standalone Financial Statements \u2022 W hen we read the Board\u2019s report if we conclude Our objectives are to obtain reasonable assurance that there is a material misstatement therein, we about whether the standalone financial statements are required to communicate the matter to those as a whole are free from material misstatement, charged with governance as required under SA whether due to fraud or error and to issue an 720 \u2018The Auditor\u2019s responsibilities Relating to auditor\u2019s report that includes our opinion. Reasonable Other Information\u2019. assurance is a high level of assurance, but is not a guarantee that an audit conducted in accordance Responsibilities of Management and with SAs will always detect a material misstatement Those Charged with Governance for the"
+        }
+      ],
+      "final_five_doc_ids": [
+        "ebaf1089-031d-5605-8090-846308d68dc7",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "ebaf1089-031d-5605-8090-846308d68dc7",
+        "d662a604-2f8c-549c-9374-06400875e04d"
+      ]
+    },
+    {
+      "id": "Q037",
+      "question": "What is the Board of Directors' responsibility for ETERNAL's financial results?",
+      "requested_financial_type": "consolidated",
+      "n_correct": 9,
+      "n_opposite": 9,
+      "n_transcript": 2,
+      "best_correct": 0.9984452,
+      "best_opposite": 0.998606,
+      "gap": -0.00016079999999996097,
+      "correct_top3": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 25,
+          "score": 0.9984,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL CONSOLIDATED FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Consolidated Financial Results for the year ended March 31, 2026 and (b) reviewed the Consolidated Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Consolidated Financial Results for the Quarter and Year Ended March 31, 2026 of Eternal Limited (the \"Parent\", its subsidiaries and its trust (the Parent, its subsidiaries and its trust together referred to as the \"Group\"), (the \"Statement\"), being submitted by the Parent pursuant to the requirements of (Regulation 33) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Consolidated"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 26,
+          "score": 0.9738,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Haskins & Sells these requirements and the ICAI's Code of Ethics. We believe that the audit evidence obtained by us and the audit evidence obtained by the other auditors in terms of their reports referred to in Other Matters section below, is sufficient and appropriate to provide a basis for our audit opinion. Emphasis of Matter We draw attention to Note 6 to the consolidated financial results relating to the show cause notices (SCNs) and orders received by the Company from GST authorities in respect of GST on delivery charges. The Company, supported by the external expert's advice, is of the view that, it has a strong case on merits. Given the uncertainty involved, the ultimate outcome will be ascertained on the disposal of the above matter. Our opinion and conclusion is not modified in respect of this matter. Management's and Board of Directors' Responsibilities for the Statement This Statement, which includes the Consolidated Financial Results is the responsibility of the Parent Board of Directors and has been approved by them for the issuance. The Consolidated Financial Results for the year ended March 31, 2026, has been compiled from the related audited consolidated f"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 23,
+          "score": 0.9076,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "text": "f Eternal Limited (formerly known as Zomato Limited) (\u201cCompany\u201d) subject to board approval, wherever applicable with respect to the results of operations and financial condition of the Company. These statements can be recognised by the use of words such as \u201cexpects,\u201d \u201cplans,\u201d \u201cwill,\u201d \u201cestimates,\u201d \u201cprojects,\u201d \u201cmarks,\u201d \u201cbelieve\u201d or other words of similar meaning. Forward-looking statements generally are not statements of historical fact, including, without limitation statements made about our strategy, estimates of revenue growth, future EBITDA and future financial or operating performance. Such forward-looking statements are not guarantees of future performance and involve risks and uncertainties"
+        }
+      ],
+      "opposite_top3": [
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 36,
+          "score": 0.9986,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL STANDALONE FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Standalone Financial Results for the year ended March 31, 2026 and (b) reviewed the Standalone Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Standalone Financial Results for the Quarter and Year Ended March 31, 2026\" of Eternal Limited (the \"Company\"), which includes Foodie Bay Employee Trust (\"trust\") (the \"Statement\"), being submitted by the Company pursuant to the requirements of (Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Standalone Financial Results In our opinion and to the best of our information "
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 43,
+          "score": 0.9909,
+          "chunk_type": "RISK_DISCLOSURE",
+          "text": "... Eternal Limited (Formerly known as Zomato Limited) Notes to the stand:donc financial results I The statement of standalone financial results of Eternal Limited (Formerly known as Zomato Limited) ('\"the Company'\") for the quarter (unaudi1ed) and year (audited) ended March 31. 2026 (. .F inancial Resu\\1s\u00b7\u00b7) have been reviewed by the Audit Conm1i11cc and approved by the Board of Directors at their respective tncclings held on April 28. 2026. The Financial Results have been prepared ln accordance wilh lhe recognition and measurement principles laid down in the Indian Accounting Standard 3\u2794 ..I nterim Financial Reporting\u00b7\u00b7 (\"Ind AS 34\"), prescribed \\mder Section 133 of the Companies Act. 2013 read with relevant rules issued thereunder and other accounting principles generally acccp1cd in India and in compliance with Rcgulaiion 33 of the Securities and Exchange Board oflndia (Lis1ing Obligations and Disclosure Requirements) Rcgula1ions, 2015, as amended (\"LODR Regulations\")."
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 37,
+          "score": 0.9763,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Haskins & Sells Emphasis of Matter We draw attention to Note 9 to the Standalone financial results relating to the show cause notices (SCNs) and orders received by the Company from GST authorities in respect of GST on delivery charges. The Company, supported by the external expert's advice, is of the view that, it has a strong case on merits. Given the uncertainty involved, the ultimate outcome will be ascertained on the disposal of the above matter. Our opinion and conclusion is not modified in respect of this matter. Management's and Board of Directors' Responsibilities for the Statement This Statement which includes the Standalone Financial Results is the responsibility of the Company's Board of Directors and has been approved by them for the issuance. The Standalone Financial Results for the year ended March 31, 2026 has been compiled from the related audited standalone financial statements. This responsibility includes the preparation and presentation of the Standalone Financial Results for the quarter and year ended March 31, 2026 that give a true and fair view of the net profit and other comprehensive loss and other financial information in accordance with the recog"
+        }
+      ],
+      "final_five_doc_ids": [
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q038",
+      "question": "What does ETERNAL's audit report say about internal controls?",
+      "requested_financial_type": "consolidated",
+      "n_correct": 7,
+      "n_opposite": 13,
+      "n_transcript": 0,
+      "best_correct": 0.95506835,
+      "best_opposite": 0.9830851,
+      "gap": -0.028016750000000035,
+      "correct_top3": [
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "page": 165,
+          "score": 0.9551,
+          "chunk_type": "TABLE",
+          "text": "Company Overview Statutory Reports Financial Statements: Consolidated Annexure \u201cA\u201d to the Independent Auditor\u2019s Report (Referred to in paragraph 1(f) under \u2018Report on Other Legal and Regulatory Requirements\u2019 section of our report of even date) Report on the Internal Financial Controls and its subsidiary companies, which are companies with reference to consolidated financial incorporated in India, based on our audit. We conducted our audit in accordance with the Guidance statements under Clause (i) of Sub- Note on Audit of Internal Financial Controls Over section 3 of Section 143 of the Companies Financial Reporting (the \u201cGuidance Note\u201d) issued by Act, 2013 (\u201cthe Act\u201d) the Institute of Chartered Accountants of India and In conjunction with our audit of the consolidated the Standards on Auditing, prescribed under Section Ind AS financial statements of the Company as at 143(10) of the Companies Act, 2013, to the extent and for the year ended March 31, 2024, we have applicable to an audit of internal financial controls audited the internal financial controls with reference with reference to consolidated financial statements. to consolidated financial statements of Zomato Those Standard"
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "page": 166,
+          "score": 0.8321,
+          "chunk_type": "TEXT",
+          "text": "onsidering of management and directors of the company; and (3) the essential components of internal control stated provide reasonable assurance regarding prevention in the Guidance Note on Audit of Internal Financial or timely detection of unauthorised acquisition, use Controls Over Financial Reporting issued by the or disposition of the company\u2019s assets that could Institute of Chartered Accountants of India. have a material effect on the financial statements. Other Matters Inherent Limitations of Internal Our aforesaid report under Section 143(3)(i) of the Financial Controls with reference to Act on the adequacy and operating effectiveness consolidated financial statements of the internal financial controls with reference"
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "page": 52,
+          "score": 0.7744,
+          "chunk_type": "TABLE",
+          "text": "Company Overview Statutory Reports: Board Report Financial Statements execution capabilities through differentiated compliance of Regulation 24A of the SEBI Listing products, effective marketing and promotional Regulations and the same can be accessed activities and improved operational efficiencies. at https://b.zmtcdn.com/investor-relations/ af03c6a34ee4779c4c4157dc1fbc5836_1715582621.pdf. 16. Auditors and auditors\u2019 reports iii. Internal auditor i. Statutory Auditors Deepak Ahluwalia, Chartered Accountant, Head of M/s. Deloitte Haskins & Sells, Chartered Accountants, Governance, Risk & Compliance for the Company, has (FRN: 015125N), were appointed as Statutory Auditors been appointed as the Internal Auditor in accordance of the Company for a term of 5 (five) consecutive with the provisions of Section 138 of the Act. years starting from the conclusion of the 10th AGM till the conclusion of the 15th AGM. Further, they have He is assigned to provide governance over internal confirmed that: audit, ensure implementation of robust internal a. their appointment is within the limit prescribed controls and enhance the Company\u2019s systems and under the Section 141 of the Act; processes. He i"
+        }
+      ],
+      "opposite_top3": [
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "page": 276,
+          "score": 0.9831,
+          "chunk_type": "TEXT",
+          "text": "he Independent Auditor\u2019s Report (Referred to in paragraph 1(f) under \u2018Report on Other Legal and Regulatory Requirements\u2019 section of our report of even date) Report on the Internal Financial Guidance Note on Audit of Internal Financial Controls Controls with reference to standalone Over Financial Reporting (the \u201cGuidance Note\u201d) issued by the Institute of Chartered Accountants of India and financial statements under Clause (i) the Standards on Auditing prescribed under Section of Sub-section 3 of Section 143 of the 143(10) of the Companies Act, 2013, to the extent Companies Act, 2013 (\u201cthe Act\u201d) applicable to an audit of internal financial controls We have audited the internal financial controls with with reference to standalone financial statements."
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 44,
+          "score": 0.8982,
+          "chunk_type": "TABLE",
+          "text": "eternal eternal.com info@eternal.com Department of Corporate Services, Listing Department, SSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers, Dalal Street, C-1, G-Slock, Sandra-Kurla Complex Mumbai - 400 001 Sandra ( E), Mumbai - 400 051 Scrip Code: 543320, Scrip Symbol: ETERNAL ISIN: INE758T01015 Sub.: Declaration pursuant to Regulation 33 of SEBI (Listing Obligation and Disclosure Requirements) Regulations. 2015 (\"Listing Regulations\") Dear Sir/ Ma'am, Pursuant to Regulation 33 of Listing Regulations read with circulars issued by SESI, we, Albinder Singh Dhinsa, Chief Executive Officer and Akshant Goyal, Chief Financial Officer of the Company hereby declare that M/s. Deloitte Haskins & Sells, Chartered Accountants, statutory auditors of the Company have issued the audit report with unmodified opinion on the financial results of the Company (standalone and consolidated) for the financial year ended March 31, 2026. For Eternal Limited (Formerly known as Zomato Limited) r Albind~ hi~sa Akshant Goyal Chief Executive Officer Chief Financial Officer Date: April 28, 2026 Date: April 28, 2026 ETERNAL LIMITED (Formerly known as Zomato Limited) Registered Addre"
+        },
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "page": 276,
+          "score": 0.7677,
+          "chunk_type": "TEXT",
+          "text": "erating controls with reference to standalone financial effectiveness. Our audit of internal financial controls statements based on the internal control with with reference to standalone financial statements reference to standalone financial statements included obtaining an understanding of internal criteria established by the Company considering financial controls with reference to standalone the essential components of internal control stated financial statements, assessing the risk that a in the Guidance Note on Audit of Internal Financial material weakness exists and testing and evaluating Controls Over Financial Reporting issued by the the design and operating effectiveness of internal"
+        }
+      ],
+      "final_five_doc_ids": [
+        "ebaf1089-031d-5605-8090-846308d68dc7",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "ebaf1089-031d-5605-8090-846308d68dc7"
+      ]
+    },
+    {
+      "id": "Q039",
+      "question": "How does ETERNAL comply with SEBI LODR regulations?",
+      "requested_financial_type": "consolidated",
+      "n_correct": 16,
+      "n_opposite": 3,
+      "n_transcript": 1,
+      "best_correct": 0.9124362,
+      "best_opposite": 0.9826909,
+      "gap": -0.0702547,
+      "correct_top3": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 25,
+          "score": 0.9124,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL CONSOLIDATED FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Consolidated Financial Results for the year ended March 31, 2026 and (b) reviewed the Consolidated Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Consolidated Financial Results for the Quarter and Year Ended March 31, 2026 of Eternal Limited (the \"Parent\", its subsidiaries and its trust (the Parent, its subsidiaries and its trust together referred to as the \"Group\"), (the \"Statement\"), being submitted by the Parent pursuant to the requirements of (Regulation 33) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Consolidated"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 27,
+          "score": 0.2949,
+          "chunk_type": "TEXT",
+          "text": "esults represent the underlying transactions and events in a manner that achieves fair presentation. \u2022 Perform procedures in accordance with the circular issued by the SEBI under Regulation 33(8) of the LODR Regulations to the extent applicable. \u2022 Obtain sufficient appropriate audit evidence regarding the Annual Standalone Financial Results of the entities within the Group to express an opinion on the Annual Consolidated Financial Results. We are responsible for the direction, supervision and performance of the audit of financial information of such entities included in the Annual Consolidated Financial Results of which we are the independent auditors. For the other entities included in the Annual Consolidated Financial Results, which have been audited by the other"
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "page": 27,
+          "score": 0.215,
+          "chunk_type": "TEXT",
+          "text": " based on the audit evidence obtained up to the date of our auditor's report. However, future events or conditions may cause the Group to cease to continue as a going concern. \u2022 Evaluate the overall presentation, structure and content of the Annual Consolidated Financial Results, including the disclosures, and whether the Annual Consolidated Financial Results represent the underlying transactions and events in a manner that achieves fair presentation. \u2022 Perform procedures in accordance with the circular issued by the SEBI under Regulation 33(8) of the LODR Regulations to the extent applicable. \u2022 Obtain sufficient appropriate audit evidence regarding the Annual Standalone Financial Results of the entities within the Group to express an opinion on the Annual Consolidated"
+        }
+      ],
+      "opposite_top3": [
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 44,
+          "score": 0.9827,
+          "chunk_type": "TABLE",
+          "text": "eternal eternal.com info@eternal.com Department of Corporate Services, Listing Department, SSE Limited National Stock Exchange of India Limited Phiroze Jeejeebhoy Towers, Dalal Street, C-1, G-Slock, Sandra-Kurla Complex Mumbai - 400 001 Sandra ( E), Mumbai - 400 051 Scrip Code: 543320, Scrip Symbol: ETERNAL ISIN: INE758T01015 Sub.: Declaration pursuant to Regulation 33 of SEBI (Listing Obligation and Disclosure Requirements) Regulations. 2015 (\"Listing Regulations\") Dear Sir/ Ma'am, Pursuant to Regulation 33 of Listing Regulations read with circulars issued by SESI, we, Albinder Singh Dhinsa, Chief Executive Officer and Akshant Goyal, Chief Financial Officer of the Company hereby declare that M/s. Deloitte Haskins & Sells, Chartered Accountants, statutory auditors of the Company have issued the audit report with unmodified opinion on the financial results of the Company (standalone and consolidated) for the financial year ended March 31, 2026. For Eternal Limited (Formerly known as Zomato Limited) r Albind~ hi~sa Akshant Goyal Chief Executive Officer Chief Financial Officer Date: April 28, 2026 Date: April 28, 2026 ETERNAL LIMITED (Formerly known as Zomato Limited) Registered Addre"
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 43,
+          "score": 0.926,
+          "chunk_type": "RISK_DISCLOSURE",
+          "text": "... Eternal Limited (Formerly known as Zomato Limited) Notes to the stand:donc financial results I The statement of standalone financial results of Eternal Limited (Formerly known as Zomato Limited) ('\"the Company'\") for the quarter (unaudi1ed) and year (audited) ended March 31. 2026 (. .F inancial Resu\\1s\u00b7\u00b7) have been reviewed by the Audit Conm1i11cc and approved by the Board of Directors at their respective tncclings held on April 28. 2026. The Financial Results have been prepared ln accordance wilh lhe recognition and measurement principles laid down in the Indian Accounting Standard 3\u2794 ..I nterim Financial Reporting\u00b7\u00b7 (\"Ind AS 34\"), prescribed \\mder Section 133 of the Companies Act. 2013 read with relevant rules issued thereunder and other accounting principles generally acccp1cd in India and in compliance with Rcgulaiion 33 of the Securities and Exchange Board oflndia (Lis1ing Obligations and Disclosure Requirements) Rcgula1ions, 2015, as amended (\"LODR Regulations\")."
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "page": 36,
+          "score": 0.9012,
+          "chunk_type": "TABLE",
+          "text": "Deloitte Chartered Accountants 7th Floor Building 10 Tower B Haskins & Sells DLF Cyber City Complex DLF City Phase II Gurugram-122 002 Haryana, India Tel: +91 124 679 2000 Fax: +91 124 679 2012 INDEPENDENT AUDITOR'S REPORT ON AUDIT OF ANNUAL STANDALONE FINANCIAL RESULTS AND REVIEW OF QUARTERLY FINANCIAL RESULTS TO THE BOARD OF DIRECTORS OF ETERNAL LIMITED (FORMALLY KNOWN AS ZOMATO LIMITED) Opinion and Conclusion We have (a) audited the Standalone Financial Results for the year ended March 31, 2026 and (b) reviewed the Standalone Financial Results for the quarter ended March 31, 2026 (refer 'Other Matters' section below), which were subject to limited review by us, both included in the accompanying \"Statement of Standalone Financial Results for the Quarter and Year Ended March 31, 2026\" of Eternal Limited (the \"Company\"), which includes Foodie Bay Employee Trust (\"trust\") (the \"Statement\"), being submitted by the Company pursuant to the requirements of (Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, as amended (the \"LODR Regulations\"). (a) Opinion on Annual Standalone Financial Results In our opinion and to the best of our information "
+        }
+      ],
+      "final_five_doc_ids": [
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    }
+  ]
+}
