@@ -186,8 +186,11 @@ Guessing the environment has cost time repeatedly. All of the below were verifie
 - psycopg2 adapts Python UUIDs as TEXT. Cast: `ANY(%s::uuid[])` with `[str(i) for i in ids]`.
 - Scripts run as `python -m scripts.X`, not `python scripts/X.py`. `eval_runner` runs
   from the **host**, in `backend/`, with `../golden_dataset/` paths.
-- `golden_dataset/` holds only the three `q*.json` inputs. Eval outputs go to
-  `eval_results/` (gitignored).
+- `golden_dataset/` holds four `q*.json` inputs: q4fy26_eternal, q_titan, q_paytm,
+  q_eternal_transcript. Eval outputs go to `eval_results/` (gitignored).
+- `--min-chunks` (pipeline.py, chunker.py) defaults to **100**. TITAN legitimately
+  produces 24 chunks, so a fully successful TITAN ingest exits 1 on the post-write
+  completion gate. Read the log, do not re-run. Use `--min-chunks 20` for TITAN.
 - Render truncates multi-line tracebacks — log exceptions single-line with pgcode.
 - Render logs are UTC; the shell is IST.
 - **Any script that parses a corpus PDF must parse it once and reuse the result.**
