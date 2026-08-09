@@ -231,6 +231,101 @@ def _extract_growth_comparison_values(sql_result) -> Optional[dict]:
     return row if isinstance(row, dict) else None
 
 
+# ---------------------------------------------------------------------------
+# expected_keywords matching
+# ---------------------------------------------------------------------------
+# An entry in expected_keywords is EITHER a bare string (required, unchanged
+# behaviour) OR a list of strings meaning "any one of these satisfies this
+# assertion".
+#
+# The alternatives form exists because a correct answer may legitimately name
+# the same thing two ways across runs -- Q039's answer alternates between
+# "SEBI (Listing Obligations..." and "Securities and Exchange Board of India
+# (...)". Both are right, and no single required substring covers both. That is
+# a property of every acronym-bearing question, not of one question.
+#
+# This does NOT relax §5's golden keyword rule. Each alternative must still be
+# an asserted-on string in its own right; the list expresses "the filing's own
+# phrase, however the model chose to render it", not "any of several weaker
+# strings will do".
+
+
+def _keyword_alternatives(spec) -> list[str]:
+    """
+    Normalise one expected_keywords entry to its list of acceptable renderings,
+    lower-cased -- the SAME normalisation the bare-string path has always
+    applied. A bare string is a one-element alternative set, so the bare-string
+    code path and the list code path are the same path.
+    """
+    if isinstance(spec, str):
+        return [spec.lower()]
+    return [alt.lower() for alt in spec]
+
+
+def _missing_keywords(golden: dict, response: str) -> list:
+    """
+    Entries from golden["expected_keywords"] that the (already lower-cased)
+    response does not satisfy.
+
+    A bare string is reported LOWER-CASED, byte-identical to what the
+    pre-alternatives code put in the failure reason -- re-scoring the 22
+    archived eval_results files must produce not just the same verdicts but the
+    same reason strings, or the diff between an old sweep and a new one stops
+    being readable. An alternatives entry is reported as its list, so the
+    author can see which whole set went unmatched rather than one flattened
+    string.
+    """
+    missing = []
+    for spec in golden.get("expected_keywords", []) or []:
+        alts = _keyword_alternatives(spec)
+        if not any(alt in response for alt in alts):
+            missing.append(alts[0] if isinstance(spec, str) else spec)
+    return missing
+
+
+def validate_expected_keywords(questions: list[dict]) -> None:
+    """
+    Fail at LOAD time on a malformed expected_keywords entry.
+
+    A malformed entry must never reach the matcher, because every malformed
+    shape there fails OPEN: an empty list makes any() False -> permanently
+    missing; a nested list makes the `in` test raise mid-sweep, after the
+    Gemini calls have already been spent. Both are worse than refusing to
+    start.
+    """
+    errors: list[str] = []
+    for q in questions:
+        qid = q.get("id", "<no id>")
+        spec_list = q.get("expected_keywords")
+        if spec_list is None:
+            continue
+        if not isinstance(spec_list, list):
+            errors.append(f"{qid}: expected_keywords must be a list, got {type(spec_list).__name__}")
+            continue
+        for i, spec in enumerate(spec_list):
+            where = f"{qid}: expected_keywords[{i}]"
+            if isinstance(spec, str):
+                if not spec.strip():
+                    errors.append(f"{where} is an empty string")
+                continue
+            if isinstance(spec, list):
+                if not spec:
+                    errors.append(f"{where} is an empty alternatives list "
+                                  f"(would be unsatisfiable by construction)")
+                    continue
+                for j, alt in enumerate(spec):
+                    if not isinstance(alt, str):
+                        errors.append(f"{where}[{j}] is {type(alt).__name__}, "
+                                      f"expected a string (alternatives may not nest)")
+                    elif not alt.strip():
+                        errors.append(f"{where}[{j}] is an empty string")
+                continue
+            errors.append(f"{where} is {type(spec).__name__}, expected a string "
+                          f"or a list of strings")
+    if errors:
+        raise ValueError("malformed expected_keywords:\n  " + "\n  ".join(errors))
+
+
 def score_result(golden: dict, result: Optional[dict]) -> dict:
     if result is None:
         return {"pass": False, "reason": "API call failed / no response", "actual": None}
@@ -542,8 +637,8 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
                 "actual": {"confidence_tier": tier, "response_preview": response[:200]},
             }
 
-        keywords = [k.lower() for k in golden.get("expected_keywords", [])]
-        missing = [k for k in keywords if k not in response]
+        keywords = golden.get("expected_keywords", []) or []
+        missing = _missing_keywords(golden, response)
         if missing:
             return {
                 "pass": False,
@@ -564,13 +659,13 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
     if category.startswith("semantic_"):
         tier     = result.get("confidence_tier", "low")
         response = (result.get("response_text") or "").lower()
-        keywords = [k.lower() for k in golden.get("expected_keywords", [])]
+        keywords = golden.get("expected_keywords", []) or []
 
         if tier == "low":
             return {"pass": False, "reason": "Low confidence — retrieval likely missed the target chunks",
                      "actual": {"confidence_tier": tier, "response_preview": response[:200]}}
 
-        missing = [k for k in keywords if k not in response]
+        missing = _missing_keywords(golden, response)
         if missing:
             return {"pass": False, "reason": f"Missing keywords in response: {missing}",
                      "actual": {"confidence_tier": tier, "missing_keywords": missing, "response_preview": response[:200]}}
@@ -705,6 +800,15 @@ def print_report(results: list[dict], model: str):
 def main():
     with open(args.dataset) as f:
         golden_questions = json.load(f)
+
+    # Before the token, before the first Gemini call: a malformed
+    # expected_keywords entry fails open in the matcher, so it has to stop the
+    # sweep at load rather than silently pass at score time.
+    try:
+        validate_expected_keywords(golden_questions)
+    except ValueError as exc:
+        print(f"ERROR: {args.dataset}: {exc}")
+        sys.exit(1)
 
     dataset_total = len(golden_questions)
     scoped = False
