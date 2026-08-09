@@ -196,6 +196,12 @@ Guessing the environment has cost time repeatedly. All of the below were verifie
 - **Any script that parses a corpus PDF must parse it once and reuse the result.**
   Parsing twice exhausts WSL RAM and restarts the distro. Run `regression_check` once,
   tee to `/tmp`, grep the file.
+- **`docker compose cp <file> backend:/app/...` writes into the repo.** compose binds
+  `./backend:/app`, so the container path and the working tree are the same path — a
+  file "copied into the container" appears under `backend/` and shows up as untracked.
+  Container scratch goes in `/tmp`, which is not mounted:
+  `docker compose exec -T backend sh -c 'cat > /tmp/x.py' < x.py`. Same for anything
+  the container writes to `/app`. Check `git status` after either.
 
 ---
 
