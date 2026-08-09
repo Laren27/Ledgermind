@@ -523,12 +523,33 @@ def verify_financials(
 # Smoke test
 # ---------------------------------------------------------------------------
 
+# Every doc_id the smoke test creates, recorded as it is created.
+#
+# WHY A REGISTRY AND NOT A PREDICATE. _cleanup_test_data used to delete
+# WHERE company='ETERNAL' AND fiscal_year='FY26' -- a predicate describing a
+# CLASS of rows rather than THESE rows. _insert_test_document writes fixtures
+# labelled exactly like real corpus data, so that predicate also matched the
+# live ETERNAL FY26 documents, and documents.doc_id is the parent of an
+# ON DELETE CASCADE. Running this module against a populated database
+# destroyed real filings and their financials. The cleanup runs in a finally
+# block, so it fired on assertion failure and on Ctrl-C too.
+#
+# Appended at creation rather than enumerated at cleanup time: ids created
+# late in the run (Scenario 4) are unbound if the run aborts early, and a
+# finally block that references an unbound name raises NameError over the
+# assertion that actually failed.
+_TEST_DOC_IDS: list[str] = []
+
+
 def _insert_test_document(cur, doc_id: str, tenant_id: str, filing_date: str, checksum: str):
     """
     Insert a minimal documents row for smoke test use.
     The financials table has a FK on doc_id → documents.doc_id.
     This satisfies that constraint without depending on seed data state.
+
+    Records doc_id in _TEST_DOC_IDS so cleanup can delete exactly these rows.
     """
+    _TEST_DOC_IDS.append(doc_id)
     cur.execute(
         """
         INSERT INTO documents (
@@ -549,18 +570,39 @@ def _insert_test_document(cur, doc_id: str, tenant_id: str, filing_date: str, ch
     )
 
 
-def _cleanup_test_data(conn, tenant_id: str):
-    """Remove all smoke test rows. Called at end of test regardless of outcome."""
+def _cleanup_test_data(conn, tenant_id: str, doc_ids: list[str]):
+    """Remove the smoke test rows THIS run created. Never a broader predicate.
+
+    Deletes only doc_ids passed in. financials is removed explicitly before
+    documents so the count is observable; the FK cascade would remove them
+    anyway, and relying on a cascade to define a delete's blast radius is how
+    the previous version destroyed real data.
+
+    The row-count check LOGS and does not raise. This runs in a finally block,
+    so raising here would replace whatever assertion actually failed with a
+    cleanup error.
+    """
+    if not doc_ids:
+        logger.info("No test documents recorded — nothing to clean up.")
+        return
+
     with conn.cursor() as cur:
         cur.execute(_SQL_SET_TENANT, (tenant_id,))
-        cur.execute(
-            "DELETE FROM financials WHERE company = 'ETERNAL' AND fiscal_year = 'FY26'"
-        )
-        cur.execute(
-            "DELETE FROM documents  WHERE company = 'ETERNAL' AND fiscal_year = 'FY26'"
-        )
+        cur.execute("DELETE FROM financials WHERE doc_id = ANY(%s::uuid[])", (doc_ids,))
+        fin_deleted = cur.rowcount
+        cur.execute("DELETE FROM documents  WHERE doc_id = ANY(%s::uuid[])", (doc_ids,))
+        doc_deleted = cur.rowcount
     conn.commit()
-    logger.info("Test data cleaned up.")
+
+    if doc_deleted != len(doc_ids):
+        logger.error(
+            "Cleanup deleted %d documents rows but %d test doc_ids were recorded "
+            "— possible leftover test rows: %s",
+            doc_deleted, len(doc_ids), doc_ids,
+        )
+    logger.info(
+        "Test data cleaned up: %d documents, %d financials.", doc_deleted, fin_deleted
+    )
 
 
 if __name__ == "__main__":
@@ -698,5 +740,5 @@ if __name__ == "__main__":
 
     finally:
         # Always clean up, even on assertion failure
-        _cleanup_test_data(conn, ALPHA_TENANT)
+        _cleanup_test_data(conn, ALPHA_TENANT, _TEST_DOC_IDS)
         conn.close()
