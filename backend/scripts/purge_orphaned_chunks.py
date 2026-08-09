@@ -73,6 +73,43 @@ from scripts.regression_check import DOCUMENTS, RAW_DIR, ALPHA_TENANT
 
 LOCAL_DSN = "postgresql://ledgermind_app:app_dev_pass@postgres:5432/ledgermind"
 
+# The doc_ids that actually hold points in ledgermind_chunks. Measured
+# 2026-08-09 (2531 points across exactly these 9). Hardcoded for the same
+# reason financial_type_leak_probe.py hardcodes DOC_MAP: a coverage gate that
+# derives its own expectation from the thing it is checking cannot fail.
+EXPECTED_CORPUS_DOC_IDS = {
+    "d662a604-2f8c-549c-9374-06400875e04d",  # ETERNAL FY24 AR   consolidated
+    "ebaf1089-031d-5605-8090-846308d68dc7",  # ETERNAL FY24 AR   standalone
+    "27091929-f1d5-5c8d-897c-3d6437963418",  # ETERNAL FY26 Q4   consolidated
+    "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",  # ETERNAL FY26 Q4   standalone
+    "1d8061a3-cb75-5524-a897-48a7baa81a1a",  # ETERNAL FY26 earnings transcript
+    "352e249b-ca7e-508d-9a9d-377d4fe7c48c",  # PAYTM   FY26 AR   consolidated
+    "bbf75eac-eaa6-506f-b92b-154423882f8d",  # PAYTM   FY26 AR   standalone
+    "6a07229b-7084-59e4-a7be-86cf7de8d94e",  # TITAN   FY26 Q1   consolidated
+    "14b698c0-b6e4-58e6-89e2-e0c0e9844edf",  # TITAN   FY26 Q1   standalone
+}
+
+
+def roster_doc_ids() -> set:
+    """
+    Which corpus doc_ids the reference roster can produce AT ALL -- a property
+    of regression_check.DOCUMENTS, deliberately independent of --only.
+
+    Costs a sha256 per file and NOT a parse: doc_id is
+    uuid5(NS, f"{file_sha256}_{financial_type}"), so both candidate ids per
+    file are derivable without opening the PDF as a document. That matters --
+    this runs on every invocation, and CLAUDE.md \u00a77 rations parses, not hashes.
+    """
+    ids = set()
+    for doc in DOCUMENTS:
+        path = RAW_DIR / doc["filename"]
+        if not path.exists():
+            continue
+        sha = compute_pdf_checksum(str(path))
+        for ftype in ("consolidated", "standalone"):
+            ids.add(derive_doc_id(section_checksum(sha, ftype)))
+    return ids & EXPECTED_CORPUS_DOC_IDS
+
 
 # ---------------------------------------------------------------------------
 # Produced-set: what the CURRENT code cuts out of the reference PDFs
@@ -254,14 +291,50 @@ def main() -> None:
             print(f"  {point_id}  p{payload.get('page_number')} "
                   f"{str(payload.get('chunk_type'))[:22]:<22} {text[:56]!r}")
 
+    not_evaluated_points = sum(len(v) for v in unscoped.values())
+
     print(f"\n{'-' * 72}")
     print(f"live points       : {sum(len(v) for v in live.values())}")
     print(f"matched current   : {matched}")
     print(f"orphaned          : {len(orphans)}")
-    print(f"not evaluated     : {sum(len(v) for v in unscoped.values())}")
+    print(f"not evaluated     : {not_evaluated_points} points across "
+          f"{len(unscoped)} doc_ids")
+
+    # ── COVERAGE GATE ────────────────────────────────────────────────────
+    # Two different coverages, and conflating them would break one of them.
+    #
+    # ROSTER coverage is a property of regression_check.DOCUMENTS: how much of
+    # the corpus the reference list can produce at all. It is reported on every
+    # run and is INDEPENDENT of --only, so narrowing a run never flatters it.
+    #
+    # SCAN coverage is the operative gate: whether this run's produced-set saw
+    # every doc_id whose points it just counted. That is what makes an orphan
+    # count a measurement -- a detector that has not seen a document has no
+    # opinion about it, so a number computed while some of the scanned
+    # collection went unevaluated is not one.
+    roster = roster_doc_ids()
+    missing_roster = sorted(EXPECTED_CORPUS_DOC_IDS - roster)
+    print(f"\nroster coverage   : {len(roster)} of {len(EXPECTED_CORPUS_DOC_IDS)} "
+          f"expected corpus doc_ids produced by "
+          f"{len(DOCUMENTS)} reference documents")
+    for doc_id in missing_roster:
+        print(f"  UNCOVERED BY ROSTER: {doc_id} — no reference document "
+              f"produces it; its points can only ever report NOT EVALUATED")
+    print(f"scan coverage     : {len(live) - len(unscoped)} of {len(live)} "
+          f"scanned doc_ids evaluated")
 
     # FOUND vs EXPECTED. A bare "0 found" cannot distinguish an empty orphan
     # class from a detector whose comparison never matched anything.
+    if args.expect_orphans is not None and unscoped:
+        print(f"\nABORT: --expect-orphans was passed, but {not_evaluated_points} "
+              f"points across {len(unscoped)} doc_ids went unevaluated.")
+        for doc_id in sorted(unscoped):
+            note = " (uncovered by the reference roster)" if doc_id in missing_roster else ""
+            print(f"  {doc_id}  {len(unscoped[doc_id])} points{note}")
+        sys.exit("An orphan count from a partial produced-set is not a "
+                 "measurement. Cover every scanned doc_id, or scan a collection "
+                 "the roster covers.")
+
     if args.expect_orphans is not None:
         verdict = "MATCH" if len(orphans) == args.expect_orphans else "MISMATCH"
         print(f"\nfound {len(orphans)} / expected {args.expect_orphans} — {verdict}")
