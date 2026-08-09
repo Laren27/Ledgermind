@@ -1,0 +1,879 @@
+{
+  "meta": {
+    "run_at": "2026-08-09T16:33:55",
+    "tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "dataset": "/app/golden_dataset/q4fy26_eternal.json",
+    "retrieval_top_k": 20,
+    "rerank_top_k": 5,
+    "note": "fiscal_year=None -- widest honest pool, not the live pipeline pool."
+  },
+  "questions": [
+    {
+      "id": "Q026",
+      "category": "semantic_management",
+      "question": "How does ETERNAL define Adjusted EBITDA?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9628
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.4255
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.338
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "verdict": "MATCH",
+          "page": 4,
+          "chunk_type": "TABLE",
+          "score": 0.3139
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.2615
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q027",
+      "category": "semantic_management",
+      "question": "What non-GAAP financial measures does ETERNAL use in its reporting?",
+      "identical_across_filter": false,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9366
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9076
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "score": 0.7853
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.7744
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 32,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "score": 0.5172
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc"
+      ]
+    },
+    {
+      "id": "Q028",
+      "category": "semantic_management",
+      "question": "What forward-looking statement disclaimers does ETERNAL include in its results?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.991
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9882
+        },
+        {
+          "doc_id": "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+          "verdict": "TRANSCRIPT",
+          "page": 2,
+          "chunk_type": "TEXT",
+          "score": 0.9538
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9488
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 44,
+          "chunk_type": "TABLE",
+          "score": 0.2674
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc"
+      ]
+    },
+    {
+      "id": "Q029",
+      "category": "semantic_management",
+      "question": "Why does ETERNAL present non-GAAP financial measures alongside IND AS results?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9995
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9808
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "score": 0.9147
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.7866
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.715
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q030",
+      "category": "semantic_management",
+      "question": "What information about material subsidiaries does ETERNAL include in its results?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 25,
+          "chunk_type": "TABLE",
+          "score": 0.969
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.8091
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "score": 0.3023
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 27,
+          "chunk_type": "TEXT",
+          "score": 0.2621
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 30,
+          "chunk_type": "TABLE",
+          "score": 0.2349
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q031",
+      "category": "semantic_management",
+      "question": "What does ETERNAL say about comparing its results across multiple periods?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+          "verdict": "TRANSCRIPT",
+          "page": 2,
+          "chunk_type": "TEXT",
+          "score": 0.2957
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 6,
+          "chunk_type": "TEXT",
+          "score": 0.28
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.0796
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.0426
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "score": 0.0201
+        }
+      ],
+      "standalone_doc_ids": [
+        "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc"
+      ]
+    },
+    {
+      "id": "Q032",
+      "category": "semantic_management",
+      "question": "What accounting standard does ETERNAL follow for its financial reporting?",
+      "identical_across_filter": false,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "score": 0.9875
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 36,
+          "chunk_type": "TABLE",
+          "score": 0.9574
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 44,
+          "chunk_type": "TABLE",
+          "score": 0.9172
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 31,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "score": 0.5133
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.4438
+        }
+      ],
+      "standalone_doc_ids": [
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q033",
+      "category": "semantic_management",
+      "question": "Does ETERNAL include revenue not already in reported revenue from operations in its adjusted metrics?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.8527
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.7007
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.6812
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "verdict": "MATCH",
+          "page": 42,
+          "chunk_type": "TABLE",
+          "score": 0.6273
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "verdict": "MATCH",
+          "page": 4,
+          "chunk_type": "TABLE",
+          "score": 0.5652
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "d662a604-2f8c-549c-9374-06400875e04d"
+      ]
+    },
+    {
+      "id": "Q034",
+      "category": "semantic_audit",
+      "question": "Who audited ETERNAL's financial results?",
+      "identical_across_filter": false,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 25,
+          "chunk_type": "TABLE",
+          "score": 0.9991
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 44,
+          "chunk_type": "TABLE",
+          "score": 0.999
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "score": 0.9947
+        },
+        {
+          "doc_id": "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+          "verdict": "TRANSCRIPT",
+          "page": 1,
+          "chunk_type": "TEXT",
+          "score": 0.9627
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 33,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "score": 0.9085
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "1d8061a3-cb75-5524-a897-48a7baa81a1a"
+      ]
+    },
+    {
+      "id": "Q035",
+      "category": "semantic_audit",
+      "question": "What level of assurance does the ETERNAL audit provide?",
+      "identical_across_filter": false,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "verdict": "OPPOSITE",
+          "page": 271,
+          "chunk_type": "TEXT",
+          "score": 0.1918
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "verdict": "MATCH",
+          "page": 68,
+          "chunk_type": "TEXT",
+          "score": 0.0962
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 25,
+          "chunk_type": "TABLE",
+          "score": 0.0333
+        },
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "verdict": "OPPOSITE",
+          "page": 271,
+          "chunk_type": "TEXT",
+          "score": 0.0158
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "verdict": "MATCH",
+          "page": 160,
+          "chunk_type": "TEXT",
+          "score": 0.0016
+        }
+      ],
+      "standalone_doc_ids": [
+        "ebaf1089-031d-5605-8090-846308d68dc7",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "ebaf1089-031d-5605-8090-846308d68dc7",
+        "ebaf1089-031d-5605-8090-846308d68dc7"
+      ]
+    },
+    {
+      "id": "Q036",
+      "category": "semantic_honest_refusal",
+      "question": "What does ETERNAL's auditor say about going concern?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 44,
+          "chunk_type": "TABLE",
+          "score": 0.8526
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 25,
+          "chunk_type": "TABLE",
+          "score": 0.6626
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 27,
+          "chunk_type": "TEXT",
+          "score": 0.2578
+        },
+        {
+          "doc_id": "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+          "verdict": "TRANSCRIPT",
+          "page": 1,
+          "chunk_type": "TEXT",
+          "score": 0.164
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.0765
+        }
+      ],
+      "standalone_doc_ids": [
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q037",
+      "category": "semantic_audit",
+      "question": "What is the Board of Directors' responsibility for ETERNAL's financial results?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 36,
+          "chunk_type": "TABLE",
+          "score": 0.9986
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "score": 0.9909
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 37,
+          "chunk_type": "TABLE",
+          "score": 0.9763
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 44,
+          "chunk_type": "TABLE",
+          "score": 0.9288
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9076
+        }
+      ],
+      "standalone_doc_ids": [
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q038",
+      "category": "semantic_audit",
+      "question": "What does ETERNAL's audit report say about internal controls?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "verdict": "OPPOSITE",
+          "page": 276,
+          "chunk_type": "TEXT",
+          "score": 0.9831
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 44,
+          "chunk_type": "TABLE",
+          "score": 0.8982
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "verdict": "MATCH",
+          "page": 166,
+          "chunk_type": "TEXT",
+          "score": 0.8321
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "verdict": "MATCH",
+          "page": 52,
+          "chunk_type": "TABLE",
+          "score": 0.7744
+        },
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "verdict": "OPPOSITE",
+          "page": 276,
+          "chunk_type": "TEXT",
+          "score": 0.7677
+        }
+      ],
+      "standalone_doc_ids": [
+        "ebaf1089-031d-5605-8090-846308d68dc7",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "ebaf1089-031d-5605-8090-846308d68dc7"
+      ]
+    },
+    {
+      "id": "Q039",
+      "category": "semantic_audit",
+      "question": "How does ETERNAL comply with SEBI LODR regulations?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 44,
+          "chunk_type": "TABLE",
+          "score": 0.9827
+        },
+        {
+          "doc_id": "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+          "verdict": "OPPOSITE",
+          "page": 43,
+          "chunk_type": "RISK_DISCLOSURE",
+          "score": 0.926
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 25,
+          "chunk_type": "TABLE",
+          "score": 0.9124
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 27,
+          "chunk_type": "TEXT",
+          "score": 0.2949
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 27,
+          "chunk_type": "TEXT",
+          "score": 0.215
+        }
+      ],
+      "standalone_doc_ids": [
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q040",
+      "category": "semantic_audit",
+      "question": "What does the auditor communicate to those charged with governance at ETERNAL?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 27,
+          "chunk_type": "TEXT",
+          "score": 0.9885
+        },
+        {
+          "doc_id": "d662a604-2f8c-549c-9374-06400875e04d",
+          "verdict": "MATCH",
+          "page": 160,
+          "chunk_type": "TEXT",
+          "score": 0.9796
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 27,
+          "chunk_type": "TEXT",
+          "score": 0.8731
+        },
+        {
+          "doc_id": "ebaf1089-031d-5605-8090-846308d68dc7",
+          "verdict": "OPPOSITE",
+          "page": 271,
+          "chunk_type": "TEXT",
+          "score": 0.8413
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 25,
+          "chunk_type": "TABLE",
+          "score": 0.1936
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "d662a604-2f8c-549c-9374-06400875e04d",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "ebaf1089-031d-5605-8090-846308d68dc7",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q053",
+      "category": "cross_examination",
+      "question": "Does Eternal's management commentary on quick commerce growth align with its consolidated revenue for FY26?",
+      "identical_across_filter": true,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 8,
+          "chunk_type": "TEXT",
+          "score": 0.9678
+        },
+        {
+          "doc_id": "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+          "verdict": "TRANSCRIPT",
+          "page": 2,
+          "chunk_type": "TEXT",
+          "score": 0.9358
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 8,
+          "chunk_type": "TEXT",
+          "score": 0.9205
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 14,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.9009
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 7,
+          "chunk_type": "TABLE",
+          "score": 0.8893
+        }
+      ],
+      "standalone_doc_ids": [
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    },
+    {
+      "id": "Q054",
+      "category": "cross_examination",
+      "question": "Does Eternal's management commentary account for the rise in its consolidated depreciation in FY26?",
+      "identical_across_filter": false,
+      "requested_financial_type": "consolidated",
+      "consolidated": [
+        {
+          "doc_id": "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+          "verdict": "TRANSCRIPT",
+          "page": 2,
+          "chunk_type": "TEXT",
+          "score": 0.8733
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 33,
+          "chunk_type": "FINANCIAL_STATEMENT",
+          "score": 0.0455
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 25,
+          "chunk_type": "TABLE",
+          "score": 0.0072
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 23,
+          "chunk_type": "MANAGEMENT_DISCUSSION",
+          "score": 0.0017
+        },
+        {
+          "doc_id": "27091929-f1d5-5c8d-897c-3d6437963418",
+          "verdict": "MATCH",
+          "page": 35,
+          "chunk_type": "TABLE",
+          "score": 0.0001
+        }
+      ],
+      "standalone_doc_ids": [
+        "1d8061a3-cb75-5524-a897-48a7baa81a1a",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "27091929-f1d5-5c8d-897c-3d6437963418",
+        "e33b7e55-0b7b-5e38-9948-afb76e3df2dc",
+        "27091929-f1d5-5c8d-897c-3d6437963418"
+      ]
+    }
+  ]
+}
