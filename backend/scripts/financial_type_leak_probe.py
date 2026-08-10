@@ -30,7 +30,7 @@ exactly.
 TRANSCRIPT COUNTED SEPARATELY. 1d8061a3 is labelled consolidated in documents,
 but an earnings call has no statement type; the label is load-bearing only
 because financial_type is inside derive_doc_id's hashed input. Folding it into
-MATCH or OPPOSITE would answer by assumption.
+SAME_DOC or COUNTERPART_DOC would answer by assumption.
 
 METHOD follows cohere_score_dump.py: hybrid_search() is the real function,
 Cohere is called directly rather than through rerank() (which slices to top-5
@@ -85,7 +85,7 @@ def classify(doc_id, requested):
     row = DOC_MAP.get(doc_id)
     if row is None:
         return "UNMAPPED"
-    return "MATCH" if row[3] == requested else "OPPOSITE"
+    return "SAME_DOC" if row[3] == requested else "COUNTERPART_DOC"
 
 
 def score_pool(client, query, company, financial_type):
@@ -144,7 +144,7 @@ def main():
         "run_at": datetime.now().isoformat(timespec="seconds"),
         "tenant_id": TENANT_ID, "dataset": DATASET,
         "retrieval_top_k": TOP_K_RETRIEVAL, "rerank_top_k": TOP_K_RERANK,
-        "note": "fiscal_year=None -- widest honest pool, not the live pipeline pool.",
+        "note": "fiscal_year=None -- widest honest pool, not the live pipeline pool. VERDICT AXIS IS DOCUMENT IDENTITY, NOT PAYLOAD VALUE: it compares DOC_MAP's document-level financial_type against the requested one. Read chunk_financial_type for the chunk's own label -- narrative chunks are unknown and pass _build_filter's OR fallback legitimately.",
     }, "questions": []}
 
     identical = 0
@@ -179,6 +179,7 @@ def main():
             "identical_across_filter": same,
             "requested_financial_type": want,
             "consolidated": [{"doc_id": c["doc_id"], "verdict": classify(c["doc_id"], want),
+                              "chunk_financial_type": c.get("financial_type"),
                               "page": c["page_number"], "chunk_type": c["chunk_type"],
                               "score": round(c["reranker_score"], 4)} for c in con],
             "standalone_doc_ids": sta_ids,
