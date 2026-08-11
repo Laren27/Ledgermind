@@ -82,6 +82,14 @@ class QueryState(TypedDict):
     # ── entity_resolver output ─────────────────────────────────────────────
     company: Optional[str]
     ticker: Optional[str]
+    # The raw company name the router extracted when it did NOT resolve to a
+    # known ticker. F2 (audit 2026-08-11): company=None previously conflated
+    # "no company mentioned" with "named a company we do not hold", and
+    # retriever._build_filter reads a falsy company as "no filter" -- so an
+    # unresolvable name produced an unfiltered whole-tenant search that still
+    # answered confidently. Recorded rather than echoed into response_text:
+    # this string is unvalidated model output.
+    company_unresolved: Optional[str]
     fiscal_year: Optional[str]
     quarter: Optional[str]
     financial_type: str
@@ -166,6 +174,7 @@ def make_initial_state(
 
         company=None,
         ticker=None,
+        company_unresolved=None,
         fiscal_year=None,
         quarter=None,
         financial_type="consolidated",
