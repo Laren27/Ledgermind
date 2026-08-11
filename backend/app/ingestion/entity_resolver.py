@@ -310,12 +310,27 @@ def resolve_metric(raw: str) -> str:
     return normalized_text.replace(" ", "_")
 
 def resolve_company(raw_name: str) -> Optional[CompanyProfile]:
-    key = raw_name.lower().strip()
-    profile = _ALIAS_INDEX.get(key)
-    if profile: return profile
-    for alias, prof in _ALIAS_INDEX.items():
-        if alias in key: return prof
-    return None
+    """Exact alias match only. No substring fallback -- see F1.
+
+    F1 (audit 2026-08-11): an unanchored substring-containment loop lived here
+    and silently misfiled distinct companies into incumbents. Measured live:
+    "Titan Biotech Limited" (BSE 524717, a separately listed company) resolved
+    to TITAN; "Titanium Industries" likewise; "ONE97 REALTY" to PAYTM. Which
+    incumbent won depended on dict insertion order, so the misfile was also
+    non-deterministic.
+
+    Two consequences, both silent. On the ingest path resolve_company's result
+    overwrites `company`, so another issuer's financials land under the
+    incumbent's key with nothing in the audit trail recording a substitution.
+    On the query path resolve_ticker() feeds the router's _KNOWN_TICKERS gate,
+    so a question about an unheld company was filtered to a different one and
+    answered with real citations from the wrong filing.
+
+    No golden question reached the fallback: all 91 name their company in a
+    form already indexed exactly. Do not reintroduce it -- add an explicit
+    alias to COMPANY_REGISTRY instead.
+    """
+    return _ALIAS_INDEX.get(raw_name.lower().strip())
 
 def resolve_ticker(raw_name: str) -> str:
     profile = resolve_company(raw_name)
