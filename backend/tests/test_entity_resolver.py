@@ -62,32 +62,38 @@ class TestResolveCompanyExact:
 
 
 # ---------------------------------------------------------------------------
-# resolve_company — substring fallback
+# resolve_company — no substring fallback (F1 FIXED)
 # ---------------------------------------------------------------------------
 
-class TestResolveCompanySubstringFallback:
+class TestResolveCompanyNoSubstringFallback:
     """
-    documents F1 — unanchored substring fallback misfiles distinct companies.
+    F1 FIXED 2026-08-11 — resolution is exact-alias-only.
 
-    entity_resolver.py:316-317 iterates the alias index and returns the first
-    alias that is a SUBSTRING of the input. Any company whose legal name
-    contains an incumbent's alias resolves to the incumbent, and ingestion then
-    overwrites `company` with profile.primary -- filing one issuer's financials
-    under another's key, in the same tenant, with nothing in the audit trail
-    recording that a substitution happened.
+    A substring-containment loop previously returned the first alias that was
+    contained in the input, so any company whose legal name contained an
+    incumbent's alias resolved to the incumbent. Ingestion then overwrote
+    `company` with profile.primary, filing one issuer's financials under
+    another's key in the same tenant with nothing in the audit trail recording
+    the substitution. The match was also dict-insertion-ordered, so which
+    incumbent won was non-deterministic.
 
-    These assertions are WRONG AS BEHAVIOUR and CORRECT AS FACT.
+    These names are the exact collisions measured live before the fix. They
+    now return None, which pipeline.py:96-101 turns into a refusal to ingest
+    -- the correct outcome for a company the registry does not know.
+
+    These assertions are CORRECT AS BEHAVIOUR. If any starts returning a
+    profile again, the fallback has been reintroduced.
     """
 
-    def test_titan_biotech_misfiles_as_titan_company(self):
+    def test_titan_biotech_no_longer_misfiles_as_titan_company(self):
         """
         Titan Biotech Limited (BSE 524717) is a real listed company, distinct
-        from Titan Company Limited. It resolves to TITAN.
+        from Titan Company Limited. Before the fix it resolved to TITAN.
         """
-        assert resolve_company("Titan Biotech Limited").primary == "TITAN"
+        assert resolve_company("Titan Biotech Limited") is None
 
     @pytest.mark.parametrize(
-        "distinct_company,absorbed_into",
+        "distinct_company,formerly_absorbed_into",
         [
             ("TITANIUM INDUSTRIES LIMITED", "TITAN"),
             ("ETERNAL MATERIALS PVT LTD", "ETERNAL"),
@@ -95,11 +101,22 @@ class TestResolveCompanySubstringFallback:
             ("Bundl Foods", "SWIGGY"),
         ],
     )
-    def test_substring_collisions(self, distinct_company, absorbed_into):
-        assert resolve_company(distinct_company).primary == absorbed_into
+    def test_former_substring_collisions_now_return_none(
+        self, distinct_company, formerly_absorbed_into
+    ):
+        assert resolve_company(distinct_company) is None
+
+    def test_legitimate_multiword_aliases_still_resolve(self):
+        """
+        The fix must not break exact multi-word aliases -- these are indexed
+        forms, not substring matches, and every one of the 91 golden questions
+        names its company in a form indexed exactly like these.
+        """
+        assert resolve_company("Titan Company Ltd").primary == "TITAN"
+        assert resolve_company("one97 communications limited").primary == "PAYTM"
+        assert resolve_company("Zomato Limited").primary == "ETERNAL"
 
     def test_names_sharing_no_alias_substring_still_return_none(self):
-        """The fallback is not a catch-all -- it only fires on containment."""
         assert resolve_company("Infosys Technologies") is None
 
 
@@ -122,9 +139,17 @@ class TestResolveTicker:
         assert resolve_ticker("HDFC Bank") == "HDFC BANK"
         assert resolve_ticker("  some new issuer ") == "SOME NEW ISSUER"
 
-    def test_substring_collision_propagates_to_ticker(self):
-        """documents F1 — the misfile reaches the value used as the DB key."""
-        assert resolve_ticker("Titan Biotech Limited") == "TITAN"
+    def test_former_substring_collision_now_passes_through(self):
+        """
+        F1 FIXED — the misfile no longer reaches the value used as the DB key.
+
+        Note what did NOT change: resolve_ticker still never returns None, it
+        uppercases the input. So an unknown company yields a plausible-looking
+        ticker rather than a signal. That is the surface F2 works against --
+        router.py:107 gates on `resolved in _KNOWN_TICKERS`, and a miss there
+        silently sets company=None, which retriever.py:174 reads as "no filter".
+        """
+        assert resolve_ticker("Titan Biotech Limited") == "TITAN BIOTECH LIMITED"
 
 
 # ---------------------------------------------------------------------------
