@@ -7,7 +7,9 @@ The objective is **not** feature count. It is correctness, reliability, explaina
 and auditability. A wrong answer with a ✓ tick is worse than a refusal.
 
 Detailed context lives in `docs/IMPLEMENTATION_DELTAS.md` (every divergence from the
-blueprint) and `docs/RUNBOOK.md` (stack startup, script invocation, quota procedure).
+blueprint), `docs/RUNBOOK.md` (stack startup, script invocation, quota procedure), and
+`docs/audit/repo_audit_20260811.md` (13 findings ranked by blast radius, F1–F13 —
+referenced by number throughout this file and in the test suite).
 Read those before proposing anything structural. Do not restate them here.
 
 ---
@@ -28,9 +30,14 @@ prove correctness.
    candidate must be verified as either paired at an identical value with a
    surviving row, or a component summing into a preserved total.
 3. **Measured constants.** Do not modify: `COHERE_HIGH` (0.5), `COHERE_MEDIUM` (0.15),
-   near-duplicate threshold (0.70), citation relevance floor (0.05), alias coverage
-   floor (0.5), `OVERLAP_TOKENS` (150), `BATCH_SIZE` (8). Each encodes a measurement
-   that is not derivable from the code. Propose and stop.
+   near-duplicate threshold (0.70), alias coverage floor (0.5), `OVERLAP_TOKENS`
+   (150), `BATCH_SIZE` (8). Each encodes a measurement that is not derivable from the
+   code. Propose and stop. The **citation relevance floor (0.05) was deliberately
+   removed** 2026-08-08 — it made a real figure untraceable rather than preventing an
+   unsupported claim. Do not reintroduce it; read `semantic_engine.py:63` first.
+   `COHERE_MEDIUM` (0.15) is the refuse-vs-answer boundary and has **never been
+   exercised by a real query** (`semantic_engine.py:41-47`) — it is unvalidated, not
+   validated, and that is why it must not be tuned casually.
 4. **Golden dataset edits.** Adding questions, changing keywords, changing
    `expected_path` or any `expected_*` field. PQ012 carries a
    `known_deliberate_failure` field — do not "fix" it by editing its expectation.
@@ -164,7 +171,10 @@ acronym glosses the model may not introduce (PPBL, SCN, FEMA, LODR), verb inflec
   Poll `/health` before minting a token, and `echo ${#TOKEN}` so an empty token fails loudly.
 - `QDRANT_URL` and all cloud credentials flow purely through `env_file: .env`. Never
   override via an `environment:` block — that exact override invalidated every local
-  measurement for a week.
+  measurement for a week. **`DATABASE_URL` currently has exactly that override**
+  (`docker-compose.yml:51`): the running stack reads the **local** Docker Postgres, not
+  the Supabase URL in `.env`. The two are different databases with different document
+  counts (11 local vs 9 Supabase). Always state which one a measurement came from.
 - **Frontend document components must never know which engine produced the data.**
   `composeDocumentBody()` in `app/page.tsx` is the only function aware of path/engine
   internals.
@@ -186,8 +196,18 @@ Guessing the environment has cost time repeatedly. All of the below were verifie
 - psycopg2 adapts Python UUIDs as TEXT. Cast: `ANY(%s::uuid[])` with `[str(i) for i in ids]`.
 - Scripts run as `python -m scripts.X`, not `python scripts/X.py`. `eval_runner` runs
   from the **host**, in `backend/`, with `../golden_dataset/` paths.
-- `golden_dataset/` holds four `q*.json` inputs: q4fy26_eternal, q_titan, q_paytm,
-  q_eternal_transcript. Eval outputs go to `eval_results/` (gitignored).
+- **pytest suite** (165 tests, pure functions, zero network/DB/LLM, ~2s):
+  `docker compose exec -T -w /app backend env PYTHONPATH=/app python -m pytest tests/ -q`
+  The `-w /app` is load-bearing. Cheap enough to run on every change, unlike
+  `regression_check`. Several tests assert **known defects as current behaviour** with
+  the audit finding named in the docstring (F1, F2, F7, F9, F12b) — when one starts
+  failing, that is the fix landing, and its assertion moves in the same commit.
+  The conftest network guard patches `socket` *and* `psycopg2.connect` by name; libpq
+  connects in C and bypasses Python sockets, so socket-patching alone does not cover it.
+- `golden_dataset/` holds four `q*.json` inputs: q4fy26_eternal (55), q_titan (15),
+  q_paytm (20), q_eternal_transcript (1) = **91 questions**. The 88/90 baseline predates
+  the transcript question, so it is not directly comparable — the next sweep is a new
+  baseline, not a continuation. Eval outputs go to `eval_results/` (gitignored).
 - `--min-chunks` (pipeline.py, chunker.py) defaults to **100**. TITAN legitimately
   produces 24 chunks, so a fully successful TITAN ingest exits 1 on the post-write
   completion gate. Read the log, do not re-run. Use `--min-chunks 20` for TITAN.
@@ -233,7 +253,8 @@ Guessing the environment has cost time repeatedly. All of the below were verifie
 
 ## 9. Standing maintenance
 
-- Run `regression_check.py` (4-doc gate: ETERNAL / TITAN / PAYTM / ZOMATO) after any
+- Run `regression_check.py` (5-doc gate: ETERNAL Q4FY26 / TITAN / PAYTM / ZOMATO FY24
+  / ETERNAL transcript) after any
   change to `section_classifier.py` or `financial_extractor.py`, before touching
   `chunker` / `embedder` / `qdrant_writer` / `pipeline`.
 - Run `purge_orphaned_metrics.py` (dry run) after **any** extraction change. The loader
