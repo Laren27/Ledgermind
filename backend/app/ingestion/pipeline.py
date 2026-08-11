@@ -550,7 +550,7 @@ if __name__ == "__main__":
     # ----------------------------------------------------------------
     from .db_loader import get_connection, verify_financials
     from .qdrant_writer import verify_collection, _get_client, COLLECTION_NAME, DENSE_VECTOR_NAME
-    from qdrant_client.models import Filter, FieldCondition, MatchValue
+    from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
 
     print("--- Phase 3 Completion Gate ---")
 
@@ -642,22 +642,53 @@ if __name__ == "__main__":
         assert consol or stand, \
             f"No financial records found at all for {args.company}/{args.fiscal_year}"
 
-    # Gate 4: Semantic search works
+    # Gate 4: THIS RUN's chunks are semantically retrievable.
+    #
+    # Scoped to the doc_ids THIS RUN produced, for the same reason Gate 2 was
+    # rescoped above. The old filter was tenant_id + is_latest with limit=1
+    # against a tenant already holding 2531 points, so len(results) > 0 was
+    # true before the run started. It reported "Semantic search: ✅" as
+    # evidence about a document it had never queried, and the only case it
+    # could still catch -- a completely empty tenant -- no longer occurs.
+    #
+    # Gate 2 proves chunks were UPSERTED. This proves they are RETRIEVABLE:
+    # visible to a filtered vector query, which is a distinct failure mode
+    # (indexing lag, a payload index missing on doc_id, a filter that silently
+    # matches nothing). Those are the same operation only when nothing is wrong.
+    #
+    # Payloads are fetched so the returned doc_ids can be checked against this
+    # run's. A filter that silently failed to apply would otherwise be
+    # indistinguishable from one that worked -- the query would return points
+    # either way, and the gate would pass either way.
+    this_run_doc_ids = result["doc_ids"]
     client = _get_client()
     results = client.query_points(
         collection_name=COLLECTION_NAME,
-        query=[0.0] * 384,    # zero vector — returns any valid points
+        query=[0.0] * 384,    # zero vector — ranking is irrelevant, reachability is not
         using=DENSE_VECTOR_NAME,
         query_filter=Filter(must=[
             FieldCondition(key="tenant_id", match=MatchValue(value=ALPHA_TENANT)),
             FieldCondition(key="is_latest", match=MatchValue(value=True)),
+            FieldCondition(key="doc_id", match=MatchAny(any=this_run_doc_ids)),
         ]),
-        limit=1,
-        with_payload=False,
+        limit=5,
+        with_payload=["doc_id"],
     ).points
-    search_ok = len(results) > 0
-    print(f"\nSemantic search: {'✅' if search_ok else '❌'} returned {len(results)} result(s)")
-    assert search_ok
+    returned_doc_ids = {p.payload["doc_id"] for p in results}
+    stray = returned_doc_ids - set(this_run_doc_ids)
+    search_ok = len(results) > 0 and not stray
+    print(f"\nSemantic search: {'✅' if search_ok else '❌'} "
+          f"{len(results)} result(s) from this run's doc_ids {this_run_doc_ids}")
+    assert results, (
+        f"No chunk from this run is retrievable by a filtered vector query. "
+        f"doc_ids={this_run_doc_ids}. Gate 2 counted "
+        f"{result['chunks_indexed']} upserted, so they were written but cannot "
+        f"be found -- check the doc_id payload index and indexing lag."
+    )
+    assert not stray, (
+        f"Filtered query returned points from doc_ids this run did not "
+        f"produce: {sorted(stray)}. The doc_id filter did not apply."
+    )
 
     print(f"\n{'='*60}")
     print(f"✅ PHASE 3 COMPLETE — All gates passed in {elapsed:.0f}s")
