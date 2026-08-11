@@ -102,10 +102,22 @@ def _classify_query(query: str) -> dict:
 
         company_raw = result.get("company")
         company = None
+        company_unresolved = None
         if company_raw and company_raw.lower() != "null":
             resolved = resolve_ticker(company_raw)
             if resolved in _KNOWN_TICKERS:
                 company = resolved
+            else:
+                # F2: resolve_ticker NEVER returns None -- it uppercases its
+                # input -- so this gate, not resolve_ticker, is where an
+                # unknown company is actually detected. Recording it keeps
+                # "named a company we do not hold" distinguishable from "named
+                # no company", which company=None alone cannot express.
+                company_unresolved = company_raw
+                logger.warning(
+                    "Router named an unknown company: %r (resolved: %r) -- "
+                    "not in _KNOWN_TICKERS", company_raw, resolved,
+                )
 
         path = result.get("path", "semantic").lower()
         if path not in ("semantic", "quantitative", "cross"):
@@ -132,6 +144,7 @@ def _classify_query(query: str) -> dict:
         return {
             "company": company,
             "ticker": company,
+            "company_unresolved": company_unresolved,
             "fiscal_year": fiscal_year,
             "quarter": quarter,
             "financial_type": financial_type,
@@ -152,6 +165,7 @@ def _classify_query(query: str) -> dict:
     return {
         "company": None,
         "ticker": None,
+        "company_unresolved": None,
         "fiscal_year": None,
         "quarter": None,
         "financial_type": "consolidated",
@@ -195,6 +209,73 @@ def router_node(state: QueryState) -> QueryState:
         quarter=result["quarter"],
         financial_type=result["financial_type"],
     )
+    state["company_unresolved"] = result.get("company_unresolved")
+
+    # ── F2: refuse rather than search unfiltered ──────────────────────────
+    # retriever._build_filter appends a company condition only `if company:`,
+    # so a null company silently widens the search to the whole tenant. Three
+    # companies in three sectors currently mask that; at N+20 with several
+    # issuers in one sector an unfiltered search retrieves a competitor's
+    # chunk, the reranker scores it highly because it IS topically relevant,
+    # and the answer cites a real page from the wrong company.
+    #
+    # Placed BEFORE the UI workflow override deliberately: forcing a desk does
+    # not fix an entity that failed to resolve, so an override must not be
+    # able to route past this.
+    #
+    # NOT refused here: a query that legitimately names no company. No golden
+    # question exercises that path (all 91 name theirs in the text) and no
+    # caller needs it, so it keeps today's behaviour rather than acquiring a
+    # contract with no consumer.
+    #
+    # PARTIAL BY CONSTRUCTION -- READ BEFORE ASSUMING THIS CLOSES F2.
+    # `company_not_in_corpus` fires only when the model RETURNS a name that
+    # fails the _KNOWN_TICKERS gate (a misspelling, a subsidiary, a renamed
+    # entity). It does NOT fire on the common case, because
+    # ROUTER_SYSTEM_PROMPT offers the model only two options -- "normalise to
+    # canonical ticker from this list" or "if no company mentioned, return
+    # null" -- and RouterResponse.company is Optional[str], so null is legal.
+    # Measured 2026-08-11 on "What were Reliance Industries revenue drivers in
+    # FY26?": company=None, company_unresolved=None, and route_reason reading
+    # "a company not in the supported list". The model OBSERVED the condition
+    # and had no field in which to express it, so it explained itself in prose
+    # and took the only exit the schema allowed. That query still runs
+    # unfiltered over the whole tenant and answers at tier=high.
+    # The fix is a schema addition (a `company_mentioned` field carrying the
+    # raw name as seen, always, leaving `company`'s normalise-or-null contract
+    # untouched) plus the matching prompt line -- a prompt edit, so it needs
+    # explicit approval and a sweep behind it. Do not "fix" this by appending
+    # an instruction that contradicts the normalise rule two lines above it;
+    # that is the shape that lost three times already.
+    _refusal = None
+    if (state.get("route_reason") or "").startswith("FALLBACK_ERROR") or \
+            (result.get("route_reason") or "").startswith("FALLBACK_ERROR"):
+        _refusal = (
+            "routing_unavailable",
+            "The query could not be classified because no language model "
+            "provider was reachable. LedgerMind does not answer from an "
+            "unscoped search, so no result is returned. Please retry shortly.",
+        )
+    elif result.get("company_unresolved"):
+        _refusal = (
+            "company_not_in_corpus",
+            "This query names a company that is not present in the available "
+            "filings. LedgerMind can only answer questions about documents "
+            "that have been ingested for your organisation.",
+        )
+
+    if _refusal is not None:
+        state["error"], state["response_text"] = _refusal
+        state["error_node"] = "router"
+        state["path"] = result["path"]
+        state["route_reason"] = result["route_reason"]
+        state["confidence_tier"] = "low"
+        state["confidence_score"] = 0.0
+        logger.warning(
+            "Router refusing | error=%s company_unresolved=%r",
+            state["error"], state.get("company_unresolved"),
+        )
+        return state
 
     # 2. ⚡ DETERMINISTIC WORKFLOW OVERRIDE: Override classification path & inject DSL hint
     if context.get("enforce_path") and context.get("intended_path"):
