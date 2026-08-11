@@ -619,14 +619,16 @@ if __name__ == "__main__":
     from .section_classifier import classify_blocks, get_blocks_by_type
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("pdf_path", nargs="?", default=os.path.expanduser(
-        "~/ledgermind/docs/raw/ETERNAL_Q4FY26_SHAREHOLDER_LETTER_AND_RESULTS.pdf"))
-    parser.add_argument("--company", default="ETERNAL")
-    parser.add_argument("--ticker", default="ETERNAL")
-    parser.add_argument("--fiscal-year", default="FY26")
-    parser.add_argument("--quarter", default="Q4")
-    parser.add_argument("--doc-type", default="quarterly_result")
-    parser.add_argument("--filing-date", default="2026-04-28")
+    parser.add_argument("pdf_path")
+    parser.add_argument("--company", required=True)
+    parser.add_argument("--ticker", required=True)
+    parser.add_argument("--fiscal-year", required=True)
+    parser.add_argument("--quarter", required=True,
+                        help="Q1/Q2/Q3/Q4, or 'none' for annual reports")
+    parser.add_argument("--doc-type", required=True,
+                        help="quarterly_result | annual_report | drhp | earnings_transcript")
+    parser.add_argument("--filing-date", required=True,
+                        help="YYYY-MM-DD, from the PDF cover page")
     parser.add_argument("--min-chunks", type=int, default=100)
     args = parser.parse_args()
 
