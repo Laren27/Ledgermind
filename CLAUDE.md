@@ -10,6 +10,19 @@ Detailed context lives in `docs/IMPLEMENTATION_DELTAS.md` (every divergence from
 blueprint), `docs/RUNBOOK.md` (stack startup, script invocation, quota procedure), and
 `docs/audit/repo_audit_20260811.md` (13 findings ranked by blast radius, F1–F13 —
 referenced by number throughout this file and in the test suite).
+
+**Audit progress.** Closed: F1, F8, F11, F12, F13. Open, in order: **F2** (router
+refusal — needs a `refused` route target and a `company_unresolved` state field; there
+is no refusal mechanism in `router_node` today, so this is a graph change, not a patch),
+then F3 (unit scale detection — the blocker for arbitrary documents), F7 (split chunk
+`financial_type='unknown'` into narrative vs undetermined), F4 + F9 (metadata validation
+and the gate scan window, designed together). Recorded but not tasks: F5, F6.
+
+Two facts F2 must account for: `_KNOWN_TICKERS` is larger than the corpus (SWIGGY,
+NYKAA, DELHIVERY, POLICYBAZAAR resolve with zero documents), so "unknown company" and
+"known company, no documents" are different refusals; and **no golden question carries
+no company** — all 91 name theirs in the text, so do not build a mentioned-vs-omitted
+distinction that has no caller.
 Read those before proposing anything structural. Do not restate them here.
 
 ---
@@ -169,6 +182,12 @@ acronym glosses the model may not introduce (PPBL, SCN, FEMA, LODR), verb inflec
   destroys files copied in with `docker compose cp`.
 - `docker compose up -d` returns when the container starts, not when uvicorn serves.
   Poll `/health` before minting a token, and `echo ${#TOKEN}` so an empty token fails loudly.
+- **`exec failed: current working directory is outside of container mount namespace
+  root -- possible container breakout detected`** means the container's mount namespace
+  went stale, usually after a `--force-recreate`. It is not a security event and not a
+  cwd problem: `-w /app` does not help and no `cd` helps, because *every* exec fails,
+  including `docker compose exec -T backend echo alive`. Run that one-liner first to
+  confirm, then `docker compose up -d --force-recreate backend` and poll `/health`.
 - `QDRANT_URL` and all cloud credentials flow purely through `env_file: .env`. Never
   override via an `environment:` block — that exact override invalidated every local
   measurement for a week. **`DATABASE_URL` currently has exactly that override**
