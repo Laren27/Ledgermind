@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 
 class RouterResponse(BaseModel):
     company: Optional[str]
+    # F2: the raw issuer name AS SEEN, independent of resolvability. `company`
+    # is normalise-or-null, so when the model saw a company it could not
+    # normalise it had nowhere to say so and returned null -- measured
+    # 2026-08-11, where it explained the condition in route_reason prose
+    # instead. Same shape as the DSL period-invention bug: a schema that
+    # cannot express what the model observed.
+    company_mentioned: Optional[str]
     fiscal_year: Optional[str]
     quarter: Optional[str]
     financial_type: str
@@ -48,6 +55,15 @@ company:
   - Identify the Indian company being asked about
   - Normalise to canonical ticker from this list: {_KNOWN_TICKERS}
   - If no company mentioned, return null
+
+company_mentioned:
+  - The issuer name exactly as it appears in the query, whether or not it is
+    in the ticker list above
+  - Return this even when `company` is null
+  - Only issuers whose own results are being asked about. NOT regulators
+    (SEBI, RBI), exchanges (BSE, NSE), accounting standards (Ind AS 116),
+    audit firms (Deloitte, BSR), or metric names (Adjusted EBITDA)
+  - If the query names no issuer at all, return null
 
 fiscal_year:
   - Indian fiscal year runs April to March
@@ -119,6 +135,15 @@ def _classify_query(query: str) -> dict:
                     "not in _KNOWN_TICKERS", company_raw, resolved,
                 )
 
+        company_mentioned = result.get("company_mentioned")
+        if company_mentioned and company_mentioned.lower() == "null":
+            company_mentioned = None
+        if company_mentioned and company is None:
+            logger.warning(
+                "Router saw issuer %r but resolved no company -- LOG ONLY, "
+                "query proceeds unfiltered", company_mentioned,
+            )
+
         path = result.get("path", "semantic").lower()
         if path not in ("semantic", "quantitative", "cross"):
             path = "semantic"
@@ -145,6 +170,7 @@ def _classify_query(query: str) -> dict:
             "company": company,
             "ticker": company,
             "company_unresolved": company_unresolved,
+            "company_mentioned": company_mentioned,
             "fiscal_year": fiscal_year,
             "quarter": quarter,
             "financial_type": financial_type,
@@ -166,6 +192,7 @@ def _classify_query(query: str) -> dict:
         "company": None,
         "ticker": None,
         "company_unresolved": None,
+        "company_mentioned": None,
         "fiscal_year": None,
         "quarter": None,
         "financial_type": "consolidated",
