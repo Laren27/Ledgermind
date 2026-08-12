@@ -92,6 +92,13 @@ def build_graph():
             "semantic_engine": "semantic_engine",
             "quant_engine": "quant_engine",
             "cross_engine": "cross_engine",
+            # F2: a router refusal exits to audit directly, mirroring the
+            # "blocked" edge above. It must NOT enter the confidence ->
+            # response_generator tail: the refusal already carries its own
+            # response_text, and confidence would rescore it (measured
+            # 2026-08-12: confidence returns tier=high at 0.7095 on a query
+            # with no valid company).
+            "refused": "audit_writer",
         },
     )
 
