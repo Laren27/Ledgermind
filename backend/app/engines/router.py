@@ -248,8 +248,10 @@ def router_node(state: QueryState) -> QueryState:
     # an instruction that contradicts the normalise rule two lines above it;
     # that is the shape that lost three times already.
     _refusal = None
-    if (state.get("route_reason") or "").startswith("FALLBACK_ERROR") or \
-            (result.get("route_reason") or "").startswith("FALLBACK_ERROR"):
+    # `route_reason` is not assigned to state before this point, so only the
+    # result-side check does work. The state-side half read as though a stale
+    # value could exist and would have been defended later.
+    if (result.get("route_reason") or "").startswith("FALLBACK_ERROR"):
         _refusal = (
             "routing_unavailable",
             "The query could not be classified because no language model "
@@ -303,6 +305,17 @@ def route_after_shield(state: QueryState) -> str:
 
 
 def route_after_router(state: QueryState) -> str:
+    # F2 step 0: a refusal written by router_node must actually terminate.
+    # This function is the ONLY thing the graph consults after the router --
+    # it reads `path`, never `error` -- so before this branch existed a
+    # refused state still dispatched into an engine and ran the unfiltered
+    # search the refusal exists to prevent. Measured 2026-08-12 on a Reliance
+    # query: 5 citations returned, all TITAN/ZOMATO pages, tier=high.
+    # Keyed on error_node, not bare `error`: `error` is written by several
+    # nodes and only the router's belongs upstream of the engine dispatch.
+    if state.get("error_node") == "router" and state.get("error"):
+        return "refused"
+
     path = state.get("path")
     if path == "quantitative":
         return "quant_engine"
