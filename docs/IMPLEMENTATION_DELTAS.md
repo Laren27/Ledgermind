@@ -11,7 +11,7 @@ therefore never appeared in a diff. A design document that cannot be reviewed
 alongside the code it describes will drift silently. Any change that makes a
 blueprint statement untrue must add an entry here in the same commit.
 
-Last verified: 2026-08-08.
+Last verified: 2026-08-12.
 
 ---
 
@@ -2949,6 +2949,35 @@ The corrected census STRENGTHENED the conclusion — 35 more rows, all still
 non-competing. That is the lucky case. The unlucky one is a truncated read that
 happens to agree with the hypothesis, and nothing in the method distinguishes
 them.
+
+### F14 — A two-issuer query silently drops one issuer and denies it exists
+
+`RouterResponse.company` is `Optional[str]` — one company. A query naming two resolves
+one of two ways, neither correct:
+
+- **nulls `company`** (measured on gemini-3.1-flash-lite): the quantitative path carries
+  both entities through the DSL's comparison fields and answers correctly. Golden Q051
+  passes this way — `path=quantitative`, `sql_verified=true`, confidence 1.0.
+- **collapses to one issuer** (measured on the groq fallback, same query): `company=PAYTM`,
+  `path=cross`, filtered retrieval scoped to Paytm, and the answer states the documents
+  contain no company named Eternal. ETERNAL is 732 rows and the largest part of the
+  corpus.
+
+The second is the defect. It is not an unfiltered search citing the wrong company (F2) —
+it is a *correctly* filtered search whose filter excluded half the question, followed by
+a confident denial that the excluded issuer exists. Same class as F3: a wrong claim
+attached to the right company and a real page, invisible without knowing the answer.
+
+Which branch fires depends on which provider served the call, so this is currently
+masked by Gemini being primary.
+
+**Fix shape:** `companies: list[str]` on the router response plus an IN-style filter in
+`_build_filter`. Not a patch to the single field — F2's closure already demonstrated that
+a single-valued field overloads null with incompatible meanings, and this is the same
+error one level up. Re-measure Q051 and any comparison question after.
+
+**Do not** build a mentioned-vs-omitted distinction alongside it: no golden question
+carries no company, and CLAUDE.md records that constraint.
 
 ### Comment-vs-behaviour drift — four instances, one cause
 
