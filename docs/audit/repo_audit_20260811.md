@@ -61,7 +61,7 @@ Ranked by blast radius, not category.
 | # | Finding | Blast radius at company N+1 | Confidence |
 |---|---|---|---|
 | **F1** | Company onboarding needs a code edit; near-miss names silently misfile into an existing company | Ingest refuses outright, **or** corrupts an incumbent's data | Verified |
-| **F2** | Router failure yields an unfiltered whole-tenant search that still answers confidently | Cross-company wrong answers, no refusal | Verified |
+| **F2** | Router failure yields an unfiltered whole-tenant search that still answers confidently | Cross-company wrong answers, no refusal | Verified — **CLOSED 2026-08-12** |
 | **F3** | `unit="crore_inr"` hardcoded; no scale detection exists anywhere | 10×/100× wrong values, silently comparable | Verified |
 | **F4** | Document metadata is caller-asserted, never validated against content | Misfiled doc is invisible or contaminating; already happened twice | Verified |
 | **F5** | Restatement confidence penalty is entirely unimplemented | First real restatement answers at full confidence | Verified |
@@ -164,6 +164,34 @@ The same path is reachable without an outage: any query where the LLM returns a 
 **Proposed change (not applied).** On `FALLBACK_ERROR`, refuse rather than answer. Separately, distinguish "no company mentioned" (legitimately unfiltered — a corpus-wide question) from "company extraction failed" (must refuse); today both are `None`. Re-measure: the golden datasets contain corpus-wide questions that legitimately carry no company, so the refusal must key on the error flag, not on nullness, or those questions will start failing.
 
 **Confidence.** Verified by code reading; I did not exercise it live, as that requires an LLM call.
+
+**CLOSED 2026-08-12.** Finding text above is preserved as written; this note records
+the resolution, not a revision.
+
+Exercised live, which this audit could not do. Before: *"What were Reliance Industries
+revenue drivers in FY26?"* returned 5 citations, all TITAN/ZOMATO pages,
+`confidence_tier=high` at 0.7095. After: `error=company_not_in_corpus`, 0 citations,
+tier=low at 0.0.
+
+Three steps. (1) `route_after_router` read only `path`, never `error` — so a refusal
+written in `router_node` still dispatched into an engine. It now returns `refused` on
+`error_node == "router"`, and `graph.py` maps that to `audit_writer`, mirroring the
+`blocked` edge. The confidence tail is skipped deliberately: it would rescore the
+refusal, and it demonstrably scores 0.7095 as *high*. (2) `RouterResponse` gained
+`company_mentioned`, best-effort with **no prompt block** — one was written, shipped and
+removed after measuring that the model volunteers the field unprompted (3/3 on gemini).
+(3) `_resolve_mentioned_issuers` splits on commas/and/or/vs and refuses only when the
+resolved list is empty.
+
+**The Proposed change above was right about the trap and we nearly fell into it anyway.**
+It warned the refusal must key on the error flag, not on nullness. The first
+implementation keyed on `company is None`; a 91-question probe caught golden Q051 ("Who
+grew revenue faster in FY26, Eternal or Paytm?"), where `company` is null because
+`RouterResponse` holds *one* company and the query names two — both in the corpus. That
+is a third meaning of null the audit did not enumerate: not "no company" and not
+"extraction failed", but "more than one". Tracked as F14 in `IMPLEMENTATION_DELTAS.md`.
+
+Commits `9a6b9ad`, `e8a37ce`, `b8048dd`, `d365f4b` and two following. 177 tests.
 
 ---
 
