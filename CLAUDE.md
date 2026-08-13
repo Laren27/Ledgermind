@@ -11,12 +11,33 @@ blueprint), `docs/RUNBOOK.md` (stack startup, script invocation, quota procedure
 `docs/audit/repo_audit_20260811.md` (13 findings ranked by blast radius, F1–F13 —
 referenced by number throughout this file and in the test suite).
 
-**Audit progress.** Closed: F1, F8, F11, F12, F13. Open, in order: **F2** (router
-refusal — needs a `refused` route target and a `company_unresolved` state field; there
-is no refusal mechanism in `router_node` today, so this is a graph change, not a patch),
-then F3 (unit scale detection — the blocker for arbitrary documents), F7 (split chunk
-`financial_type='unknown'` into narrative vs undetermined), F4 + F9 (metadata validation
-and the gate scan window, designed together). Recorded but not tasks: F5, F6.
+**Audit progress.** Closed: F1, F2, F8, F11, F12, F13. Open, in order: **F3** (unit scale detection — the blocker for arbitrary documents), **F14**
+(multi-entity queries — `RouterResponse.company` is single-valued, so a two-issuer
+query either nulls it or collapses to one issuer and asserts the other is absent from
+the corpus; observed live returning "no company named Eternal" when ETERNAL is 732 rows.
+Same class as F3: a confident wrong claim, not a visible failure. Fix shape is
+`companies: list[str]` plus an IN-style filter, not a patch to the single field),
+F7 (split chunk `financial_type='unknown'` into narrative vs undetermined), F4 + F9
+(metadata validation and the gate scan window, designed together). Recorded but not
+tasks: F5, F6.
+
+**F2 closed 2026-08-12** across three steps. `route_after_router` now returns `refused`
+on `error_node == "router"` and `graph.py` maps it to `audit_writer`, mirroring the
+`blocked` edge — deliberately skipping the confidence tail, which would otherwise
+rescore a refusal. `RouterResponse` gained `company_mentioned` (best-effort, **no prompt
+block** — the model volunteers it, and an instruction was written, shipped and removed
+for no measured loss). `_resolve_mentioned_issuers` gates the refusal on the resolved
+list being empty rather than on `company is None`, because a multi-entity query nulls
+`company` even when every issuer resolves. Verified on prod: a Reliance query returned
+`company_not_in_corpus`, 0 citations, tier=low @ 0.0 — it previously returned 5
+citations from TITAN/ZOMATO pages at tier=high @ 0.7095. Q051 unchanged at
+`path=quantitative`, `sql_verified=true`, confidence 1.0.
+
+**Open from that session, with no established before-state:** TQ008 routes `cross` where
+its golden expects `semantic`, stable across three Gemini runs. A prompt-block cause was
+suspected and DISPROVED — it still routes `cross` with the block removed. Needs a genuine
+pre-`d365f4b` baseline (stash, checkout prior commit, three-call classify, restore)
+before anyone calls it a regression.
 
 Two facts F2 must account for: `_KNOWN_TICKERS` is larger than the corpus (SWIGGY,
 NYKAA, DELHIVERY, POLICYBAZAAR resolve with zero documents), so "unknown company" and
@@ -215,7 +236,7 @@ Guessing the environment has cost time repeatedly. All of the below were verifie
 - psycopg2 adapts Python UUIDs as TEXT. Cast: `ANY(%s::uuid[])` with `[str(i) for i in ids]`.
 - Scripts run as `python -m scripts.X`, not `python scripts/X.py`. `eval_runner` runs
   from the **host**, in `backend/`, with `../golden_dataset/` paths.
-- **pytest suite** (165 tests, pure functions, zero network/DB/LLM, ~2s):
+- **pytest suite** (177 tests, pure functions, zero network/DB/LLM, ~2s):
   `docker compose exec -T -w /app backend env PYTHONPATH=/app python -m pytest tests/ -q`
   The `-w /app` is load-bearing. Cheap enough to run on every change, unlike
   `regression_check`. Several tests assert **known defects as current behaviour** with
@@ -223,6 +244,19 @@ Guessing the environment has cost time repeatedly. All of the below were verifie
   failing, that is the fix landing, and its assertion moves in the same commit.
   The conftest network guard patches `socket` *and* `psycopg2.connect` by name; libpq
   connects in C and bypasses Python sockets, so socket-patching alone does not cover it.
+- **`eval_results/*.json` are not baselines.** They are whatever ran last, including
+  rolled-back experiments and interrupted runs. `eval_q_titan.json` (2026-08-10) reads
+  11/15 with providers `{None, 'gemini'}` — that is the `financial_type` propagation
+  rollback artifact, not a result; the 08-08 sweep's TITAN 15/15 stands. **Before
+  reading any eval JSON, print row count, pass count, provider set, reranker set and
+  mtime.** Three wrong conclusions in one session traced to reading these files without
+  that header check. Baselines live in `docs/IMPLEMENTATION_DELTAS.md`, dated and with
+  providers stated.
+- **Cause cannot be assigned from a single before/after pair.** Attempted three times in
+  one session, wrong every time: a `cross` route blamed on a prompt edit was a Groq
+  fallback; a second was disproved by removing the block; a "TITAN 14/15" correction came
+  from a void run. The instrument that settled each: **three runs with provider and model
+  printed per run**, and checking what produced an artifact before reading its numbers.
 - `golden_dataset/` holds four `q*.json` inputs: q4fy26_eternal (55), q_titan (15),
   q_paytm (20), q_eternal_transcript (1) = **91 questions**. The 88/90 baseline predates
   the transcript question, so it is not directly comparable — the next sweep is a new
