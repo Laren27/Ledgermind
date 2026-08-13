@@ -11,7 +11,7 @@ therefore never appeared in a diff. A design document that cannot be reviewed
 alongside the code it describes will drift silently. Any change that makes a
 blueprint statement untrue must add an entry here in the same commit.
 
-Last verified: 2026-08-12.
+Last verified: 2026-08-13.
 
 ---
 
@@ -27,10 +27,11 @@ fallback did not exist in code until 2026-07-29 — `config.py` had a
 
 As shipped (`app/llm/client.py`, sole LLM entry point for all three callers):
 
-- Timeouts: structured 8s, text 20s, Groq 20s. A timeout is what converts an
-  unbounded hang into a catchable exception; without one, a fallback keyed on
-  exceptions can never fire. Motivated by an observed 78s Gemini call that
-  returned 200 and looked normal in the audit log.
+- Timeouts: structured **20s** (was 8s until 2026-08-13, see below), text 20s,
+  Groq 20s. A timeout is what converts an unbounded hang into a catchable
+  exception; without one, a fallback keyed on exceptions can never fire.
+  Motivated by an observed 78s Gemini call that returned 200 and looked normal
+  in the audit log.
 - Fallback triggers: timeout, transport failure, 429, 5xx.
 - Does NOT trigger on auth or invalid-argument errors — verified that an invalid
   `GEMINI_API_KEY` raises 400 INVALID_ARGUMENT and does not fall back, so a bad
@@ -71,6 +72,40 @@ Stacked free tiers do not compose into reliability. Groq's own daily token
 limit (100k TPD) was exhausted within hours of Gemini's, leaving no provider at
 all. The failover design is sound and was exercised end-to-end; the ceiling is
 the free tier, not the architecture.
+
+#### `TIMEOUT_STRUCTURED_MS` 8s -> 20s — a bound fitted to conditions that moved
+
+The 8s structured timeout was chosen against a measured **~1s p50** for
+200-token calls, generous at 8x and tight enough to catch the 78s tail. That
+p50 no longer holds, and the constant became a silent model-swapping switch.
+
+**HOW IT SURFACED.** A full ETERNAL sweep on 2026-08-13 reported
+`Providers: {'gemini': 33, 'groq': 15}` and was **withheld on both the model
+and provider gates**. Raw tally 55/55 — a number that would have read as an
+improvement on the previous best of 54/55 and was uninterpretable, because two
+systems produced it. The gate is the only reason it was not published.
+
+**THE MEASUREMENT, and the claim is about the TAIL, not the median.** Two
+eight-call router probes an hour apart gave medians of ~5.7s and ~2.9s, so
+neither is a p50 and the distribution is wide and unstable. What both agree on:
+Two calls at ~9.5s in the second sample are calls the old bound would have
+killed. There is no separate hang population: nothing resembled the 120s case.
+
+**THE TIGHT BOUND WAS SLOWER THAN THE GENEROUS ONE.** A timeout costs the full
+8s and *then* a Groq call — ~8.8s observed — against ~5.7s served correctly. It
+bought latency as well as attribution loss.
+
+**WHY THIS RATES AN ENTRY.** The failure is not that a constant was wrong; it
+is that a wrong constant here **silently changes which model answers**, and
+`llm_provider` is the field the eval gate reads. Same family as the reranker
+backend switching under network flap: a fallback working exactly as designed,
+changing the meaning of every downstream number, and saying so only in a
+WARNING nobody greps. The gate caught it; nothing else would have.
+
+Now `int(os.getenv("TIMEOUT_STRUCTURED_MS", "20000"))`. Default stays in code,
+not compose — a deploy without the var must still be correct, and two answers to
+"what is the timeout" is the defect this module criticises in `GEMINI_MODEL`.
+Cost accepted: a genuine outage now takes 20s per call before falling back.
 
 ### §13 — Confidence thresholds are backend-dependent
 Blueprint gives flat cutoffs (HIGH >0.8, LOW <0.5). Reranking runs on two
