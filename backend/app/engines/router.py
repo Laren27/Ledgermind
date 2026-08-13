@@ -96,6 +96,34 @@ Return ONLY a valid JSON object matching the requested schema. No explanation.
 """
 
 
+def _resolve_mentioned_issuers(company_mentioned):
+    """
+    Split company_mentioned into (resolved, unresolved) ticker lists.
+
+    F2 step 2. The refusal CANNOT key on `company is None`: RouterResponse
+    holds ONE company, so a multi-entity query nulls it even when every
+    issuer named is in the corpus. Measured 2026-08-12 on golden Q051 ("Who
+    grew revenue faster in FY26, Eternal or Paytm?") -- company=None,
+    company_mentioned='Eternal, Paytm', both resolvable. Refusing on
+    nullness would have refused a question that passes today, which is worse
+    than the unfiltered search F2 closes.
+
+    Same defect class as F2 one level up: a single-valued field overloading
+    null with two incompatible meanings -- "not in corpus" and "more than
+    one". This separates them.
+    """
+    if not company_mentioned:
+        return [], []
+    parts = re.split(r",|\bvs\.?\b|\band\b|\bor\b", company_mentioned, flags=re.I)
+    resolved, unresolved = [], []
+    for raw in (x.strip() for x in parts):
+        if not raw:
+            continue
+        r = resolve_ticker(raw)
+        (resolved if r in _KNOWN_TICKERS else unresolved).append(r if r in _KNOWN_TICKERS else raw)
+    return resolved, unresolved
+
+
 def _classify_query(query: str) -> dict:
     # The whole LLMResult is carried out, not just .provider, so the
     # caller can record provider AND model in one attributed write.
@@ -138,10 +166,18 @@ def _classify_query(query: str) -> dict:
         company_mentioned = result.get("company_mentioned")
         if company_mentioned and company_mentioned.lower() == "null":
             company_mentioned = None
-        if company_mentioned and company is None:
+        # Refuse only when NOTHING mentioned resolves. A multi-entity query
+        # resolves several and nulls `company`; that must proceed, not refuse.
+        _res, _unres = _resolve_mentioned_issuers(company_mentioned)
+        if company_mentioned and not _res:
+            company_unresolved = company_mentioned
             logger.warning(
-                "Router saw issuer %r but resolved no company -- LOG ONLY, "
-                "query proceeds unfiltered", company_mentioned,
+                "Router named only unknown issuers: %r -- refusing",
+                company_mentioned,
+            )
+        elif company is None and len(_res) > 1:
+            logger.info(
+                "Multi-entity query (%s) -- proceeding unfiltered", _res,
             )
 
         path = result.get("path", "semantic").lower()
