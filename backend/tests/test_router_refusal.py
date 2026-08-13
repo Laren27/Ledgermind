@@ -58,3 +58,40 @@ def test_graph_maps_refused_target():
     # still carries the key route_after_router can return.
     src = Path(__file__).resolve().parents[1] / "app" / "engines" / "graph.py"
     assert '"refused": "audit_writer"' in src.read_text()
+
+
+# ── F2 step 2: multi-entity queries must not refuse ──────────────────────
+
+from app.engines.router import _resolve_mentioned_issuers as _rmi
+
+
+def test_single_known_issuer_resolves():
+    assert _rmi("Eternal") == (["ETERNAL"], [])
+
+
+def test_multi_entity_all_known_resolves_all():
+    # Golden Q051. company is None here because RouterResponse holds one
+    # company -- refusing on that null would break a passing question.
+    res, unres = _rmi("Eternal, Paytm")
+    assert set(res) == {"ETERNAL", "PAYTM"} and unres == []
+
+
+def test_multi_entity_separators():
+    for sep in ("Eternal and Paytm", "Eternal or Paytm", "Eternal vs Paytm"):
+        res, _ = _rmi(sep)
+        assert set(res) == {"ETERNAL", "PAYTM"}, sep
+
+
+def test_unknown_issuer_does_not_resolve():
+    res, unres = _rmi("Reliance Industries")
+    assert res == [] and unres == ["Reliance Industries"]
+
+
+def test_mixed_known_and_unknown_resolves_known():
+    res, unres = _rmi("Eternal, Reliance Industries")
+    assert res == ["ETERNAL"] and unres == ["Reliance Industries"]
+
+
+def test_empty_mentions_resolve_to_nothing():
+    assert _rmi(None) == ([], [])
+    assert _rmi("") == ([], [])
