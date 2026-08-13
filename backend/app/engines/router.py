@@ -27,6 +27,17 @@ class RouterResponse(BaseModel):
     # instead. Same shape as the DSL period-invention bug: a schema that
     # cannot express what the model observed.
     company_mentioned: Optional[str]
+    # NO prompt block instructs this field, deliberately. One was written and
+    # then removed: the model populates the field readily without it
+    # (measured 2026-08-12, 'Reliance Industries' returned three times out of
+    # three on gemini with no instruction present), so the instruction bought
+    # a coverage guarantee that was never needed while adding a prompt block
+    # among the entity fields the PATH CLASSIFICATION rules read.
+    # NOT the reason: TQ008's semantic->cross routing. That was suspected and
+    # DISPROVED -- TQ008 still routes cross with this block absent. Its cause
+    # is unknown and predates this field. Do not re-add an instruction here;
+    # if a probe ever shows omissions, split extraction and classification
+    # into two calls rather than adding another prompt line.
     fiscal_year: Optional[str]
     quarter: Optional[str]
     financial_type: str
@@ -55,15 +66,6 @@ company:
   - Identify the Indian company being asked about
   - Normalise to canonical ticker from this list: {_KNOWN_TICKERS}
   - If no company mentioned, return null
-
-company_mentioned:
-  - The issuer name exactly as it appears in the query, whether or not it is
-    in the ticker list above
-  - Return this even when `company` is null
-  - Only issuers whose own results are being asked about. NOT regulators
-    (SEBI, RBI), exchanges (BSE, NSE), accounting standards (Ind AS 116),
-    audit firms (Deloitte, BSR), or metric names (Adjusted EBITDA)
-  - If the query names no issuer at all, return null
 
 fiscal_year:
   - Indian fiscal year runs April to March
