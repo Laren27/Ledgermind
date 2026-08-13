@@ -94,10 +94,31 @@ def _resolve_gemini_model() -> str:
         )
     return model
 
-# Milliseconds. Bounds are multiples of measured production p50 (~1s for
+# Milliseconds. Bounds were multiples of measured production p50 (~1s for
 # 200-token calls, ~1.3s for synthesis), tight enough that the 78s tail
 # observed on 2026-07-29 cannot recur.
-TIMEOUT_STRUCTURED_MS = 8_000
+#
+# 2026-08-13: structured raised 8_000 -> 20_000. The claim is about the TAIL,
+# not the median -- two eight-call samples an hour apart gave medians of
+# ~5.7s and ~2.9s, so neither is a p50 and the distribution is wide and
+# unstable. What both samples agree on: calls routinely exceed 8s. Sample A
+# (bound at 8s): 3 of 8 timed out at the ceiling. Sample B (bound at 20s):
+# 8 of 8 served, including calls at 9511 and 9555 ms that the old bound
+# would have killed. A sweep between the two lost 15 of 48 answers to the
+# fallback and was withheld on the provider gate.
+# NOT a separate hang population: no call resembled the 120s case above.
+#
+# The tight bound was also SLOWER than a generous one: a timeout costs the
+# full 8s and then a Groq call (~8.8s observed) versus ~5.7s served
+# correctly. 20s still bounds the hang this header describes.
+#
+# Env-overridable because this constant has been wrong once and the right
+# value is empirical. Default lives HERE, not in compose -- a deploy without
+# the var must get the correct value, and two answers to "what is the
+# timeout" is the defect this module criticises in GEMINI_MODEL.
+# Cost of the change: a genuine Gemini outage now takes 20s per call before
+# falling back, up from 8s. Correctness over latency; outages are rare.
+TIMEOUT_STRUCTURED_MS = int(os.getenv("TIMEOUT_STRUCTURED_MS", "20000"))
 TIMEOUT_TEXT_MS = 20_000
 GROQ_TIMEOUT_S = 20.0
 
