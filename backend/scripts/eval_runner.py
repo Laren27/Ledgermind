@@ -679,6 +679,45 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
 # ---------------------------------------------------------------------------
 # Report generation
 # ---------------------------------------------------------------------------
+def _integrity_counters(results: list[dict]):
+    """
+    The three integrity tallies: (scored, providers, models, backends).
+
+    Computed ONCE and shared by print_report and the meta block main() writes,
+    so the recorded metadata and the printed gate cannot disagree. These three
+    dicts decide whether a score is publishable at all; two copies of that
+    arithmetic drifting apart would mean a withheld run whose own JSON claims
+    it was clean.
+
+    Blocked queries are excluded: prompt_shield blocks before router_node,
+    which returns immediately on is_blocked, so NO LLM call is ever made and
+    llm_provider is legitimately None. Counting those as "unknown" withheld
+    three otherwise-clean scores on 2026-07-29 -- the unknown count matched
+    the adversarial count exactly in all three datasets.
+
+    None is excluded from `backends` rather than counted: refusal paths score
+    no citations, so reranker_backend is legitimately absent there, exactly as
+    llm_provider is legitimately absent on blocked queries.
+    """
+    from collections import Counter
+    scored = [r for r in results
+              if not (r.get("api_response") or {}).get("is_blocked")]
+    providers = Counter(
+        (r.get("api_response") or {}).get("llm_provider") or "unknown"
+        for r in scored
+    )
+    models = Counter(
+        (r.get("api_response") or {}).get("llm_model") or "unknown"
+        for r in scored
+    )
+    backends = Counter(
+        b for b in ((r.get("api_response") or {}).get("reranker_backend")
+                    for r in scored)
+        if b is not None
+    )
+    return scored, providers, models, backends
+
+
 def print_report(results: list[dict], model: str):
     total    = len(results)
     passed   = sum(1 for r in results if r["score"]["pass"])
@@ -692,18 +731,10 @@ def print_report(results: list[dict], model: str):
     # returned llm_provider="groq" on every query while looking entirely
     # normal. So the headline score is withheld, not annotated: a score
     # printed with a warning above it still gets copied into a README.
-    from collections import Counter
-    # Blocked queries are excluded: prompt_shield blocks before router_node,
-    # which returns immediately on is_blocked, so NO LLM call is ever made and
-    # llm_provider is legitimately None. Counting those as "unknown" withheld
-    # three otherwise-clean scores on 2026-07-29 -- the unknown count matched
-    # the adversarial count exactly in all three datasets.
-    scored = [r for r in results
-              if not (r.get("api_response") or {}).get("is_blocked")]
-    providers = Counter(
-        (r.get("api_response") or {}).get("llm_provider") or "unknown"
-        for r in scored
-    )
+    # Tallies come from _integrity_counters so this report and the meta block
+    # in main() are computed once, in one place. See that docstring for why
+    # blocked queries and None backends are excluded.
+    scored, providers, models, backends = _integrity_counters(results)
     n_blocked = len(results) - len(scored)
     contaminated = {p for p in providers if p not in ("gemini",)}
 
@@ -712,10 +743,6 @@ def print_report(results: list[dict], model: str):
     # with different remedies (wait for quota vs. fix the environment and
     # re-run), and one combined message means reading the wrong instruction at
     # the worst possible moment.
-    models = Counter(
-        (r.get("api_response") or {}).get("llm_model") or "unknown"
-        for r in scored
-    )
     model_mismatch = {m for m in models if m != model}
 
     print(f"\n{'='*60}")
@@ -730,14 +757,6 @@ def print_report(results: list[dict], model: str):
     # Reranker integrity gate — a THIRD gate, same shape as providers and
     # models above and separate for the same reason: a mixed-backend run and a
     # mixed-provider run are different faults with different remedies.
-    # None is excluded rather than counted: refusal paths score no citations,
-    # so reranker_backend is legitimately absent there, exactly as
-    # llm_provider is legitimately absent on blocked queries.
-    backends = Counter(
-        b for b in ((r.get("api_response") or {}).get("reranker_backend")
-                    for r in scored)
-        if b is not None
-    )
     backend_mixed = len(backends) > 1
     print(f"Reranker backends: {dict(backends) or '(none recorded)'}")
 
@@ -920,6 +939,7 @@ def main():
             time.sleep(args.delay)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    _, _providers, _models, _backends = _integrity_counters(all_results)
     payload = {
         "meta": {
             "stated_model": args.model,
@@ -930,6 +950,15 @@ def main():
             "category_filter": args.category,
             "categories_filter": args.categories,
             "run_at": datetime.now().isoformat(timespec="seconds"),
+            # The three integrity gates, RECORDED as well as printed. The
+            # printed report is transient; this file is what someone reads
+            # weeks later. eval_results/*.json are whatever ran last, and
+            # CLAUDE.md section 7 requires a provider/reranker header check
+            # before trusting one -- that check is only possible if the run wrote
+            # these down. Same three tallies the gate above prints.
+            "providers": dict(_providers),
+            "models_served": dict(_models),
+            "reranker_backends": dict(_backends),
         },
         "results": all_results,
     }
