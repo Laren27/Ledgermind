@@ -3098,3 +3098,67 @@ until the INSERT, so an expensive parse precedes a cheap validation. Loud and
 pre-commit, so acceptable — recorded, not queued.
 
 
+
+### F3 — `unit` is hardcoded to crore, and the number cleaner is calibrated to crore too
+
+Scoped 2026-08-16. **Not closed.** Moved here from the audit's live-defect list
+because no document in the corpus has a demonstrated victim, and the trigger is
+nameable.
+
+**THE LIVE SURFACE IS FIVE LINES IN ONE FILE**, not five spread across the
+codebase. `financial_extractor.py` 457 (extraction) and 560 / 592 / 607 / 632
+(`_compute_derived_totals` constructing derived records). Those are the only
+sites that decide what a stored row MEANS.
+
+**THE READ PATH IS ALREADY UNIT-AWARE AND NEEDS NO CHANGE.** All ten sites in
+`quant_engine.py` and `response_generator.py` read `row.get("unit",
+"crore_inr")`, and the renderer is `"Cr" if unit == "crore_inr" else unit` — so
+a non-crore unit would render as its own name rather than be mislabelled `Cr`.
+The remaining 21 grep hits are test fixtures and `generate_golden_dataset.py`.
+The reader was built right; only the writer assumes.
+
+**MEASURED, and the measurement is ONE-SIDED.** A scale-declaration scan over
+the first 60 pages of each source PDF (`parse_pdf` -> `PageBlock.content`,
+pattern `in (lakhs|lacs|millions|crores|thousands|billions)`):
+
+    TITAN_Q1FY26            crores, pages 7, 8, 14, 15
+    ETERNAL_Q4FY26          no declaration found
+    PAYTM FS-Results Q4     no declaration found
+    Q4FY26 transcript       no declaration found
+
+**Where a declaration exists it says crore. No document was found declaring
+lakhs or millions.** That is NOT the same as "all four are crore": the pattern
+requires a literal " in <unit>" and would miss `(₹ in Cr)`, `Rs. crore`, or a
+caption rendered inside a table region. Three nulls are unexplained. Do not
+quote this as verification. The ZOMATO annual report was not among the four
+files scanned and has not been checked at all.
+
+**DETECTION IS BLOCKED BY THE SAME MECHANISM AS THE SEGMENT SUB-TABLES.**
+`extract_financials_positional` opens the PDF independently of `parse_pdf`,
+works from `page.extract_words()`, and its `parsing_started` gate discards every
+row above the first containing revenue/income/sale — which is exactly where a
+scale declaration sits. `PageBlock.content` retains the text at PAGE
+granularity with no row binding. Identical shape to the section-context finding:
+the text is not lost, the binding between a heading and the rows beneath it was
+never built. **One mechanism, two consumers** — build it general or not at all.
+
+**NORMALISE-TO-CRORE-AT-EXTRACTION IS NOT VIABLE, and this is the find.**
+`clean_financial_number` contains
+
+    val = re.sub(r'\.(?=\d{3}$)', '', val)
+
+which reads `17.634` as a misread comma and yields `17634`. Correct for
+crore-scale Indian filings, where sub-unit decimals are rare. In a lakh- or
+million-denominated filing genuine three-decimal values are common, and every
+one would be silently multiplied by 1000. So the number cleaner would have to
+be scale-aware BEFORE normalisation could run. **Store native value + unit is
+the only representation that does not require rewriting it.**
+
+**FAIL LOUD AND CLOSED WHEN BUILT.** No scale declaration found must mean
+refuse the row with `needs_review=True`, never default to crore. A silent 100x
+error on a headline figure is the PAYTM negative-`cash` severity class: read
+correctly, filed wrong, and invisible to every arithmetic guard in this file
+because nothing about the digits is corrupt.
+
+**TRIGGER:** the first ingest of a filing declaring a non-crore scale, or any
+issuer switching scale within one document. Neither exists in this corpus today.
