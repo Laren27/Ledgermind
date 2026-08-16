@@ -214,7 +214,7 @@ python3 -m scripts.eval_runner \
 | Kafka / Airflow | PostgreSQL event log and Celery Beat cover the same need |
 | Knowledge graph (Neo4j) | Phase 2 roadmap; flat retrieval is not yet the bottleneck |
 | RAGAS | Replaced by exact-value assertions. This system's claim is that numbers are *exactly* right — a pass/fail property, not a 0–1 faithfulness score |
-| Redis semantic cache | Specified in the design, not built. The metrics endpoint that would report its hit rate is disabled rather than reporting a permanent zero as a measurement |
+| Redis semantic cache | Specified in the design, not built. `cache_hit_rate_pct` still ships on the metrics endpoint and returns a permanent 0.0, since nothing writes the column it averages — a metric with no producer, recorded as open rather than quietly removed |
 
 ---
 
