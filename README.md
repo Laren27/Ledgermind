@@ -2,72 +2,175 @@
 
 **Deterministic financial intelligence for Indian capital markets.**
 
-LedgerMind is a multi-tenant RAG + SQL platform that answers natural language questions about Indian public company filings — with zero hallucination on numbers, full source citations, and SEBI-compliant guardrails. Built as a production-grade portfolio project demonstrating architecture patterns used in real fintech systems: deterministic SQL compilation, row-level security, explainable retrieval, and full audit lineage.
+A multi-tenant RAG + SQL platform that answers natural-language questions about Indian public company filings — with zero hallucination on numbers, source citations that resolve, and SEBI-compliant guardrails.
 
-> *"Not a chatbot. A deterministic financial intelligence operating system."*
+> **87 / 91** on the golden dataset — `gemini-3.1-flash-lite`, single provider, single model, Cohere-served reranking on every scored answer. All four failures are named and explained below. Zero wrong figures.
 
 ---
 
-## The Core Problem
+## The problem generic RAG cannot solve
 
-Generic RAG breaks on financial documents for reasons specific to Indian filings:
+Three properties of Indian filings break a standard vector-search pipeline:
 
-- **LLMs can't be trusted with arithmetic.** Ask an LLM for EBITDA and it will confidently invent a number.
-- **Standalone vs Consolidated.** Every SEBI-listed company files both. The numbers can differ 5x. Naive vector search can't tell them apart — the text looks nearly identical.
-- **Restatements.** Indian companies routinely restate prior-year figures. Two "correct" numbers can exist for the same metric/period.
+**LLMs are unreliable calculators.** Ask a model for EBITDA and it will produce a confident number. It is not retrieved, not computed, and not checkable.
 
-LedgerMind solves this by **never letting an LLM compute or retrieve a number directly.** Numbers come from a DSL → SQL compiler. Text comes from cited, reranked retrieval. The two paths never blur.
+**Standalone vs consolidated.** Every SEBI-listed company files both. The text is nearly identical; the numbers differ by multiples. A cosine similarity search cannot distinguish them.
+
+**Restatements.** Companies revise prior-year figures under Ind AS transitions. Two contradictory numbers for the same metric and period are both legitimately "correct" — they differ by filing date.
+
+LedgerMind's answer is a hard separation: **numbers come from SQL, prose comes from cited retrieval, and the two paths never blur.**
+
+---
+
+## The guarantee
+
+The LLM generates a controlled JSON object. It never writes SQL, never sees the schema, and never performs arithmetic.
+
+```
+  {"metric": "revenue", "entity": "ETERNAL", "period": "FY26",
+   "financial_type": "consolidated"}
+              │
+              ▼
+   DSL validator  ──►  rejects unknown metrics, entities, periods
+              │
+              ▼
+   Deterministic Python compiler  ──►  parameterised SQL
+              │
+              ▼
+   PostgreSQL (RLS-scoped)  ──►  verified figure  ──►  LLM explains it
+```
+
+Every figure the system reports carries `sql_verified: true` and traces back through the DSL to a row, a document, and a page.
 
 ---
 
 ## Architecture
 
 ```
-User Query
-    ↓
-FastAPI (JWT auth, RBAC)
-    ↓
-Prompt Shield  ──→ blocks trading advice / investment recommendations (SEBI compliance)
-    ↓
-Entity Resolver ──→ company, fiscal year, quarter, financial_type
-    ↓
-Router (LangGraph) ──→ classifies intent, picks a path
-    ↓
-┌────────────────┬─────────────────────┬───────────────────────┐
-│     Path 1     │       Path 2        │        Path 3         │
-│  Semantic RAG  │  DSL → SQL Engine   │  Cross-Examination    │
-│  (qualitative) │   (quantitative)    │ (contradiction check) │
-└────────────────┴─────────────────────┴───────────────────────┘
-    ↓
-Confidence Scoring + Citation Attachment
-    ↓
-Response (role-shaped: viewer/analyst/admin see different levels of detail)
-    ↓
-Audit Log (append-only, RLS-scoped)
+User query
+    │
+    ▼
+FastAPI  ── JWT auth, RBAC, tenant resolution
+    │
+    ▼
+Prompt Shield  ────────►  blocks trading advice / investment recommendations
+    │
+    ▼
+Entity Resolver  ──────►  company, fiscal year, quarter, financial_type
+    │
+    ▼
+Router (LangGraph state machine)
+    │
+    ├──────────────────┬─────────────────────┬──────────────────────┐
+    ▼                  ▼                     ▼                      │
+ Path 1             Path 2                Path 3                    │
+ Semantic RAG       DSL → SQL             Cross-Examination         │
+ (qualitative)      (quantitative)        (claim vs figure)         │
+    │                  │                     │                      │
+    └──────────────────┴─────────────────────┴──────────────────────┘
+    │
+    ▼
+Confidence scoring  ──  backend-aware thresholds (Cohere 0-1 vs ONNX logits)
+    │
+    ▼
+Citation attachment  ──  doc, page, chunk id, retrieval score, reranker score
+    │
+    ▼
+Response, role-shaped  ──  viewer / analyst / admin see different detail levels
+    │
+    ▼
+Audit log  ──  append-only, RLS-scoped
 ```
 
-**The one rule that makes this system trustworthy:** the LLM generates a controlled JSON object (`{metric: "revenue", entity: "ETERNAL", period: "FY26"}`), never SQL. A deterministic Python compiler turns that into parameterised SQL. The LLM never sees the schema and never touches the database.
+### Retrieval
+
+Hybrid dense + sparse search in Qdrant (384-dim `bge-small-en-v1.5` and BM25, fused with native RRF), metadata pre-filtered on company, fiscal year and `financial_type` *before* semantic search runs — so standalone chunks never enter a consolidated query's candidate pool. Reranking is Cohere Rerank with a local ONNX cross-encoder as automatic fallback.
+
+Near-duplicate suppression sits between reranking and the final cut: `OVERLAP_TOKENS=150` means adjacent chunks share text by design, and without suppression two windows over the same passage could both consume citation slots. One measured query had 9 of 20 candidates suppressed as duplicates.
 
 ### Multi-tenant isolation
 
-Every table enforces PostgreSQL Row-Level Security via `SET LOCAL app.tenant_id`, scoped per-request from a verified JWT — never from client input. Verified end-to-end: a Beta-tenant admin querying Alpha-tenant data gets `no_data_found`, not another tenant's numbers, through the live API (not just `psql`).
+Every table enforces PostgreSQL row-level security via `SET LOCAL app.tenant_id`, scoped per-request from a verified JWT — never from client input. Policies are single `CASE` expressions rather than `AND` chains, because PostgreSQL does not guarantee left-to-right evaluation of boolean conjuncts and a guarded cast can still be evaluated first. That distinction caused a production outage; see the engineering log.
 
-### Full tech stack
+Verified end-to-end: a Beta-tenant admin querying Alpha-tenant data receives `no_data_found` through the live API, not another tenant's numbers.
 
-| Layer | Tool |
-|-------|------|
-| Backend | FastAPI, LangGraph, psycopg2 |
-| Frontend | Streamlit |
-| LLM | Gemini Flash 2.0 (free tier), Groq llama-3.1-70b (fallback) |
-| Embeddings | bge-small-en-v1.5 (local CPU) |
-| Reranking | ms-marco-MiniLM-L-6-v2 (local CPU) |
-| Vector DB | Qdrant (hybrid dense + BM25 sparse) |
-| Relational DB | PostgreSQL with RLS |
-| Auth | JWT + bcrypt |
-| Cache | Redis (tenant-scoped semantic cache) |
-| Orchestration | Docker Compose |
+---
 
-**Total monthly cost: ₹0** — entirely free-tier stack.
+## Evaluation
+
+91 questions across four datasets, every expected value cross-checked against the `financials` table before the question was written.
+
+**The model is part of the number.** The runner asserts the stated model against what the API actually reports, and **withholds the headline score entirely** if any answer came from the Groq fallback. That is not hypothetical: a sweep with a raw tally of 55/55 was withheld on `{gemini: 33, groq: 15}` — the same tally as the published run, produced by two different systems, and uninterpretable.
+
+| Category | Score | What it tests |
+|---|---|---|
+| Quantitative — point-in-time | 27/27 | Exact SQL value match, three companies, four fiscal years |
+| Quantitative — YoY growth | 8/8 | Two-period compilation + Python arithmetic, ±0.5% tolerance |
+| Quantitative — standalone isolation | 7/7 | `financial_type` filter never leaks between report types |
+| Quantitative — cross-entity comparison | 1/1 | Four queries, two entities, growth compared deterministically |
+| Adversarial (Prompt Shield) | 11/11 | Trading advice and investment recommendations, all blocked |
+| Out-of-corpus refusal | 6/6 | Absent periods, unavailable metrics, uningested companies |
+| Semantic — management discussion | 8/8 | Non-GAAP definitions, forward-looking disclaimers |
+| Semantic — audit & compliance | 6/6 | Auditor opinion, Ind AS, SEBI LODR, going concern |
+| Semantic — honest refusal | 2/2 | States what is *absent* rather than confabulating from adjacent chunks |
+| Semantic — business | 4/5 | Segment performance, store counts, ESG disclosures |
+| Semantic — risk | 3/4 | Regulatory notices, licence cancellation exposure |
+| Cross-examination | 4/6 | Narrative claim against verified figure |
+| **Total** | **87/91** | |
+
+### The four failures
+
+None is a wrong number. Three are router-versus-golden path disagreements and one is a keyword assertion.
+
+| ID | Failure | Status |
+|---|---|---|
+| `PQ012` | expected `semantic`, routed `cross` | Deliberate. Carries a `known_deliberate_failure` field — it is the only artifact recording that classification is imprecise on "financial exposure to X" phrasing. Editing the expectation would buy a green score by deleting the evidence. |
+| `TQ008` | expected `semantic`, routed `cross` | Open. Stable across runs, cause unknown. |
+| `ETQ001` | expected `cross`, routed `semantic` | Open. Observed twice, same direction. |
+| `PQ018` | missing keyword `ppbl` | Open. Either a regression or a keyword assertion a correct answer can fail — undecided on one observation. |
+
+### What this score does *not* establish
+
+A golden score bounds the correctness of what it asserts and says nothing about anything else. Measured: of 269 `(company, metric)` pairs live in the database, **16 are value-pinned by any question** — 93.3% are unasserted.
+
+This is not theoretical. A run of `backfill_financials --correct-values` found **28 stale figures** in the database while the suite scored 100%, and not one of the 28 was asserted by any question. Two of them were negative cash balances, which is impossible on its face.
+
+The suite scores *answers*, not citation provenance, not retrieval quality, and not the 253 unasserted metric pairs. Stating that is more useful than a perfect number.
+
+---
+
+## Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| API | FastAPI + LangGraph | Async, typed; LangGraph gives the router an inspectable state machine rather than nested conditionals |
+| Frontend | Next.js on Vercel | The working-paper document model needs real layout control |
+| LLM — primary | Gemini `gemini-3.1-flash-lite` | Free tier, fast, structured-output support |
+| LLM — fallback | Groq `llama-3.3-70b-versatile` | Fires on timeout, transport failure, 429, 5xx — never on auth errors, so a bad key can't masquerade as an outage |
+| Embeddings | `bge-small-en-v1.5` via fastembed ONNX | 384-dim, CPU-only; torch does not fit Render's 512MB tier |
+| Reranking | Cohere Rerank, local ONNX fallback | Same memory constraint; the fallback changes score *scale*, so confidence thresholds are backend-aware |
+| Vector DB | Qdrant Cloud | Hybrid dense + sparse with native RRF and payload pre-filtering |
+| Relational DB | Supabase PostgreSQL | Row-level security, session pooler |
+| Async | Celery + Redis | Redis is the broker only — the semantic cache in the design spec is **not built** |
+| Deploy | Render (API), Vercel (UI), Docker Compose (local) | |
+
+Running cost: **₹0** — entirely free tier. That ceiling is real: Gemini allows 500 requests/day and Groq 100k tokens/day, and both can be exhausted in one working session. Stacked free tiers do not compose into reliability.
+
+---
+
+## Engineering log
+
+The most valuable artifact in this repository is [`docs/IMPLEMENTATION_DELTAS.md`](docs/IMPLEMENTATION_DELTAS.md) — every divergence between the design spec and the shipped system, every defect found, and the reasoning that found it. Five entries worth reading:
+
+**A 10,000 Cr error laundered through arithmetic.** OCR split `17,292` into `I` and `7,292`; a rule that treated any comma-bearing fragment as a complete number kept the second and discarded the first. Derivation then recomputed total income and total expenses *from* the corrupted revenue, overwriting two rows OCR had read correctly. The stored column was internally self-consistent — which is exactly why it survived review. The system had logged the disagreement on every run for weeks, in a list scanned by count rather than by magnitude. *Standing rule: a derivation overwrite whose magnitude is not rounding-scale is a misread component until proven otherwise.*
+
+**A green gate that validated the producer, not the store.** `regression_check` parses PDFs and asserts on extraction output in memory. It passed 4/4 after every OCR fix — correctly, because the extractor was right each time. Meanwhile the loader's same-`doc_id` branch reasoned "same document replayed, nothing can have changed," which is false when the *parser* changed, and dropped every corrected value on the floor as `skipped`. 28 stale figures, invisible to a green suite for three weeks.
+
+**A correct number in the wrong row.** `cash` for Paytm was stored as −710 Cr. A balance-sheet stock cannot be negative. The figure was read perfectly — it was the cash-flow *movement* line, claimed for the wrong metric. No arithmetic guard could catch it, because nothing about the digits was corrupt; only a semantic claim ("a stock cannot be negative") separates it. That claim is now `scripts/check_balance_invariants.py`, which caught a second instance in a different company the first time it ran against production.
+
+**A citation floor that guaranteed untraceability.** Low-scoring chunks were filtered out of the citation list but left in the model's context. An answer then reported "4.8 million square feet in FY24" — a real figure, correctly extracted, supplied by a chunk scoring 0.0165 that had been removed from the citations. The answer was built on five passages and cited one. The fix was to delete the floor: a weak citation rendered honestly beats a hidden one.
+
+**One vector store, two databases, disjoint primary keys.** Local and production held the same documents under different `doc_id`s, because `register_sections` mints a UUID per call and the dedup conflict is per-database. 139 Qdrant chunks were deleted as "orphans" on the strength of a lookup against local only — they were production's Paytm and Titan corpus. *A checker that can structurally only inspect one of two stores passes having inspected nothing.* Resolved by deterministic doc_ids (migrations 018–019).
 
 ---
 
@@ -76,158 +179,49 @@ Every table enforces PostgreSQL Row-Level Security via `SET LOCAL app.tenant_id`
 ```bash
 git clone https://github.com/Laren27/Ledgermind.git
 cd Ledgermind
-cp .env.example .env   # add your GEMINI_API_KEY, QDRANT_URL, QDRANT_API_KEY
-docker-compose up --build
+cp .env.example .env      # add GEMINI_API_KEY, COHERE_API_KEY, QDRANT_URL
+docker compose up --build
 ```
 
-That's it. FastAPI, Streamlit, PostgreSQL, and Qdrant all boot from one command. No local Python environment, no dependency conflicts.
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:8000 |
+| API docs | http://localhost:8000/docs |
 
-- Backend: `http://localhost:8000`
-- Frontend: `http://localhost:8501`
-- API docs: `http://localhost:8000/docs`
+Local demo accounts are seeded across two tenants and three roles. Log in as each to see the same query return different detail — viewers get the answer and citations, analysts additionally see the DSL and compiled SQL, admins also see latency, token usage, provider and reranker backend.
 
-### Demo accounts (seeded, password `demo1234` for all)
+### Running the evaluation
 
-| Email | Role | Tenant |
-|---|---|---|
-| `admin@alpha.ledgermind.test` | Admin | Alpha |
-| `analyst@alpha.ledgermind.test` | Analyst | Alpha |
-| `viewer@alpha.ledgermind.test` | Viewer | Alpha |
-| `admin@beta.ledgermind.test` | Admin | Beta |
-
-Log in with different roles to see the same query return different levels of detail — viewers see the answer, analysts see the DSL and SQL, admins see latency and token usage.
-
----
-
-## Data Governance by Role
-
-The same query returns different response shapes depending on who's asking — this is the RBAC layer proving real data governance, not just endpoint gatekeeping:
-
-| Field | Viewer | Analyst | Admin |
-|-------|:------:|:-------:|:-----:|
-| Answer + citations | ✅ | ✅ | ✅ |
-| Confidence tier | ✅ | ✅ | ✅ |
-| DSL object | ❌ | ✅ | ✅ |
-| Compiled SQL | ❌ | ✅ | ✅ |
-| Retrieval scores | ❌ | ✅ | ✅ |
-| Latency / token usage | ❌ | ❌ | ✅ |
-
----
-
-## Evaluation Results
-
-84-question golden dataset across three companies — Eternal (52), Titan (14), Paytm (18) — grounded entirely in verified corpus data. Every quantitative expected value was cross-checked against the `financials` table before the question was written; no estimated or assumed answers.
-
-**Scored on `gemini-3.1-flash-lite`.** The model is part of the number, not a footnote to it: the runner records which provider served every answer and *withholds the headline score entirely* if any answer came from the Groq fallback. That is not hypothetical — during a quota exhaustion it withheld three separate runs whose raw tallies (13/14, 17/17, 43/52) would otherwise have looked publishable. A score printed under a caveat still ends up in a README.
-
-| Category | Score | What it tests |
-|----------|-------|---------------|
-| Quantitative — point-in-time | 26/26 | Exact SQL value match across three companies and four fiscal years |
-| Quantitative — YoY growth | 8/8 | Two-period SQL compilation + Python arithmetic, ±0.5% tolerance |
-| Quantitative — standalone/consolidated isolation | 7/7 | `financial_type` filter never leaks between report types |
-| Quantitative — cross-entity growth comparison | 1/1 | Four SQL queries, two entities, growth rates compared in Python |
-| Semantic — management discussion | 8/8 | Non-GAAP definitions, forward-looking statements, retrieval + generation |
-| Semantic — honest refusal | 2/2 | Topics genuinely absent from the corpus — states what is *not* covered rather than confabulating from adjacent chunks |
-| Semantic — audit & compliance | 7/7 | Deloitte audit opinion, IND AS, SEBI LODR, going concern |
-| Semantic — business & risk | 9/9 | Segment performance, regulatory notices, PPBL licence cancellation |
-| Cross-examination | 1/1 | Narrative claim vs verified figure — asserts a NON-contradiction stays unflagged |
-| Adversarial (Prompt Shield) | 11/11 | Trading advice, investment recommendations — all correctly blocked |
-| Out-of-corpus refusal | 6/6 | Absent periods, unavailable metrics, uningested companies — no hallucination |
-| **Total** | **84/84** | |
-
-The cross-examination row is the newest and the thinnest. It asserts that the system does *not* fabricate disagreement: Paytm states it has no exposure to PPBL, and a ₹207 Cr impairment line appears in the same filing — the two are consistent, because note 4 reconciles that figure as ₹5 Cr + ₹12 Cr + ₹190 Cr against other entities, and PPBL was fully impaired in FY24. A system that flagged this would be broken in the way that matters most, since fabricated disagreement inverts the whole point of the path. One question is coverage of one availability case, not of the path; and no *real* contradiction exists in the current corpus to test the positive direction.
-
-Run it yourself:
 ```bash
 cd backend
-python scripts/eval_runner.py --model gemini-3.1-flash-lite --delay 25 \
-  --dataset ../golden_dataset/q4fy26_eternal.json --out ../golden_dataset/eval_results_eternal.json
-# repeat for q_titan.json and q_paytm.json — distinct --out per company
+python3 -m scripts.eval_runner \
+  --model gemini-3.1-flash-lite \
+  --dataset ../golden_dataset/q4fy26_eternal.json \
+  --out ../eval_results/eval_eternal.json \
+  --delay 45
 ```
 
-`--delay 25` because a semantic question makes two LLM calls (router + synthesis) against a 5 RPM free tier. `--model` is required and must match `GEMINI_MODEL` in `.env`; it currently labels the report rather than asserting against the model that served, which is a known gap.
-
-### Known caveats (documented, not hidden)
-
-- **Free tiers are the reliability ceiling, not the architecture.** Gemini allows 500 requests/day per model and Groq 100k tokens/day; both can be exhausted in a working session, and when both are gone the semantic path falls back to returning the top retrieved excerpt unsynthesised rather than fabricating. The failover was exercised end-to-end this way. Stacking two free tiers does not compose into reliability — that needs a billing-enabled key.
-- **A total provider outage is currently under-reported.** When no LLM answers, retrieval confidence is still genuinely high, so the response carries `confidence_tier="high"` with no error set. The tier is honest about retrieval and silent about synthesis. Fix identified (`error="synthesis_unavailable"`), not yet shipped.
-- **The Groq fallback preserves availability, not behaviour.** Routing is itself an LLM call, and the two models classify borderline questions differently — one Titan question routes `semantic` on Gemini across four runs and `quantitative` on every Groq-served run. This is why the provider gate exists.
-- **Citations are not floor-filtered.** After near-duplicate suppression, the lowest-ranked citations can score ~0.01–0.03 — technically retrieved, practically noise. A minimum relevance threshold for citation is open work.
+`--model` is required and asserted against the model the API reports. `--delay 45` because a semantic question makes two LLM calls against a 5 RPM free tier. Read the provider, model and reranker-backend lines *before* the score — a contaminated run is withheld, not annotated.
 
 ---
 
-## Known Limitations & Classification Caveats
-
-The document classification pipeline (`section_classifier.py`, `financial_extractor.py`)
-uses deterministic keyword/regex heuristics rather than ML classification, per the
-project's design philosophy (see Section 2, Principle 1). This approach is
-transparent and debuggable, but requires re-validation against each new document
-type or company. Three confirmed failure patterns from Phase 3 finalization testing:
-
-1. **Statement-title vocabulary differs by filing type.** SEBI quarterly results
-   use regulatory headings ("Statement of Consolidated Financial Results for the
-   Quarter Ended..."); Companies Act annual reports use formal statutory titles
-   ("Statement of Profit and Loss," "Balance Sheet"). A classifier tuned on one
-   filing type will under-classify the other unless both vocabularies are present
-   in `STATEMENT_TITLE_ANCHORS`.
-
-2. **Auditor reports name statements without being one.** Auditor's Report pages
-   routinely enumerate the statements they reviewed ("...the Consolidated Balance
-   Sheet, the Consolidated Statement of Profit and Loss...") in prose. A pure
-   keyword/phrase classifier can misclassify these as primary statement pages.
-   Mitigation: require the standard Ind AS "Particulars" column header as a
-   structural co-signal alongside any title-phrase match, and maintain an
-   explicit auditor-report exclusion list with a bounded continuation window
-   (auditor reports lose their identifying header after the first page, same
-   as multi-page statements).
-
-3. **`is_latest` retirement must distinguish same-`doc_id` replay from
-   different-`doc_id` re-ingestion.** A naive `filing_date >` comparison fails
-   silently on same-date re-ingestion (common during iterative debugging, where
-   a document is re-run with a fresh `doc_id` each time) — either accumulating
-   duplicate `is_latest=TRUE` rows, or (if retirement is added naively) deleting
-   the only `is_latest` row without a replacement. `db_loader.py`'s `_upsert_one()`
-   now checks `doc_id` identity first: same `doc_id` → true no-op via
-   `ON CONFLICT DO NOTHING`; different `doc_id` with `filing_date >=` existing →
-   retire-then-insert.
-
-    **Practical implication:** any new document type or company added to the corpus
-    should be run through `scripts/regression_check.py` before trusting extracted
-    figures — this script checks both classification precision (are the right pages
-    tagged FINANCIAL_STATEMENT?) and extraction correctness (does the revenue figure
-    match a known-good value?) across all reference documents in one pass.
-
-## What's Deliberately Out of Scope
-
-Documented here to preempt "why didn't you build X" — these were conscious scope decisions for a solo portfolio project, not oversights:
+## Deliberately out of scope
 
 | Item | Reasoning |
-|------|-----------|
+|---|---|
 | Microservices | Python modules inside FastAPI are sufficient at this scale |
-| Kafka / Airflow | PostgreSQL event log + Celery Beat cover the same need |
-| React frontend | Streamlit is sufficient for a portfolio demo |
-| Real SaaS billing | Simulated via `tenant_id` in schema |
-| Knowledge graph (Neo4j) | Documented as a Phase 2 roadmap item, not built |
+| Kafka / Airflow | PostgreSQL event log and Celery Beat cover the same need |
+| Knowledge graph (Neo4j) | Phase 2 roadmap; flat retrieval is not yet the bottleneck |
+| RAGAS | Replaced by exact-value assertions. This system's claim is that numbers are *exactly* right — a pass/fail property, not a 0–1 faithfulness score |
+| Redis semantic cache | Specified in the design, not built. The metrics endpoint that would report its hit rate is disabled rather than reporting a permanent zero as a measurement |
 
 ---
 
-## Roadmap (parked, not forgotten)
+## Design principles
 
-- Contradiction View + Document Upload Streamlit screens
-- Refresh token pairs (currently: single 2hr access token, re-login on expiry)
-- Rate limiting, cost tracking per tenant
-- Cohere reranker upgrade (currently: local cross-encoder)
-- `audit_writer` timing fix for accurate quantitative confidence logging
-- Corpus expansion: FY24 Annual Report → Paytm quarterly → DRHP filings
-
----
-
-## Interview Talking Points
-
-**The one-sentence pitch:** LedgerMind separates qualitative reasoning from deterministic financial computation to guarantee zero hallucination on numerical queries — built specifically around the standalone-vs-consolidated problem unique to Indian company reporting.
-
-**On the DSL compiler:** The LLM generates a controlled JSON object; a deterministic Python function compiles it to parameterised SQL. The LLM never writes SQL and never sees the schema. Every answer is traceable from source PDF chunk through retrieval scores to final response.
-
-**On multi-tenancy:** RLS via `SET LOCAL`, not `SET` — transaction-scoped so a pooled connection can never leak one tenant's context into another's request. Proven live: a Beta admin querying Alpha's data gets `no_data_found`, not wrong data.
-
-**On the eval suite:** 84/84 isn't a vanity number — every expected value was pulled directly from the database before the question was written, and every failure during development traced to a real bug (a `KeyError` in the SQL compiler, a stale metric registry, an LLM silently substituting one metric for another) that got fixed, not a scorer that got loosened to pass. The runner also gates on which model served each answer and withholds the score outright if the fallback fired, because the most dangerous eval result is a plausible one measured under conditions nobody recorded.
+1. **LLMs never do math.** Every figure originates in SQL against verified rows.
+2. **Retrieval is explainable.** Document, page, chunk id, retrieval score and reranker score on every citation.
+3. **Auditability first.** Source PDF → chunk → retrieval → DSL → SQL → response, on every answer.
+4. **Refusal beats a plausible answer.** Below the confidence floor, the system declines and logs it.
+5. **A number without a producer is not a measurement.** Every figure in this README was pulled from a committed artifact, not recalled.
