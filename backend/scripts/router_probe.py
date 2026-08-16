@@ -41,12 +41,28 @@ def main():
         exp = rec.get("expected_company")
         got = r["company"]
         mentioned = r.get("company_mentioned")
+        # Attribution, sourced exactly as eval_runner sources it. _classify_query
+        # carries the whole LLMResult out (router.py:130-132) precisely so the
+        # caller can record provider AND model in one write; record_llm_call
+        # (state.py:250) reads .provider/.model off it to populate the
+        # llm_provider/llm_model the API returns and eval_runner reads back.
+        # This probe bypasses the API, so it reads the same two attributes at
+        # the source and keeps eval_runner's field names.
+        #
+        # None on both means the FALLBACK_ERROR path -- both providers failed
+        # and the row's classification is the hardcoded fallback, not a model's
+        # answer. Without this the two are indistinguishable in the output, and
+        # a WOULD_REFUSE count computed over silently-unclassified rows is not
+        # the measurement this probe exists to make.
+        llm = r.get("llm_result")
         row = {
             "dataset": ds, "id": rec["id"], "question": rec["question"],
             "expected_company": exp, "company": got,
             "company_mentioned": mentioned,
             "company_unresolved": r.get("company_unresolved"),
             "path": r["path"],
+            "llm_provider": getattr(llm, "provider", None),
+            "llm_model": getattr(llm, "model", None),
             # what step 2 would do if it were wired
             "would_refuse": bool(mentioned and got is None),
             "company_mismatch": bool(exp and got != exp),
