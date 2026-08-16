@@ -2352,124 +2352,6 @@ CLOSED SAME DAY, and the prediction was wrong. Measured over 33 cited responses 
 
 Note `min=5 max=5` on the current figures: every response now receives exactly `TOP_K_RERANK=5`, so citation COUNT carries no information at all. Any UI signal about evidence quality has to come from the scores, not the length of the list.
 
-#### Sweep 2026-08-15/16 — new baseline over 91 questions, F2 and the 20s timeout in production
-
-Four datasets, `gemini-3.1-flash-lite`, `--delay 45`, against prod
-(`ledgermind-shaz.onrender.com`) at commit `0401c80`. All four gates clean —
-single provider, single model, Cohere-only reranker, no fallback:
-
-    transcript  q_eternal_transcript.json   {'gemini': 1}                {'cohere': 1}    0/1
-    ETERNAL     q4fy26_eternal.json         {'gemini': 48} (+7 blocked)  {'cohere': 17}  55/55
-    PAYTM       q_paytm.json                {'gemini': 18} (+2 blocked)  {'cohere': 6}   18/20
-    TITAN       q_titan.json                {'gemini': 13} (+2 blocked)  {'cohere': 6}   14/15
-                                                              91 questions, 4 failures
-
-**NOT a continuation of 89/90.** Different denominator (the transcript dataset
-is new), different code (F2 terminal routing, `TIMEOUT_STRUCTURED_MS` 20s).
-Do not write a single aggregate ratio: the per-dataset numbers are the ones
-that carry meaning.
-
-**ETERNAL 55/55 IS THE NUMBER 2026-08-13 COULD NOT PUBLISH.** That sweep had
-the same raw tally and was withheld on `{'gemini': 33, 'groq': 15}`. The 20s
-timeout moved those 15 calls back onto Gemini. Same number, first time it is
-interpretable. Q039 now confirmed passing on a clean full run rather than
-inferred from a withheld sweep.
-
-**THE FAILURE PROFILE IS THE ENTRY.** Zero wrong figures, zero wrong companies,
-zero fabrications. Every quantitative question across three issuers passed.
-Three of the four failures are router/golden path disagreements:
-
-    ETQ001  expected=cross       actual=semantic   NEW — never established
-    PQ012   expected=semantic    actual=cross      known_deliberate_failure
-    TQ008   expected=semantic    actual=cross      cause unknown, stable
-    PQ018   missing keyword 'ppbl'                 NEW
-
-**PQ018 IS NEW AND UNEXPLAINED.** The prior baseline had PAYTM at 19/20 with
-PQ012 alone. Two readings, neither established by one run: a regression, or the
-keyword rule failing on a correct answer — `ppbl` is an acronym in an answer
-about whether an exposure exists, and this file records the PPBL "crown jewel
-contradiction" as retired because the exposure does not exist. Same shape as
-TQ008's `diversified`. Not acted on.
-
-**TQ008 failed on PATH ONLY this run.** The `diversified` keyword failure is
-not observable while the route is wrong — the path check short-circuits first.
-Its absence here is not evidence it is fixed.
-
-**`meta` DOES NOT RECORD THE GATES.** It carries `stated_model` but not the
-observed provider, model or reranker sets, so a stored JSON cannot be checked
-for contamination without re-deriving from `results`. The gate figures above
-come from the terminal reports. One-line fix, not done.
-
-**OPERATIONAL, cost two launches:** `eval_runner.get_token`'s 30s timeout sits
-under prod's cold-login latency — measured 35.6s cold against 2.45s warm,
-2026-08-15, HTTP 200 both times. Same family as `TIMEOUT_STRUCTURED_MS`: a
-constant fitted to a median, dying in the tail. Unlike it, this one fails
-LOUDLY at startup before question 1, so it cost wall clock and zero quota
-rather than a contaminated score.
-
-### F3 — `unit` is hardcoded to crore, and the number cleaner is calibrated to crore too
-
-Scoped 2026-08-16. **Not closed.** Moved here from the audit's live-defect list
-because no document in the corpus has a demonstrated victim, and the trigger is
-nameable.
-
-**THE LIVE SURFACE IS FIVE LINES IN ONE FILE**, not five spread across the
-codebase. `financial_extractor.py` 457 (extraction) and 560 / 592 / 607 / 632
-(`_compute_derived_totals` constructing derived records). Those are the only
-sites that decide what a stored row MEANS.
-
-**THE READ PATH IS ALREADY UNIT-AWARE AND NEEDS NO CHANGE.** All ten sites in
-`quant_engine.py` and `response_generator.py` read `row.get("unit",
-"crore_inr")`, and the renderer is `"Cr" if unit == "crore_inr" else unit` — so
-a non-crore unit would render as its own name rather than be mislabelled `Cr`.
-The remaining 21 grep hits are test fixtures and `generate_golden_dataset.py`.
-The reader was built right; only the writer assumes.
-
-**MEASURED, and the measurement is ONE-SIDED.** A scale-declaration scan over
-the first 60 pages of each source PDF (`parse_pdf` -> `PageBlock.content`,
-pattern `in (lakhs|lacs|millions|crores|thousands|billions)`):
-
-    TITAN_Q1FY26            crores, pages 7, 8, 14, 15
-    ETERNAL_Q4FY26          no declaration found
-    PAYTM FS-Results Q4     no declaration found
-    Q4FY26 transcript       no declaration found
-
-**Where a declaration exists it says crore. No document was found declaring
-lakhs or millions.** That is NOT the same as "all four are crore": the pattern
-requires a literal " in <unit>" and would miss `(₹ in Cr)`, `Rs. crore`, or a
-caption rendered inside a table region. Three nulls are unexplained. Do not
-quote this as verification.
-
-**DETECTION IS BLOCKED BY THE SAME MECHANISM AS THE SEGMENT SUB-TABLES.**
-`extract_financials_positional` opens the PDF independently of `parse_pdf`,
-works from `page.extract_words()`, and its `parsing_started` gate discards every
-row above the first containing revenue/income/sale — which is exactly where a
-scale declaration sits. `PageBlock.content` retains the text at PAGE
-granularity with no row binding. Identical shape to the section-context finding:
-the text is not lost, the binding between a heading and the rows beneath it was
-never built. **One mechanism, two consumers** — build it general or not at all.
-
-**NORMALISE-TO-CRORE-AT-EXTRACTION IS NOT VIABLE, and this is the find.**
-`clean_financial_number` contains
-
-    val = re.sub(r'\.(?=\d{3}$)', '', val)
-
-which reads `17.634` as a misread comma and yields `17634`. Correct for
-crore-scale Indian filings, where sub-unit decimals are rare. In a lakh- or
-million-denominated filing genuine three-decimal values are common, and every
-one would be silently multiplied by 1000. So the number cleaner would have to
-be scale-aware BEFORE normalisation could run. **Store native value + unit is
-the only representation that does not require rewriting it.**
-
-**FAIL LOUD AND CLOSED WHEN BUILT.** No scale declaration found must mean
-refuse the row with `needs_review=True`, never default to crore. A silent 100x
-error on a headline figure is the PAYTM negative-`cash` severity class: read
-correctly, filed wrong, and invisible to every arithmetic guard in this file
-because nothing about the digits is corrupt.
-
-**TRIGGER:** the first ingest of a filing declaring a non-crore scale, or any
-issuer switching scale within one document. Neither exists in this corpus today.
-
 #### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
 
 The default `--out` is a single path, so each dataset's detail JSON overwrites the previous one. A three-dataset sweep therefore ends holding only the LAST dataset's detail. Eternal's JSON from the 2026-08-08 sweep is gone; the human-readable report survives only because each run was `tee`d to its own `/tmp/sweep_<dataset>.txt`.
@@ -3159,3 +3041,121 @@ written.
 The constraint in (4) is also unenforced in code: `doc_type` is a free string
 until the INSERT, so an expensive parse precedes a cheap validation. Loud and
 pre-commit, so acceptable — recorded, not queued.
+
+#### Sweep 2026-08-15/16 — new baseline over 91 questions, F2 and the 20s timeout in production
+
+Four datasets, `gemini-3.1-flash-lite`, `--delay 45`, against prod
+(`ledgermind-shaz.onrender.com`) at commit `0401c80`. All four gates clean —
+single provider, single model, Cohere-only reranker, no fallback:
+
+    transcript  q_eternal_transcript.json   {'gemini': 1}                {'cohere': 1}    0/1
+    ETERNAL     q4fy26_eternal.json         {'gemini': 48} (+7 blocked)  {'cohere': 17}  55/55
+    PAYTM       q_paytm.json                {'gemini': 18} (+2 blocked)  {'cohere': 6}   18/20
+    TITAN       q_titan.json                {'gemini': 13} (+2 blocked)  {'cohere': 6}   14/15
+                                                              91 questions, 4 failures
+
+**NOT a continuation of 89/90.** Different denominator (the transcript dataset
+is new), different code (F2 terminal routing, `TIMEOUT_STRUCTURED_MS` 20s).
+Do not write a single aggregate ratio: the per-dataset numbers are the ones
+that carry meaning.
+
+**ETERNAL 55/55 IS THE NUMBER 2026-08-13 COULD NOT PUBLISH.** That sweep had
+the same raw tally and was withheld on `{'gemini': 33, 'groq': 15}`. The 20s
+timeout moved those 15 calls back onto Gemini. Same number, first time it is
+interpretable. Q039 now confirmed passing on a clean full run rather than
+inferred from a withheld sweep.
+
+**THE FAILURE PROFILE IS THE ENTRY.** Zero wrong figures, zero wrong companies,
+zero fabrications. Every quantitative question across three issuers passed.
+Three of the four failures are router/golden path disagreements:
+
+    ETQ001  expected=cross       actual=semantic   NEW — never established
+    PQ012   expected=semantic    actual=cross      known_deliberate_failure
+    TQ008   expected=semantic    actual=cross      cause unknown, stable
+    PQ018   missing keyword 'ppbl'                 NEW
+
+**PQ018 IS NEW AND UNEXPLAINED.** The prior baseline had PAYTM at 19/20 with
+PQ012 alone. Two readings, neither established by one run: a regression, or the
+keyword rule failing on a correct answer — `ppbl` is an acronym in an answer
+about whether an exposure exists, and this file records the PPBL "crown jewel
+contradiction" as retired because the exposure does not exist. Same shape as
+TQ008's `diversified`. Not acted on.
+
+**TQ008 failed on PATH ONLY this run.** The `diversified` keyword failure is
+not observable while the route is wrong — the path check short-circuits first.
+Its absence here is not evidence it is fixed.
+
+**`meta` DOES NOT RECORD THE GATES.** It carries `stated_model` but not the
+observed provider, model or reranker sets, so a stored JSON cannot be checked
+for contamination without re-deriving from `results`. The gate figures above
+come from the terminal reports. One-line fix, not done.
+
+**OPERATIONAL, cost two launches:** `eval_runner.get_token`'s 30s timeout sits
+under prod's cold-login latency — measured 35.6s cold against 2.45s warm,
+2026-08-15, HTTP 200 both times. Same family as `TIMEOUT_STRUCTURED_MS`: a
+constant fitted to a median, dying in the tail. Unlike it, this one fails
+LOUDLY at startup before question 1, so it cost wall clock and zero quota
+rather than a contaminated score.
+
+### F3 — `unit` is hardcoded to crore, and the number cleaner is calibrated to crore too
+
+Scoped 2026-08-16. **Not closed.** Moved here from the audit's live-defect list
+because no document in the corpus has a demonstrated victim, and the trigger is
+nameable.
+
+**THE LIVE SURFACE IS FIVE LINES IN ONE FILE**, not five spread across the
+codebase. `financial_extractor.py` 457 (extraction) and 560 / 592 / 607 / 632
+(`_compute_derived_totals` constructing derived records). Those are the only
+sites that decide what a stored row MEANS.
+
+**THE READ PATH IS ALREADY UNIT-AWARE AND NEEDS NO CHANGE.** All ten sites in
+`quant_engine.py` and `response_generator.py` read `row.get("unit",
+"crore_inr")`, and the renderer is `"Cr" if unit == "crore_inr" else unit` — so
+a non-crore unit would render as its own name rather than be mislabelled `Cr`.
+The remaining 21 grep hits are test fixtures and `generate_golden_dataset.py`.
+The reader was built right; only the writer assumes.
+
+**MEASURED, and the measurement is ONE-SIDED.** A scale-declaration scan over
+the first 60 pages of each source PDF (`parse_pdf` -> `PageBlock.content`,
+pattern `in (lakhs|lacs|millions|crores|thousands|billions)`):
+
+    TITAN_Q1FY26            crores, pages 7, 8, 14, 15
+    ETERNAL_Q4FY26          no declaration found
+    PAYTM FS-Results Q4     no declaration found
+    Q4FY26 transcript       no declaration found
+
+**Where a declaration exists it says crore. No document was found declaring
+lakhs or millions.** That is NOT the same as "all four are crore": the pattern
+requires a literal " in <unit>" and would miss `(₹ in Cr)`, `Rs. crore`, or a
+caption rendered inside a table region. Three nulls are unexplained. Do not
+quote this as verification.
+
+**DETECTION IS BLOCKED BY THE SAME MECHANISM AS THE SEGMENT SUB-TABLES.**
+`extract_financials_positional` opens the PDF independently of `parse_pdf`,
+works from `page.extract_words()`, and its `parsing_started` gate discards every
+row above the first containing revenue/income/sale — which is exactly where a
+scale declaration sits. `PageBlock.content` retains the text at PAGE
+granularity with no row binding. Identical shape to the section-context finding:
+the text is not lost, the binding between a heading and the rows beneath it was
+never built. **One mechanism, two consumers** — build it general or not at all.
+
+**NORMALISE-TO-CRORE-AT-EXTRACTION IS NOT VIABLE, and this is the find.**
+`clean_financial_number` contains
+
+    val = re.sub(r'\.(?=\d{3}$)', '', val)
+
+which reads `17.634` as a misread comma and yields `17634`. Correct for
+crore-scale Indian filings, where sub-unit decimals are rare. In a lakh- or
+million-denominated filing genuine three-decimal values are common, and every
+one would be silently multiplied by 1000. So the number cleaner would have to
+be scale-aware BEFORE normalisation could run. **Store native value + unit is
+the only representation that does not require rewriting it.**
+
+**FAIL LOUD AND CLOSED WHEN BUILT.** No scale declaration found must mean
+refuse the row with `needs_review=True`, never default to crore. A silent 100x
+error on a headline figure is the PAYTM negative-`cash` severity class: read
+correctly, filed wrong, and invisible to every arithmetic guard in this file
+because nothing about the digits is corrupt.
+
+**TRIGGER:** the first ingest of a filing declaring a non-crore scale, or any
+issuer switching scale within one document. Neither exists in this corpus today.
