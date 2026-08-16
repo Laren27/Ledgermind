@@ -8,7 +8,7 @@ The decision this produces: WOULD_REFUSE must be 0 before step 2 wires
 company_mentioned into company_unresolved. A false refusal on a question
 that passes today is worse than the F2 bug it closes.
 """
-import argparse, json, sys, time
+import argparse, collections, json, sys, time
 from pathlib import Path
 
 sys.path.insert(0, "/app")
@@ -39,6 +39,7 @@ def main():
     for i, (ds, rec) in enumerate(records, 1):
         r = _classify_query(rec["question"])
         exp = rec.get("expected_company")
+        exp_path = rec.get("expected_path")
         got = r["company"]
         mentioned = r.get("company_mentioned")
         # Attribution, sourced exactly as eval_runner sources it. _classify_query
@@ -61,6 +62,13 @@ def main():
             "company_mentioned": mentioned,
             "company_unresolved": r.get("company_unresolved"),
             "path": r["path"],
+            "expected_path": exp_path,
+            # The classifier's own verdict, NOT the graph's. eval_runner sees
+            # the path the graph TOOK; Stage 0c and the refusal routing both
+            # sit downstream of classification, so these can legitimately
+            # differ. A mismatch here is evidence about _classify_query, not
+            # proof the graph disagrees with golden.
+            "path_mismatch": bool(exp_path and r["path"] != exp_path),
             "llm_provider": getattr(llm, "provider", None),
             "llm_model": getattr(llm, "model", None),
             # what step 2 would do if it were wired
@@ -70,6 +78,8 @@ def main():
         }
         rows.append(row)
         flag = "REFUSE" if row["would_refuse"] else ("MISMATCH" if row["company_mismatch"] else "")
+        if row["path_mismatch"]:
+            flag = (flag + " PATH").strip()
         print(f"[{i:3}/{len(records)}] {rec['id']:10} exp={str(exp):8} "
               f"got={str(got):8} mentioned={str(mentioned):22} {flag}", flush=True)
         if i < len(records):
@@ -85,6 +95,25 @@ def main():
     print(f"WOULD_REFUSE      {len(would):3}   <- MUST BE 0 to proceed to step 2")
     print(f"company mismatch  {len(mism):3}   (of {sum(1 for r in rows if r['expected_company'])} with expected_company)")
     print(f"company null      {len(nulls):3}")
+    # PROVIDER GATE, same rule as eval_runner. Groq classifies differently
+    # from Gemini -- TQ006 routes quantitative on one and semantic on the
+    # other, confirmed from audit_log -- so a path-mismatch count computed
+    # across a mixed run says nothing about the classifier. The number is
+    # WITHHELD rather than annotated: a figure printed under a caveat still
+    # ends up quoted without it.
+    provs = collections.Counter(r["llm_provider"] for r in rows)
+    models = collections.Counter(r["llm_model"] for r in rows)
+    print(f"Providers         {dict(provs)}")
+    print(f"Models served     {dict(models)}")
+    pmis = [r for r in rows if r["path_mismatch"]]
+    clean = len([k for k in provs if k]) <= 1 and len([k for k in models if k]) <= 1
+    if not clean:
+        print("path mismatch     WITHHELD -- mixed providers/models above")
+    else:
+        print(f"path mismatch     {len(pmis):3}   (of {sum(1 for r in rows if r['expected_path'])} with expected_path)")
+    for r in pmis:
+        print(f"  {r['id']:10} expected={r['expected_path']:14} got={r['path']:14} "
+              f"[{r['llm_provider']}] {r['question'][:44]}")
     print(f"mentioned set     {sum(1 for r in rows if r['company_mentioned']):3} / {len(rows)}")
     for r in would + mism:
         print(f"  {r['id']:10} {r['question'][:70]}")
