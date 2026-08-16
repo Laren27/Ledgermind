@@ -11,7 +11,7 @@ therefore never appeared in a diff. A design document that cannot be reviewed
 alongside the code it describes will drift silently. Any change that makes a
 blueprint statement untrue must add an entry here in the same commit.
 
-Last verified: 2026-08-13.
+Last verified: 2026-08-16.
 
 ---
 
@@ -3041,3 +3041,58 @@ written.
 The constraint in (4) is also unenforced in code: `doc_type` is a free string
 until the INSERT, so an expensive parse precedes a cheap validation. Loud and
 pre-commit, so acceptable — recorded, not queued.
+
+#### Sweep 2026-08-15/16 — new baseline over 91 questions, F2 and the 20s timeout in production
+
+Four datasets, `gemini-3.1-flash-lite`, `--delay 45`, against prod
+(`ledgermind-shaz.onrender.com`) at commit `0401c80`. All four gates clean —
+single provider, single model, Cohere-only reranker, no fallback:
+
+    transcript  q_eternal_transcript.json   {'gemini': 1}                {'cohere': 1}    0/1
+    ETERNAL     q4fy26_eternal.json         {'gemini': 48} (+7 blocked)  {'cohere': 17}  55/55
+    PAYTM       q_paytm.json                {'gemini': 18} (+2 blocked)  {'cohere': 6}   18/20
+    TITAN       q_titan.json                {'gemini': 13} (+2 blocked)  {'cohere': 6}   14/15
+                                                              91 questions, 4 failures
+
+**NOT a continuation of 89/90.** Different denominator (the transcript dataset
+is new), different code (F2 terminal routing, `TIMEOUT_STRUCTURED_MS` 20s).
+Do not write a single aggregate ratio: the per-dataset numbers are the ones
+that carry meaning.
+
+**ETERNAL 55/55 IS THE NUMBER 2026-08-13 COULD NOT PUBLISH.** That sweep had
+the same raw tally and was withheld on `{'gemini': 33, 'groq': 15}`. The 20s
+timeout moved those 15 calls back onto Gemini. Same number, first time it is
+interpretable. Q039 now confirmed passing on a clean full run rather than
+inferred from a withheld sweep.
+
+**THE FAILURE PROFILE IS THE ENTRY.** Zero wrong figures, zero wrong companies,
+zero fabrications. Every quantitative question across three issuers passed.
+Three of the four failures are router/golden path disagreements:
+
+    ETQ001  expected=cross       actual=semantic   NEW — never established
+    PQ012   expected=semantic    actual=cross      known_deliberate_failure
+    TQ008   expected=semantic    actual=cross      cause unknown, stable
+    PQ018   missing keyword 'ppbl'                 NEW
+
+**PQ018 IS NEW AND UNEXPLAINED.** The prior baseline had PAYTM at 19/20 with
+PQ012 alone. Two readings, neither established by one run: a regression, or the
+keyword rule failing on a correct answer — `ppbl` is an acronym in an answer
+about whether an exposure exists, and this file records the PPBL "crown jewel
+contradiction" as retired because the exposure does not exist. Same shape as
+TQ008's `diversified`. Not acted on.
+
+**TQ008 failed on PATH ONLY this run.** The `diversified` keyword failure is
+not observable while the route is wrong — the path check short-circuits first.
+Its absence here is not evidence it is fixed.
+
+**`meta` DOES NOT RECORD THE GATES.** It carries `stated_model` but not the
+observed provider, model or reranker sets, so a stored JSON cannot be checked
+for contamination without re-deriving from `results`. The gate figures above
+come from the terminal reports. One-line fix, not done.
+
+**OPERATIONAL, cost two launches:** `eval_runner.get_token`'s 30s timeout sits
+under prod's cold-login latency — measured 35.6s cold against 2.45s warm,
+2026-08-15, HTTP 200 both times. Same family as `TIMEOUT_STRUCTURED_MS`: a
+constant fitted to a median, dying in the tail. Unlike it, this one fails
+LOUDLY at startup before question 1, so it cost wall clock and zero quota
+rather than a contaminated score.
