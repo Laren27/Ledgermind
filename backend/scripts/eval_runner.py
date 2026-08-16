@@ -163,7 +163,7 @@ def get_token(email: str, password: str) -> str:
     resp = requests.post(
         f"{API_BASE}/auth/login",
         json={"email": email, "password": password},
-        timeout=30,
+        timeout=120,
     )
     if resp.status_code != 200:
         print(f"Login failed: {resp.text}")
