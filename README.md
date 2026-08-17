@@ -189,7 +189,19 @@ docker compose up --build
 | API | http://localhost:8000 |
 | API docs | http://localhost:8000/docs |
 
-Local demo accounts are seeded across two tenants and three roles. Log in as each to see the same query return different detail — viewers get the answer and citations, analysts additionally see the DSL and compiled SQL, admins also see latency, token usage, provider and reranker backend.
+Local demo accounts are seeded by migration `007_seed_users.sql` across two tenants and three roles:
+
+| Email | Role | Tenant |
+|---|---|---|
+| `admin@alpha.ledgermind.test` | Admin | Alpha |
+| `analyst@alpha.ledgermind.test` | Analyst | Alpha |
+| `viewer@alpha.ledgermind.test` | Viewer | Alpha |
+| `admin@beta.ledgermind.test` | Admin | Beta |
+| `analyst@beta.ledgermind.test` | Analyst | Beta |
+| `viewer@beta.ledgermind.test` | Viewer | Beta |
+
+Tenant Beta holds no documents — it exists to make cross-tenant isolation testable: a Beta admin querying Alpha's data gets `no_data_found`.
+ Log in as each to see the same query return different detail — viewers get the answer and citations, analysts additionally see the DSL and compiled SQL, admins also see latency, token usage, provider and reranker backend.
 
 ### Running the evaluation
 
