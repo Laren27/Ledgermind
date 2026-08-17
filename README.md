@@ -201,7 +201,8 @@ Local demo accounts are seeded by migration `007_seed_users.sql` across two tena
 | `viewer@beta.ledgermind.test` | Viewer | Beta |
 
 Tenant Beta holds no documents — it exists to make cross-tenant isolation testable: a Beta admin querying Alpha's data gets `no_data_found`.
- Log in as each to see the same query return different detail — viewers get the answer and citations, analysts additionally see the DSL and compiled SQL, admins also see latency, token usage, provider and reranker backend.
+
+Log in as each to see the same query return different detail — viewers get the answer and citations, analysts additionally see the DSL and compiled SQL, admins also see latency, token usage, provider and reranker backend.
 
 ### Running the evaluation
 
