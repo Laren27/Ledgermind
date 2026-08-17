@@ -2407,6 +2407,59 @@ constant fitted to a median, dying in the tail. Unlike it, this one fails
 LOUDLY at startup before question 1, so it cost wall clock and zero quota
 rather than a contaminated score.
 
+#### Router probe 2026-08-16 — the three path failures are the CLASSIFIER, not the graph
+
+91 questions through `_classify_query` directly: no retrieval, no rerank, no
+synthesis, one LLM call each. `scripts/router_probe.py`, `--delay 20`, output
+`eval_results/router_probe_20260816.json`.
+
+**THE GATE FIRED.** `Providers {'gemini': 85, 'groq': 6}` — six fallbacks at the
+20s structured bound, so the aggregate path-mismatch tally is WITHHELD. The
+per-row detail is still printed, tagged with the provider that served it, which
+is the point: a withheld aggregate should not hide WHICH rows diverged.
+**THREE OF THE FOUR SWEEP FAILURES REPRODUCE AT THE CLASSIFIER, ON GEMINI.**
+TQ008, PQ012 and ETQ001 all mismatch here, on the primary model, with no
+retrieval or synthesis in the loop. So the divergence is `_classify_query`
+itself — NOT Stage 0c, NOT the refusal routing, NOT anything downstream of
+classification. That was genuinely open before this run: `eval_runner` observes
+the path the GRAPH took, and the two can differ. They do not here.
+
+PQ018 does not appear, consistent with it failing on a keyword rather than a
+path.
+
+**Q054 IS A SECOND NAMED GROQ-DIVERGENCE INSTANCE**, alongside TQ006 recorded
+in §17. It PASSES on gemini in the sweep and mismatches here on groq. It is not
+a defect and must not be counted against the classifier — it is the reason the
+provider gate exists, now with two instances instead of one.
+
+**Q051 SHOWS F14 DIRECTLY, and adds a constraint the F14 entry does not have.**
+`WOULD_REFUSE 1`, on "Who grew revenue faster in FY26, Eternal or Paytm?" —
+`company=None` with `company_mentioned='ETERNAL, PAYTM'`. The single-valued
+`Optional[str]` nulls on a two-issuer query, exactly as F14 predicts. What is
+new: F2's refusal keys on something-mentioned-but-nothing-resolved, so a NAIVE
+wiring of that logic would refuse a legitimate two-issuer question that passes
+today (Q051 is `sql_verified=true`, confidence 1.0 in the sweep). The
+`companies: list[str]` fix must land BEFORE, or with, any widening of the
+refusal condition.
+
+**`company mismatch 0 of 40` COVERS 44%, NOT 91.** Fifty-one of the 91 golden
+questions carry no `expected_company`, so the zero is scoped to the 40 that do.
+Do not quote it as a corpus-wide result.
+
+**SIX FALLBACKS IN 91 CALLS (6.6%), ALL AT THE 20s BOUND.** Third measurement
+of the day after the smoke run and the sweep. `TIMEOUT_STRUCTURED_MS` 8s -> 20s
+reduced but did not eliminate them. Explicitly NOT a reason to raise it again:
+two changes to one measured constant in a day, on thin evidence, is the habit
+this file exists to record.
+
+**INSTRUMENT NOTE.** `router_probe.py` was an F2 step-1 measurement gated on
+`WOULD_REFUSE == 0`; F2 closed, so that purpose was spent. It now reads
+`expected_path`, computes `path_mismatch`, and applies the same provider/model
+gate as `eval_runner` — withholding the tally on a mixed run rather than
+annotating it. A path mismatch here is evidence about the classifier, not proof
+the graph disagrees with golden; the two questions are separate and the
+docstring says so.
+
 #### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
 
 The default `--out` is a single path, so each dataset's detail JSON overwrites the previous one. A three-dataset sweep therefore ends holding only the LAST dataset's detail. Eternal's JSON from the 2026-08-08 sweep is gone; the human-readable report survives only because each run was `tee`d to its own `/tmp/sweep_<dataset>.txt`.
