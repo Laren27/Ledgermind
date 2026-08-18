@@ -80,7 +80,7 @@ logger = logging.getLogger(__name__)
 # entrypoints that actually make LLM calls, rather than crashing the startup
 # of every entrypoint that merely imports this module (the Celery worker
 # imports it transitively and may never call one).
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 def _resolve_gemini_model() -> str:
