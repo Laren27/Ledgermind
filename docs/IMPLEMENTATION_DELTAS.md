@@ -11,7 +11,7 @@ therefore never appeared in a diff. A design document that cannot be reviewed
 alongside the code it describes will drift silently. Any change that makes a
 blueprint statement untrue must add an entry here in the same commit.
 
-Last verified: 2026-08-16.
+Last verified: 2026-08-18.
 
 ---
 
@@ -3184,7 +3184,8 @@ lakhs or millions.** That is NOT the same as "all four are crore": the pattern
 requires a literal " in <unit>" and would miss `(₹ in Cr)`, `Rs. crore`, or a
 caption rendered inside a table region. Three nulls are unexplained. Do not
 quote this as verification. The ZOMATO annual report was not among the four
-files scanned and has not been checked at all.
+files scanned, so no scale declaration has been sought in it — its rows are
+extracted and stored under the same crore assumption as the rest.
 
 **DETECTION IS BLOCKED BY THE SAME MECHANISM AS THE SEGMENT SUB-TABLES.**
 `extract_financials_positional` opens the PDF independently of `parse_pdf`,
