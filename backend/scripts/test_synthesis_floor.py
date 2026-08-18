@@ -104,12 +104,12 @@ check("llm attribution cleared", out["llm_provider"] is None and out["llm_model"
 print("\n4. record_llm_call taint precedence")
 a = _state()
 record_llm_call(a, LLMResult("", "gemini", "gemini-3.1-flash-lite"))
-record_llm_call(a, LLMResult("", "groq", "llama-3.3-70b-versatile"))
+record_llm_call(a, LLMResult("", "groq", "openai/gpt-oss-120b"))
 check("gemini then groq -> groq", a["llm_provider"] == "groq", a["llm_provider"])
-check("model follows provider", a["llm_model"] == "llama-3.3-70b-versatile", a["llm_model"])
+check("model follows provider", a["llm_model"] == "openai/gpt-oss-120b", a["llm_model"])
 
 b = _state()
-record_llm_call(b, LLMResult("", "groq", "llama-3.3-70b-versatile"))
+record_llm_call(b, LLMResult("", "groq", "openai/gpt-oss-120b"))
 record_llm_call(b, LLMResult("", "gemini", "gemini-3.1-flash-lite"))
 check("groq then gemini -> groq (order-independent)", b["llm_provider"] == "groq", b["llm_provider"])
 
