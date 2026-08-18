@@ -118,6 +118,23 @@ def main():
     for r in would + mism:
         print(f"  {r['id']:10} {r['question'][:70]}")
         print(f"             got={r['company']!r} mentioned={r['company_mentioned']!r}")
+    # Second write, replacing the crash-safe rows-only dump above. The gate
+    # dicts are computed after that write, and a file carrying rows without
+    # the provider/model counts that decide whether its aggregates are
+    # readable is the same defect as an eval_results JSON read without its
+    # header check. Same values as the printed gate -- read, not recomputed.
+    json.dump({
+        "meta": {
+            "run_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "questions_run": len(rows),
+            "datasets": DATASETS,
+            "providers": dict(provs),
+            "models_served": dict(models),
+            "single_provider_and_model": clean,
+            "path_mismatch_withheld": not clean,
+        },
+        "rows": rows,
+    }, open(args.out, "w"), indent=2)
     print("=" * 60)
     print(f"written: {args.out}")
 
