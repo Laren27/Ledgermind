@@ -261,12 +261,15 @@
         "expected_contradictions": 0,
         "expected_sql_verified": false,
         "expected_keywords": [
-            "ppbl",
+            [
+                "ppbl",
+                "paytm payments bank"
+            ],
             "190",
             "optionally convertible debentures",
             "march 31, 2024"
         ],
-        "notes": "FIRST golden question targeting path=cross. Asserts a FALSE contradiction is NOT fabricated: note 4 reconciles the 207 Cr exactly as 5 (associates) + 12 (OCDs) + 190 (JV loan), none of it PPBL, which was fully impaired as of March 31 2024 -- so the 'no exposure' claim and the impairment line are consistent. The long-carried assumption that this filing contains a real PPBL contradiction is FALSE; verified 2026-07-30 by scrolling all 115 PAYTM chunks. Answering requires synthesising page 12 (PPBL note) and page 10 (note 4) in one top-5, so it also stresses retrieval diversity. Keywords chosen per the golden keyword rule: stable across two verified runs, excluding bare '5' and '12' which any wrong answer would satisfy. expected_sql_verified=false because impairment_of_loans_and_investments_in_associates is dsl_enabled=False and the Stage 0b guard refuses rather than substituting a neighbouring metric -- IF THAT METRIC IS EVER FLIPPED TO dsl_enabled=True, set expected_sql_verified=true and keep expected_contradictions=0."
+        "notes": "FIRST golden question targeting path=cross. Asserts a FALSE contradiction is NOT fabricated: note 4 reconciles the 207 Cr exactly as 5 (associates) + 12 (OCDs) + 190 (JV loan), none of it PPBL, which was fully impaired as of March 31 2024 -- so the 'no exposure' claim and the impairment line are consistent. The long-carried assumption that this filing contains a real PPBL contradiction is FALSE; verified 2026-07-30 by scrolling all 115 PAYTM chunks. Answering requires synthesising page 12 (PPBL note) and page 10 (note 4) in one top-5, so it also stresses retrieval diversity. Keywords chosen per the golden keyword rule, excluding bare '5' and '12' which any wrong answer would satisfy. 2026-08-18: 'ppbl' widened to ['ppbl','paytm payments bank'] after a third clean gemini-3.1-flash-lite/cohere run diverged -- 2026-08-15 wrote the expansion 'paytm payments bank limited' and failed on that keyword alone (other three present, tier=medium, path=cross); 2026-08-18 wrote the acronym and passed. The earlier 'stable across two verified runs' justification was insufficient: two observations of a model's phrasing are not a stable fact, and PPBL is named in the keyword rule as an optional gloss that must never be asserted. Precedent: Q039 in q4fy26_eternal.json already carries ['LODR','Listing Obligations'] for the same reason. expected_sql_verified=false because impairment_of_loans_and_investments_in_associates is dsl_enabled=False and the Stage 0b guard refuses rather than substituting a neighbouring metric -- IF THAT METRIC IS EVER FLIPPED TO dsl_enabled=True, set expected_sql_verified=true and keep expected_contradictions=0."
     },
     {
         "id": "PQ019",
