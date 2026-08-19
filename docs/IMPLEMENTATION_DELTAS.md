@@ -2583,7 +2583,7 @@ The question was recorded as a correctly-refused out-of-corpus query when no
 synthesis had occurred at all. `cross_examination` with `expected_tier_low` had
 the same shape: the outage satisfied the assertion the question exists to make.
 Both were confirmed by running the pre-fix code against the fixtures — measured,
-not inferred. See the vacuous-pass entry in section D; this is instance #3.
+not inferred. See the check-satisfied-by-absence entry in section D; this is instance #3.
 
 **RESOLUTION: EXCLUDE, NOT FAIL.** An outage is an infrastructure failure, not
 an accuracy defect. Scoring it FAIL understates the system exactly as passing it
