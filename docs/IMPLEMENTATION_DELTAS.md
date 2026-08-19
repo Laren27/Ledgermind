@@ -2522,8 +2522,8 @@ has written through it, and the first real run is where a key-name or
 serialization problem surfaces. Related caution for anything reading that
 output: a header check reading `llm_provider` / `llm_model` at row level gets
 `None` for every row, because those fields live inside `api_response`. A gate
-reading an absent field passes vacuously — the same shape as the non-admin
-`--email` failure.
+reading an absent field passes vacuously — instance #2 of the
+check-satisfied-by-absence class recorded in section D.
 
 #### PQ018 2026-08-18 — two clean runs of the same code disagreed on one keyword
 
@@ -2561,6 +2561,51 @@ questions that must stay separate.
 
 **Baseline is unchanged at 87/91.** The fix is landed and unconfirmed at dataset
 level. A one-question run is not a baseline, and this entry does not claim one.
+
+#### synthesis_unavailable 2026-08-19 — an LLM outage was being scored as an answer
+
+When both providers fail, `response_generator.py:616` sets
+`error="synthesis_unavailable"`, the raw-excerpt floor serves cited evidence
+without synthesis, and the tier is capped to `low` BY DESIGN
+(`test_synthesis_floor.py` §1). The cap is correct. The scorer never read
+`error`, and that omission had two consequences of very different severity.
+
+**The visible one: a mislabelled FAIL.** On 2026-08-18 the cross branch
+reported "the qualitative half likely missed its chunks" while
+`citation_scores` were `[1.0, 0.9986, 0.9388, 0.9, 0.7413]` with the top hit on
+the exact page the question required. Retrieval was excellent; the LLM call had
+404'd on a retired Groq fallback. The reason string was derived from the tier
+alone and named a cause the branch had never tested.
+
+**The serious one: vacuous PASSES.** `out_of_corpus` passed on
+`(not sql_verified) and (tier == "low" or ...)`. An outage forces both terms.
+The question was recorded as a correctly-refused out-of-corpus query when no
+synthesis had occurred at all. `cross_examination` with `expected_tier_low` had
+the same shape: the outage satisfied the assertion the question exists to make.
+Both were confirmed by running the pre-fix code against the fixtures — measured,
+not inferred. See the vacuous-pass entry in section D; this is instance #3.
+
+**RESOLUTION: EXCLUDE, NOT FAIL.** An outage is an infrastructure failure, not
+an accuracy defect. Scoring it FAIL understates the system exactly as passing it
+overstates it. A single early return in `score_result` before any category
+branch marks the row `excluded`; excluded rows leave both numerator and
+denominator, and the summary prints `PASS/N (M excluded: synthesis_unavailable)`
+**with the excluded IDs listed** — a count alone cannot distinguish a
+category-based pattern (defect signature) from a scattered one (transient
+signature). With no exclusions the score line is byte-identical to the previous
+format, asserted in the test suite, so every baseline already recorded in this
+file remains comparable by inspection.
+
+**AN OUTAGE USUALLY TRIPS THE MODEL GATE TOO, BY MECHANISM.** The floor clears
+`llm_model` deliberately, so outage rows count as `"unknown"` in the models
+tally and fire the mismatch withhold. Exclusion and withholding therefore
+co-occur by construction, not coincidence, and both must stay visible in one
+report: the withhold says the run is not a baseline, the exclusion list says
+whether the `unknown` attribution was an outage or an auth failure. Note also
+that the integrity counters and the exclusion counter partition the run on
+different axes — the former drops *blocked* queries, the latter drops *outage*
+queries — so `Providers:` and the tally denominator will legitimately disagree.
+That is correct and should not be reconciled.
 
 #### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
 
@@ -2754,7 +2799,7 @@ ranking problem and remains unowned. Worth separating the two before any further
 attempt — the previous reverts conflated them.
 
 ### §21 — RAGAS — NOT USED
-Replaced by `scripts/eval_runner.py`, an 83-question golden-dataset runner
+Replaced by `scripts/eval_runner.py`, a 91-question golden-dataset runner
 asserting exact figures, refusal behaviour, routing path, and keyword presence.
 RAGAS scores faithfulness on a 0–1 scale; this system's core claim is that
 numerical answers are exactly right, which is a pass/fail property. The runner
@@ -3248,6 +3293,49 @@ error one level up. Re-measure Q051 and any comparison question after.
 
 **Do not** build a mentioned-vs-omitted distinction alongside it: no golden question
 carries no company, and CLAUDE.md records that constraint.
+
+### A check satisfied by absence — three instances, one cause
+
+Three separate gates in this project have reported success while measuring
+nothing. Each was written to catch a real condition, and each could be
+satisfied by that condition's evidence being ABSENT rather than by the
+condition being false.
+
+**#1 — the provider gate under a non-admin login.** `llm_provider` is
+admin-tier only in `response_shaping.py`. Run `eval_runner --email` with a
+non-admin account and the field reads `None` for every question, so the gate
+concludes the whole sweep was Gemini-served and passes. This is recorded in the
+argparse help string and nowhere else until this entry.
+
+**#2 — a header check reading the wrong nesting level.** A script auditing
+seven eval JSONs printed `PROVIDERS: ['None']` for all of them and was briefly
+read as a clean provider check. `llm_provider` and `llm_model` live inside
+`api_response`, not at row level. The script asked the right question at the
+wrong depth and got a confident answer.
+
+**#3 — the outage-satisfied pass conditions.** See the
+`synthesis_unavailable` entry in section A. `(not sql_verified) and (tier ==
+"low")` is a correct test for a refusal and is also exactly what a total LLM
+outage produces.
+
+**THE COMMON SHAPE.** In all three, the passing condition is also what a
+failure to observe looks like. A missing field, a wrong nesting level and a
+capped tier are all indistinguishable from the thing the check was written to
+confirm. The instrument does not know the difference between "the condition
+holds" and "I could not see the condition."
+
+**THE RULE: before trusting a pass, check that the passing condition could
+have failed.** Cheapest form is a negative control — run the check against
+input that must fail it. When `test_eval_exclusion.py` passed on first run its
+fixtures were replayed against the pre-fix code, where they returned
+`pass=True`; only then were the checks evidence. A related form: `printenv A B
+C D` omits unset names entirely rather than printing blanks, so four names
+returning three values cannot tell you which is missing — print `NAME=value` or
+read one at a time.
+
+Same family as the comment-vs-behaviour drift below, from the opposite
+direction: there the code moved away from what was written about it; here the
+check never touched what it claimed to measure.
 
 ### Comment-vs-behaviour drift — four instances, one cause
 
