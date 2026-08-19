@@ -2523,7 +2523,7 @@ serialization problem surfaces. Related caution for anything reading that
 output: a header check reading `llm_provider` / `llm_model` at row level gets
 `None` for every row, because those fields live inside `api_response`. A gate
 reading an absent field passes vacuously — instance #2 of the
-check-satisfied-by-absence class recorded in section D.
+check satisfied by absence class recorded in section D.
 
 #### PQ018 2026-08-18 — two clean runs of the same code disagreed on one keyword
 
@@ -2583,7 +2583,7 @@ The question was recorded as a correctly-refused out-of-corpus query when no
 synthesis had occurred at all. `cross_examination` with `expected_tier_low` had
 the same shape: the outage satisfied the assertion the question exists to make.
 Both were confirmed by running the pre-fix code against the fixtures — measured,
-not inferred. See the check-satisfied-by-absence entry in section D; this is instance #3.
+not inferred. See the check satisfied by absence entry in section D; this is instance #3.
 
 **RESOLUTION: EXCLUDE, NOT FAIL.** An outage is an infrastructure failure, not
 an accuracy defect. Scoring it FAIL understates the system exactly as passing it
