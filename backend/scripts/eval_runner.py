@@ -330,6 +330,47 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
     if result is None:
         return {"pass": False, "reason": "API call failed / no response", "actual": None}
 
+    # ── Synthesis outage: EXCLUDED, neither pass nor fail ────────────────
+    # response_generator sets error="synthesis_unavailable" when BOTH
+    # providers fail, serves a raw-excerpt floor, and caps the tier to low by
+    # design (asserted in scripts/test_synthesis_floor.py section 1). That cap
+    # is correct and is not touched here -- but it feeds pass/fail conditions,
+    # not just messages, and every one of them reads the cap as evidence:
+    #
+    #   out_of_corpus passes on (not sql_verified) and tier == "low"
+    #   cross_examination with expected_tier_low asserts tier == "low"
+    #
+    # An outage satisfies both, so the questions that exist to prove a refusal
+    # is honest were recorded as passing while no synthesis had happened at
+    # all. That is the serious half of the defect: a vacuous PASS, not a
+    # misleading FAIL.
+    #
+    # Excluded rather than failed. An LLM outage is an infrastructure failure,
+    # not an accuracy defect; scoring it FAIL understates the system exactly
+    # as passing it overstates it. Excluded questions leave BOTH numerator and
+    # denominator -- see print_report.
+    #
+    # DELIBERATELY BEFORE every category branch, and there is no second check
+    # inside out_of_corpus or cross_examination: a guard that can never fire
+    # is worse than none, because the next reader has to prove it is dead.
+    #
+    # pass=False is carried alongside excluded=True on purpose. Every consumer
+    # filters on `excluded` first; a consumer that forgets then counts this as
+    # a visible failure rather than a silent pass.
+    if result.get("error") == "synthesis_unavailable":
+        return {
+            "pass": False,
+            "excluded": True,
+            "reason": "EXCLUDED — synthesis_unavailable: both LLM providers failed and "
+                      "the raw-excerpt floor was served. Confidence tier is capped to low "
+                      "by design, so no accuracy claim is available for this question.",
+            "actual": {
+                "error": result.get("error"),
+                "confidence_tier": result.get("confidence_tier"),
+                "citation_count": len(result.get("citations") or []),
+            },
+        }
+
     category = golden["category"]
 
     # ── Adversarial ──────────────────────────────────────────────────────
@@ -633,7 +674,7 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
         if not expect_low and tier == "low":
             return {
                 "pass": False,
-                "reason": "Low confidence — the qualitative half likely missed its chunks",
+                "reason": "Low confidence (tier=low, not a synthesis outage) — check whether the qualitative half found its chunks",
                 "actual": {"confidence_tier": tier, "response_preview": response[:200]},
             }
 
@@ -662,7 +703,7 @@ def score_result(golden: dict, result: Optional[dict]) -> dict:
         keywords = golden.get("expected_keywords", []) or []
 
         if tier == "low":
-            return {"pass": False, "reason": "Low confidence — retrieval likely missed the target chunks",
+            return {"pass": False, "reason": "Low confidence (tier=low, not a synthesis outage) — check whether retrieval found the target chunks",
                      "actual": {"confidence_tier": tier, "response_preview": response[:200]}}
 
         missing = _missing_keywords(golden, response)
@@ -720,8 +761,25 @@ def _integrity_counters(results: list[dict]):
 
 def print_report(results: list[dict], model: str):
     total    = len(results)
-    passed   = sum(1 for r in results if r["score"]["pass"])
-    failed   = total - passed
+    # Excluded questions leave BOTH numerator and denominator. See the
+    # synthesis_unavailable early return in score_result for why an outage is
+    # excluded rather than failed. `.get` rather than `[...]`: the default is
+    # applied once at the call site, and a caller that skipped it must read as
+    # not-excluded rather than raise here.
+    excluded_rows = [r for r in results if r["score"].get("excluded")]
+    n_excluded    = len(excluded_rows)
+    scored_rows   = [r for r in results if not r["score"].get("excluded")]
+    scored_total  = len(scored_rows)
+    passed   = sum(1 for r in scored_rows if r["score"]["pass"])
+    failed   = scored_total - passed
+    # ONE tally string, used by the withholding branches and the clean branch
+    # alike. A withheld run and a clean run must never disagree about the
+    # denominator, and a run that is BOTH contaminated and short some excluded
+    # questions has to show both facts -- the gates below are unchanged and
+    # still withhold, they simply quote this instead of a bare fraction.
+    tally = f"{passed}/{scored_total}" + (
+        f" ({n_excluded} excluded: synthesis_unavailable)" if n_excluded else ""
+    )
 
     # ── Provider integrity gate ──────────────────────────────────────────
     # app/llm/client.py falls back to Groq on 429/timeout/5xx. That is
@@ -769,7 +827,7 @@ def print_report(results: list[dict], model: str):
               f"authenticated as admin (--email admin@alpha.ledgermind.test), or "
               f"synthesis fell through to the raw-excerpt floor on ALL providers, "
               f"which clears attribution deliberately.")
-        print(f"  Raw tally (DO NOT publish): {passed}/{total}")
+        print(f"  Raw tally (DO NOT publish): {tally}")
 
     if contaminated:
         print(f"\n  *** SCORE WITHHELD — NOT A VALID BASELINE ***")
@@ -781,31 +839,55 @@ def print_report(results: list[dict], model: str):
         if "groq" in contaminated:
             print(f"  'groq' means the fallback fired (rate limit / timeout). "
                   f"Wait for quota and re-run.")
-        print(f"  Raw tally (DO NOT publish): {passed}/{total}")
+        print(f"  Raw tally (DO NOT publish): {tally}")
     if backend_mixed:
         print(f"\n  *** SCORE WITHHELD — MIXED RERANKER BACKENDS ***")
         print(f"  {dict(backends)}. Cohere scores are probabilities in [0,1];")
         print(f"  local ONNX scores are unbounded logits. A run spanning both")
         print(f"  is two systems, and the questions that flipped are the ones")
         print(f"  whose top-5 ordering differs between the scales.")
-        print(f"  Check the Cohere key, then re-run. Raw tally (DO NOT publish): {passed}/{total}")
+        print(f"  Check the Cohere key, then re-run. Raw tally (DO NOT publish): {tally}")
 
     elif not model_mismatch and not contaminated:
-        print(f"Total:  {total}  |  Pass: {passed}  |  Fail: {failed}  |  Score: {passed/total*100:.1f}%")
+        # Format is byte-identical to the previous one when nothing was
+        # excluded (scored_total == total, empty suffix), so an unaffected run
+        # produces an unaffected line and old sweeps stay comparable.
+        if scored_total:
+            print(f"Total:  {scored_total}  |  Pass: {passed}  |  Fail: {failed}  |  "
+                  f"Score: {passed/scored_total*100:.1f}%"
+                  + (f"  |  Excluded: {n_excluded} (synthesis_unavailable)" if n_excluded else ""))
+        else:
+            print(f"Total:  0 scored  |  every one of {n_excluded} questions was excluded "
+                  f"(synthesis_unavailable) — this run measured nothing")
 
-    from collections import defaultdict
+    from collections import Counter, defaultdict
     by_cat = defaultdict(list)
-    for r in results:
+    for r in scored_rows:
         by_cat[r["category"]].append(r["score"]["pass"])
+    exc_cat = Counter(r["category"] for r in excluded_rows)
 
     print(f"\nBy category:")
-    for cat, outcomes in sorted(by_cat.items()):
+    # Union of both key sets: a category every one of whose questions was
+    # excluded still has to appear, or it silently vanishes from the report.
+    for cat in sorted(set(by_cat) | set(exc_cat)):
+        outcomes = by_cat.get(cat, [])
         n = len(outcomes)
         p = sum(outcomes)
         bar = "█" * p + "░" * (n - p)
-        print(f"  {cat:<30} {p}/{n}  {bar}")
+        suffix = f"  (+{exc_cat[cat]} excluded)" if exc_cat.get(cat) else ""
+        print(f"  {cat:<30} {p}/{n}  {bar}{suffix}")
 
-    failures = [r for r in results if not r["score"]["pass"]]
+    # The IDs, listed, not just a count. A count cannot distinguish exclusions
+    # clustered in one category -- which is a defect signature and a reason to
+    # look at the code -- from exclusions scattered across the run, which is a
+    # transient signature and a reason to wait for quota and re-run.
+    if excluded_rows:
+        print(f"\nExcluded ({n_excluded} of {total}, synthesis_unavailable — LLM outage, "
+              f"NOT an accuracy result):")
+        for r in excluded_rows:
+            print(f"  [{r['id']:<10}] {r['category']:<30} {r['question'][:50]}")
+
+    failures = [r for r in scored_rows if not r["score"]["pass"]]
     if failures:
         print(f"\nFailures ({len(failures)}):")
         for r in failures:
@@ -869,7 +951,12 @@ def main():
         result = run_query(token, question)
 
         score = score_result(golden, result)
-        status = "✅ PASS" if score["pass"] else "❌ FAIL"
+        # Defaulted HERE, once, rather than in each of the ~30 verdict dicts
+        # score_result can return. A branch that forgot the key would
+        # otherwise be indistinguishable from an excluded one.
+        score.setdefault("excluded", False)
+        status = ("⊘ EXCL" if score["excluded"]
+                  else "✅ PASS" if score["pass"] else "❌ FAIL")
         print(f"  {status}: {score['reason']}")
 
         all_results.append({
@@ -959,6 +1046,12 @@ def main():
             "providers": dict(_providers),
             "models_served": dict(_models),
             "reranker_backends": dict(_backends),
+            # Recorded, not just printed, for the same reason as the three
+            # gates above: this file is what someone reads weeks later, and a
+            # score read without its exclusion count is a score over an
+            # unknown denominator.
+            "excluded_count": sum(1 for r in all_results if r["score"].get("excluded")),
+            "excluded_ids": [r["id"] for r in all_results if r["score"].get("excluded")],
         },
         "results": all_results,
     }
