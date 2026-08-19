@@ -11,7 +11,7 @@ therefore never appeared in a diff. A design document that cannot be reviewed
 alongside the code it describes will drift silently. Any change that makes a
 blueprint statement untrue must add an entry here in the same commit.
 
-Last verified: 2026-08-18.
+Last verified: 2026-08-19.
 
 ---
 
@@ -20,8 +20,10 @@ Last verified: 2026-08-18.
 ### §17 — LLM failover
 Blueprint: "Gemini Flash rate-limited → route to Groq llama-3.1-70b."
 
-Two corrections. `llama-3.1-70b` is retired by Groq; the pinned model is
-`llama-3.3-70b-versatile` (JSON mode, 128k context, free tier). And the
+Two corrections. Groq's Llama line is gone entirely: `llama-3.1-70b` was
+retired, `llama-3.3-70b-versatile` replaced it and is now retired too, and no
+Llama model is served at any version. The pinned model is `openai/gpt-oss-120b`
+(JSON mode, free tier) as of 2026-08-18 — see the entry below. And the
 fallback did not exist in code until 2026-07-29 — `config.py` had a
 `groq_api_key` field with zero call sites.
 
@@ -106,6 +108,57 @@ Now `int(os.getenv("TIMEOUT_STRUCTURED_MS", "20000"))`. Default stays in code,
 not compose — a deploy without the var must still be correct, and two answers to
 "what is the timeout" is the defect this module criticises in `GEMINI_MODEL`.
 Cost accepted: a genuine outage now takes 20s per call before falling back.
+
+#### Groq retired the whole Llama line 2026-08-18 — plan for the vendor line, not the version
+
+`llama-3.3-70b-versatile` now returns HTTP 404 `model_not_found`. Live
+`/v1/models` on 2026-08-18 offered `openai/gpt-oss-120b`, `qwen/qwen3.6-27b`,
+`openai/gpt-oss-20b` and `groq/compound` — no Llama at any version. This is the
+SECOND retirement on this exact path: the blueprint named `llama-3.1-70b`, this
+file replaced it with `llama-3.3-70b-versatile`, and that is now gone too. The
+first instance read as version drift, so the fix was a version bump. Two
+instances say otherwise. **Assume the vendor line disappears, not that it
+increments.** A pinned free-tier model is a borrowed one, and the failure
+arrives as a 404 on a call that worked yesterday, not as a deprecation warning.
+
+`openai/gpt-oss-120b` is the replacement, verified live on both a text call and
+a `json_object` structured call BEFORE the constant changed. `generate_structured`
+depends on `json_object` plus the schema-in-prompt path, so a model serving text
+while refusing structured output would have failed only on the router — the one
+caller whose failure is hardest to attribute.
+
+**CROSS-PROVIDER IS RETAINED DELIBERATELY**, and the same-provider alternative
+was considered and rejected. A second Gemini model sits behind the same host,
+the same key and the same quota as the primary. The 2026-08-18 failure was a 20s
+read timeout against `generativelanguage.googleapis.com`; a second Gemini model
+shares that host and would have timed out with it. It would also collapse the
+eval gate from two independent checks to one: a contaminated call would still
+report `provider=gemini`, so `Providers:` would read clean and `Models served:`
+would carry the whole signal alone.
+
+**THE CODE DEFAULT WAS CORRECT AND DID NOT TAKE EFFECT.** `client.py:83` reads
+`os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")`. After that edit the source was
+right and the running process still resolved the retired string, because `.env`
+sets `GROQ_MODEL` explicitly and `env_file` beats a code default. The contrast is
+`TIMEOUT_STRUCTURED_MS`, genuinely absent from `.env` and genuinely carried by
+its default — the two are indistinguishable in the source and behave differently
+in the container. Only `printenv` inside the container separated them. **Read the
+resolved constant from inside the process; reading the source file proves nothing
+about what the process uses.**
+
+One instrument caveat from the same check: `printenv A B C D` omits unset names
+from its output entirely rather than printing a blank line, so four names
+returned three values and the missing one could not be identified by position.
+Print `NAME=value` per name, or read one at a time.
+
+**IT WAS FOUND BY AN OUTAGE, NOT BY A CHECK.** The 404 had been live for an
+unknown period. Nothing exercises the fallback while the primary is healthy, so
+a dead fallback is silent by construction: it is the component whose failure is
+only observable during another component's failure. It surfaced on 2026-08-18
+when a Gemini 20s read timeout fell through to the 404 and then to the
+raw-excerpt floor, on a single-question run whose actual subject was PQ018.
+Nothing in the eval gate would have caught it — the gate withheld the score
+correctly, but a withheld score reports contamination, not a dead dependency.
 
 ### §13 — Confidence thresholds are backend-dependent
 Blueprint gives flat cutoffs (HIGH >0.8, LOW <0.5). Reranking runs on two
@@ -2458,7 +2511,56 @@ this file exists to record.
 gate as `eval_runner` — withholding the tally on a mixed run rather than
 annotating it. A path mismatch here is evidence about the classifier, not proof
 the graph disagrees with golden; the two questions are separate and the
-docstring says so.
+docstring says so. Output is now `{meta, rows}`, the meta block carrying
+`providers`, `models_served`, `single_provider_and_model` and
+`path_mismatch_withheld` — the same values the printed gate uses, read from it
+rather than recomputed, so a saved file cannot report a cleaner gate than the
+run produced. The rows-only `json.dump` at line 89 is RETAINED deliberately and
+is not redundant: it lands before the gate dicts exist, and after 91 LLM calls a
+partial file beats none. **The meta block is unexercised** — it compiles, no run
+has written through it, and the first real run is where a key-name or
+serialization problem surfaces. Related caution for anything reading that
+output: a header check reading `llm_provider` / `llm_model` at row level gets
+`None` for every row, because those fields live inside `api_response`. A gate
+reading an absent field passes vacuously — the same shape as the non-admin
+`--email` failure.
+
+#### PQ018 2026-08-18 — two clean runs of the same code disagreed on one keyword
+
+Two `gemini-3.1-flash-lite` / `cohere` runs, both provider-clean, same commit,
+opposite results. 2026-08-15 wrote "paytm payments bank limited" and failed on
+`ppbl` alone — the other three keywords present, tier=medium, path=cross, the
+answer itself correct. 2026-08-18 wrote the acronym and passed. Nothing in the
+code changed between them.
+
+A separate observation from the same investigation, not yet fixed: on the
+outage run above, the scorer's failure reason read "the qualitative half likely
+missed its chunks" while `citation_scores` were `[1.0, 0.9986, 0.9388, 0.9,
+0.7413]` with the top hit on the exact page required. The reason string is
+derived from the confidence tier, and `synthesis_unavailable` caps that tier to
+low by design (asserted in `test_synthesis_floor.py` §1). So an LLM outage is
+reported as a retrieval failure. The cap is correct; the explanation is not.
+
+Widened to `["ppbl", "paytm payments bank"]`, matching the existing Q039
+precedent `['LODR', 'Listing Obligations']`. That precedent is the finding: the
+same failure had already occurred once, with another of the four acronyms the
+golden keyword rule names as unsafe to assert on. The rule existed and was not
+applied to a question that violated it.
+
+**The prior justification is retracted.** "Stable across two verified runs" was
+why `ppbl` was left as a bare acronym. Two observations of a model's phrasing
+are not a stable fact about it — they are two draws from a distribution nothing
+in the system constrains.
+
+Scanned all four golden files for the class: `ppbl` and `LODR` are its only two
+instances. Three participles — `adjusted` (Q033), `impaired` (PQ012),
+`diversified` (TQ008) — are inflection-sensitive under the same rule but have
+never failed, and were deliberately NOT touched. `diversified` sits on TQ008,
+whose route diagnosis is open; editing its keywords would confound two
+questions that must stay separate.
+
+**Baseline is unchanged at 87/91.** The fix is landed and unconfirmed at dataset
+level. A one-question run is not a baseline, and this entry does not claim one.
 
 #### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
 
@@ -3092,6 +3194,31 @@ The corrected census STRENGTHENED the conclusion — 35 more rows, all still
 non-competing. That is the lucky case. The unlucky one is a truncated read that
 happens to agree with the hypothesis, and nothing in the method distinguishes
 them.
+
+### Splice anchors come from the file's bytes, and a self-containing replacement needs a marker-absent assert
+
+Two rules, both from splices that ran green and changed nothing.
+
+**(a) Take the anchor from the file, never from a render of the same data.** An
+anchor was copied out of a `json.dumps(indent=2)` rendering of a structure that
+also exists in the file. The render indents 6 spaces where the file uses 4. The
+anchor counted 0 and the script aborted — correctly, and the abort was read as
+noise. A later eval then passed against the UNEDITED file and was briefly taken
+as confirming a fix that had never landed. The abort carried the information;
+nothing downstream was built to receive it. `repr()` on a raw slice of the file
+is the check, because it shows the whitespace the eye normalises away.
+
+**(b) When the replacement contains its own anchor, assert a marker is ABSENT
+before splicing.** The `router_probe.py` edit recorded above replaces two `print`
+lines with a block ending in those same two lines. Count-before-replace passes
+on every run, so a second run nests a second `json.dump` inside the first and
+the guard reports success both times. A count guard proves the anchor is unique;
+it does not prove the splice has not already happened. The assert must name
+something that cannot appear in pre-splice text — here
+`single_provider_and_model`.
+
+Same family as the comment-vs-behaviour drift entry below: a check that ran,
+reported success, and was measuring something other than the question asked.
 
 ### F14 — A two-issuer query silently drops one issuer and denies it exists
 
