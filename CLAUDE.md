@@ -26,7 +26,11 @@ on `error_node == "router"` and `graph.py` maps it to `audit_writer`, mirroring 
 `blocked` edge — deliberately skipping the confidence tail, which would otherwise
 rescore a refusal. `RouterResponse` gained `company_mentioned` (best-effort, **no prompt
 block** — the model volunteers it, and an instruction was written, shipped and removed
-for no measured loss). `_resolve_mentioned_issuers` gates the refusal on the resolved
+for no measured loss). **"No prompt block" is not "invisible to the model."** The
+response schema is sent on both providers, so declaring the field was itself an input
+change; removing the instruction did not take it back out. Read
+`docs/IMPLEMENTATION_DELTAS.md` section D, "The response schema is part of the prompt",
+before treating any schema field as model-invisible. `_resolve_mentioned_issuers` gates the refusal on the resolved
 list being empty rather than on `company is None`, because a multi-entity query nulls
 `company` even when every issuer resolves. Verified on prod: a Reliance query returned
 `company_not_in_corpus`, 0 citations, tier=low @ 0.0 — it previously returned 5
