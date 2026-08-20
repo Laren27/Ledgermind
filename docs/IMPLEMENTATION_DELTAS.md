@@ -2437,7 +2437,7 @@ Three of the four failures are router/golden path disagreements:
 
     ETQ001  expected=cross       actual=semantic   NEW — never established
     PQ012   expected=semantic    actual=cross      known_deliberate_failure
-    TQ008   expected=semantic    actual=cross      cause unknown, stable
+    TQ008   expected=semantic    actual=cross      cause: d365f4b — see "TQ008 2026-08-20"
     PQ018   missing keyword 'ppbl'                 NEW
 
 **PQ018 IS NEW AND UNEXPLAINED.** The prior baseline had PAYTM at 19/20 with
@@ -2479,6 +2479,9 @@ retrieval or synthesis in the loop. So the divergence is `_classify_query`
 itself — NOT Stage 0c, NOT the refusal routing, NOT anything downstream of
 classification. That was genuinely open before this run: `eval_runner` observes
 the path the GRAPH took, and the two can differ. They do not here.
+
+**TQ008's cause was found 2026-08-20** — `d365f4b`, see "TQ008 2026-08-20" in
+section A. PQ012 and ETQ001 remain unexplained.
 
 PQ018 does not appear, consistent with it failing on a keyword rather than a
 path.
@@ -2609,6 +2612,46 @@ that the integrity counters and the exclusion counter partition the run on
 different axes — the former drops *blocked* queries, the latter drops *outage*
 queries — so `Providers:` and the tally denominator will legitimately disagree.
 That is correct and should not be reconciled.
+
+#### TQ008 2026-08-20 — a log-only prompt block moved an unrelated route
+
+TQ008 (`semantic_business`, `expected_path: semantic`) routes `cross` on the
+primary model. Recorded as "cause unknown, stable" since 2026-08-16. It is a
+regression introduced by `d365f4b`, and the measurement is now on record.
+
+**THE EXPERIMENT.** Three calls to `_classify_query` at HEAD (`d8030cf`), three
+at `d365f4b^` = `b8048dd`, same question, 20s apart, provider and model printed
+per call. `d365f4b` touched one file, `router.py`, 27 insertions, zero
+deletions — a `company_mentioned` prompt block added LOG ONLY. Complete
+separation between arms, zero variance within either:
+
+    HEAD      3/3 cross     route_reason byte-identical across all three
+    b8048dd   2/2 semantic  route_reason byte-identical across both
+
+Five interpretable calls. The sixth returned no classification — both providers
+failed and the error handler wrote `path: "semantic"` as a fallback default, so
+that row is NOT a semantic route and was not counted. A fourth call at the
+parent was considered and NOT spent: nothing had cast doubt on the two clean
+ones, and the parent commit's own 8s timeout made a repeat failure likely.
+
+**THE MECHANISM: log-only protected the code path, not the model.** Nothing
+reads `company_mentioned`; the field is inert by design. But the prompt is the
+input to a model output, and classification is a model output. The route
+reasons show the drift directly — the parent says "qualitative information
+regarding the Managing Director's commentary on performance", HEAD says the
+same with "specific quarterly financial performance" appended. The classifier
+describes a purely qualitative task in both arms and only routes `cross` in
+one. It is not reasoning differently; it is deciding differently while
+reasoning the same.
+
+**THE FIX IS UNDECIDED.** Three options, none evaluated: revert the block;
+relocate it; or accept the reroute and correct TQ008's `expected_path`, since
+a two-clause question ("who is X and what did they say") may sit near a genuine
+boundary regardless of any commit. F2 step 2 must not be wired until this is
+settled — the block whose side effect is unresolved is the same block step 2
+would build on.
+
+See the new-class entry in section D; this is its first instance.
 
 #### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
 
@@ -3268,6 +3311,25 @@ something that cannot appear in pre-splice text — here
 Same family as the comment-vs-behaviour drift entry below: a check that ran,
 reported success, and was measuring something other than the question asked.
 
+### The instrument moves with the commit you check out
+
+Two findings from measuring at `b8048dd` (2026-08-20), both properties of the
+OLD commit rather than of the network at the time.
+
+**The structured-call timeout was 8s there.** `b8048dd` predates the 2026-08-13
+raise to 20s, so any archaeology at a pre-08-13 commit runs against the older,
+more failure-prone value. One of three calls timed out and fell through. Budget
+for a lost call when measuring at older commits, and prefer more calls over a
+retry that changes nothing about the exposure.
+
+**The current Groq fallback could not serve the old router prompt.**
+`openai/gpt-oss-120b` returned `400 json_validate_failed` with an empty
+`failed_generation` on that call. Consistent with today's model failing
+yesterday's schema, which would mean the fallback is not a safety net when
+measuring at an older commit — but this was ONE observation on ONE call at ONE
+commit and cannot be distinguished from a transient. Re-measure before relying
+on it either way.
+
 ### F14 — A two-issuer query silently drops one issuer and denies it exists
 
 `RouterResponse.company` is `Optional[str]` — one company. A query naming two resolves
@@ -3339,6 +3401,30 @@ read one at a time.
 Same family as the comment-vs-behaviour drift below, from the opposite
 direction: there the code moved away from what was written about it; here the
 check never touched what it claimed to measure.
+
+### "Log only" describes the code path, never the model's behaviour
+
+`d365f4b` added a `company_mentioned` block to the router prompt, deliberately
+log-only: nothing reads the field, no refusal can fire from it, and the commit
+message says so explicitly. The isolation was real at the code level and did
+not hold at the behavioural level. TQ008's route moved from `semantic` to
+`cross` — a question about neither companies nor resolution — and stayed
+moved. See section A for the measurement.
+
+**WHY THIS IS ITS OWN CLASS, and not the appended-instruction one.** In that
+class an addition LOSES: an appended instruction fails against an earlier,
+more concrete rule in the same prompt (EBITDA silent substitution, cross
+self-contradiction, entity-continuity). Here the addition WON and pulled an
+adjacent decision with it. `d365f4b` used its own prompt block specifically to
+avoid the losing failure, and succeeded — the block took effect. Filing this as
+a fourth instance of that class would hide the difference.
+
+**THE RULE. A prompt is not modular.** Adding a block to a classification
+prompt is a change to the classification, whatever the new field is wired to.
+The code-level blast radius of a log-only field is zero; the behavioural blast
+radius is every output that prompt produces. Any prompt change therefore needs
+a before/after on outputs it was not intended to touch — for a router, the full
+path set, which `router_probe.py` already produces in one pass at 91 calls.
 
 ### Comment-vs-behaviour drift — four instances, one cause
 
