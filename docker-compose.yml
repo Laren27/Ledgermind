@@ -46,6 +46,9 @@ services:
     dns:
       - 8.8.8.8
       - 1.1.1.1
+    dns_opt:
+      - timeout:1
+      - attempts:5
     env_file:
       - .env
     environment:
