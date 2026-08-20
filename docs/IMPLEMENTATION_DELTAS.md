@@ -906,8 +906,9 @@ restatement path therefore STILL has never executed against live data, and the
 latent gap recorded above stands untouched.
 
 MEASURED, not assumed: `regression_check` 2026-08-03, 4/4 PASS, zero identity
-failures, ~~zero discarded rows~~ (UNMEASURED — see the discard-class entry
-below; the real figure is 182), and identities NOT EVALUATED 10 / 8 / 7 / 4
+failures, ~~zero discarded rows~~ (UNMEASURED — see the CORRECTION entry
+`every prior "0 discarded rows" in this document was unmeasured` below; the
+real figure is 182), and identities NOT EVALUATED 10 / 8 / 7 / 4
 (ETERNAL Q4FY26 / TITAN / PAYTM / ZOMATO) = 29, down from 30. The single group
 that moved is the PAYTM one named above. Every other NOT EVALUATED verdict in
 the corpus is still an absent `adjustment_of_tax_relating_to_earlier_years`,
@@ -1172,8 +1173,9 @@ figure, changing a tax identity from unevaluable-for-the-wrong-reason to
 unevaluable-for-the-right-one.
 
 MEASURED. `regression_check` 2026-08-03: 4/4 PASS, 0 identity failures, 0
-~~discarded rows~~ (UNMEASURED — real figure 182), NOT EVALUATED
-10 / 8 / 7 / 4 = 29 unchanged, and the same 6
+~~discarded rows~~ (UNMEASURED — see the CORRECTION entry
+`every prior "0 discarded rows" in this document was unmeasured` below; the
+real figure is 182), NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged, and the same 6
 derivation overwrites at identical values -- nothing derived moved. **That
 last clause was WRONG; see "A comma-bearing fragment is not proof of a complete
 number" below.** One of those 6 was ETERNAL FY26 Q4 consolidated
@@ -1241,8 +1243,9 @@ ZOMATO  15 pages, 149 rows,  0
 ```
 
 One cell corpus-wide. `regression_check` 2026-08-04: 4/4 PASS, 0 identity
-failures, ~~0 discarded rows~~ (UNMEASURED — real figure 182),
-NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged,
+failures, ~~0 discarded rows~~ (UNMEASURED — see the CORRECTION entry
+`every prior "0 discarded rows" in this document was unmeasured` below; the
+real figure is 182), NOT EVALUATED 10 / 8 / 7 / 4 = 29 unchanged,
 produced counts unchanged at 460 / 273 / 432 / 272 = **1437**.
 
 **THE PRIOR ENTRY WAS WRONG, AND THE SYSTEM HAD BEEN SAYING SO ALL ALONG.**
