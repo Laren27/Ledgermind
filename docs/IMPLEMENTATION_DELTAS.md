@@ -3442,8 +3442,11 @@ a fourth instance of that class would hide the difference.
 
 **THE RULE. A prompt is not modular.** Adding a block to a classification
 prompt is a change to the classification, whatever the new field is wired to.
-The code-level blast radius of a log-only field is zero; the behavioural blast
-radius is every output that prompt produces. Any prompt change therefore needs
+A field nothing reads has a CODE-level blast radius of zero, and that much is
+true. It bounds nothing else. The behavioural blast radius is every output that
+prompt produces, and the model's INPUT changed the moment the field was
+declared — see `The response schema is part of the prompt` below. "Log-only" is a
+fact about the code path, never a bound on blast radius. Any prompt change therefore needs
 a before/after on outputs it was not intended to touch — for a router, the full
 path set, which `router_probe.py` already produces in one pass at 91 calls.
 
