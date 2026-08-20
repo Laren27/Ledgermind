@@ -12,7 +12,236 @@ import argparse, collections, json, sys, time
 from pathlib import Path
 
 sys.path.insert(0, "/app")
-from app.engines.router import _classify_query, _KNOWN_TICKERS
+from app.engines.router import _classify_query, _KNOWN_TICKERS, RouterResponse
+
+# CONTROL-CONDITION TOLERANCE. This probe is run at revisions where
+# `company_mentioned` does not exist on RouterResponse (b8048dd and earlier) to
+# establish a before-state. Absent is an EXPECTED condition, not a crash -- and
+# it is NOT the same observation as present-and-null. `_classify_query` returns
+# a plain dict, so .get() yields None for both, which is the same conflation F2
+# was about one level up. The schema is the only thing that separates them.
+_MENTIONED_IN_SCHEMA = "company_mentioned" in RouterResponse.model_fields
+
+# The step-2 predicate is likewise absent before 04643cb. IMPORTED, never
+# reimplemented: the stale `mentioned and got is None` copy this probe used to
+# carry is exactly what drifted from the shipped condition and reported
+# WOULD_REFUSE=1 on Q051 while the shipped code let Q051 through.
+try:
+    from app.engines.router import _resolve_mentioned_issuers
+    _HAVE_RESOLVER = True
+except ImportError:
+    _resolve_mentioned_issuers = None
+    _HAVE_RESOLVER = False
+
+FIELD_ABSENT = "FIELD_ABSENT"
+MENTIONED_NULL = "NULL"
+MENTIONED_VALUE = "VALUE"
+
+
+def _mentioned_state(raw):
+    """Three states, because two lose the control condition."""
+    if not _MENTIONED_IN_SCHEMA:
+        return FIELD_ABSENT
+    return MENTIONED_VALUE if raw else MENTIONED_NULL
+
+
+def _would_refuse(mentioned):
+    """
+    Ask the SHIPPED predicate. router.py:174 refuses on
+    `company_mentioned and not _res` -- nothing RESOLVES -- not on
+    `company is None`. Q051 ("Eternal or Paytm") nulls `company` and resolves
+    BOTH issuers, so it must not be flagged.
+
+    None (not False) where no step-2 predicate exists: "not computable here"
+    and "computed, came out false" are different facts about a run.
+    """
+    if not _HAVE_RESOLVER:
+        return None
+    resolved, _unresolved = _resolve_mentioned_issuers(mentioned)
+    return bool(mentioned) and not resolved
+
+
+def _gate_counters(rows):
+    """
+    PROVIDER GATE, same rule as eval_runner. None keys are excluded rather than
+    counted: the FALLBACK_ERROR path legitimately has no provider, exactly as
+    reranker_backend is legitimately absent on refusal paths.
+    """
+    provs = collections.Counter(r["llm_provider"] for r in rows)
+    models = collections.Counter(r["llm_model"] for r in rows)
+    clean = len([k for k in provs if k]) <= 1 and len([k for k in models if k]) <= 1
+    return provs, models, clean
+
+
+def _write_rows_only(path, rows):
+    """
+    CRASH-SAFE PARTIAL WRITE -- deliberate, not a bug. The gate dicts are
+    computed after this point, so a run that dies mid-summary still leaves its
+    91 classifications on disk. Retained and asserted by _self_test.
+    """
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    json.dump(rows, open(path, "w"), indent=2)
+
+
+def _build_meta(rows, provs, models, clean):
+    return {
+        "run_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "questions_run": len(rows),
+        "datasets": DATASETS,
+        "providers": dict(provs),
+        "models_served": dict(models),
+        "single_provider_and_model": clean,
+        "path_mismatch_withheld": not clean,
+    }
+
+
+def _write_full(path, rows, provs, models, clean):
+    """
+    Second write, replacing the rows-only dump. A file carrying rows without
+    the provider/model counts that decide whether its aggregates are readable
+    is the same defect as an eval_results JSON read without its header check.
+    """
+    json.dump({"meta": _build_meta(rows, provs, models, clean), "rows": rows},
+              open(path, "w"), indent=2)
+
+
+def _synthetic_row(rid, provider, model, **kw):
+    row = {
+        "dataset": "synthetic.json", "id": rid, "question": "synthetic " + rid,
+        "expected_company": None, "company": None,
+        "company_mentioned": None, "mentioned_state": MENTIONED_NULL,
+        "company_unresolved": None, "path": "semantic",
+        "expected_path": "semantic", "path_mismatch": False,
+        "llm_provider": provider, "llm_model": model,
+        "would_refuse": False, "company_mismatch": False, "company_null": True,
+    }
+    row.update(kw)
+    return row
+
+
+def _self_test():
+    """
+    Exercises the {meta,rows} writer end to end on synthetic rows: build, write,
+    read back, assert. ZERO LLM calls, zero network, zero dataset reads.
+
+    WHY THIS EXISTS. The {meta,rows} block compiled from the day it was written
+    and no run had ever written through it -- the same shape as a guard that has
+    never fired. Every assertion below is therefore paired with a NEGATIVE
+    CONTROL that must fail: a check never observed failing is not evidence that
+    it can fail. Returns 0 on success, 1 on failure.
+    """
+    import tempfile
+    failures = []
+
+    def expect(label, actual, want):
+        if actual != want:
+            raise AssertionError("%s: got %r, want %r" % (label, actual, want))
+
+    def must_fail(label, fn):
+        try:
+            fn()
+        except AssertionError:
+            print("    neg-control OK    %s failed as required" % label)
+            return
+        failures.append("NEGATIVE CONTROL DID NOT FAIL: " + label)
+        print("    neg-control FAIL  %s passed when it must not" % label)
+
+    def check(label, fn):
+        try:
+            fn()
+            print("    assert OK         %s" % label)
+        except AssertionError as e:
+            failures.append("%s -- %s" % (label, e))
+            print("    assert FAIL       %s -- %s" % (label, e))
+
+    tmpdir = tempfile.mkdtemp(prefix="router_probe_selftest_")
+    out = str(Path(tmpdir) / "probe.json")
+
+    # ── CASE 1: single provider + model, one FALLBACK_ERROR row (provider None)
+    print("  CASE 1  single provider, one fallback row (None must be excluded)")
+    rows = [
+        _synthetic_row("S001", "gemini", "gemini-3.1-flash-lite"),
+        _synthetic_row("S002", "gemini", "gemini-3.1-flash-lite"),
+        _synthetic_row("S003", None, None),
+    ]
+    provs, models, clean = _gate_counters(rows)
+
+    _write_rows_only(out, rows)
+    partial = json.load(open(out))
+    check("rows-only partial write is a LIST, no meta key",
+          lambda: expect("partial type", isinstance(partial, list), True))
+    check("rows-only partial write carries every row",
+          lambda: expect("partial len", len(partial), 3))
+    must_fail("rows-only partial is a dict",
+              lambda: expect("partial type", isinstance(partial, dict), True))
+
+    _write_full(out, rows, provs, models, clean)
+    got = json.load(open(out))
+    meta = got["meta"]
+    check("full write replaced partial with {meta,rows}",
+          lambda: expect("top-level keys", sorted(got.keys()), ["meta", "rows"]))
+    check("meta.providers", lambda: expect("providers", meta["providers"],
+                                           {"gemini": 2, "None": 1} if "None" in meta["providers"]
+                                           else {"gemini": 2, "null": 1}))
+    check("meta.models_served counts gemini twice",
+          lambda: expect("models gemini", meta["models_served"].get("gemini-3.1-flash-lite"), 2))
+    check("meta.single_provider_and_model is True (None excluded)",
+          lambda: expect("clean", meta["single_provider_and_model"], True))
+    check("meta.path_mismatch_withheld is False when clean",
+          lambda: expect("withheld", meta["path_mismatch_withheld"], False))
+    check("meta.questions_run", lambda: expect("questions_run", meta["questions_run"], 3))
+    check("rows survived the round trip", lambda: expect("rows len", len(got["rows"]), 3))
+
+    print("  CASE 1  negative controls")
+    must_fail("single_provider_and_model == False",
+              lambda: expect("clean", meta["single_provider_and_model"], False))
+    must_fail("path_mismatch_withheld == True",
+              lambda: expect("withheld", meta["path_mismatch_withheld"], True))
+    must_fail("models_served gemini == 99",
+              lambda: expect("models", meta["models_served"].get("gemini-3.1-flash-lite"), 99))
+    must_fail("questions_run == 0",
+              lambda: expect("questions_run", meta["questions_run"], 0))
+
+    # ── CASE 2: MIXED providers -- the gate must withhold
+    print("  CASE 2  mixed providers, gate must withhold")
+    rows2 = [
+        _synthetic_row("S101", "gemini", "gemini-3.1-flash-lite"),
+        _synthetic_row("S102", "groq", "openai/gpt-oss-120b"),
+    ]
+    provs2, models2, clean2 = _gate_counters(rows2)
+    _write_full(out, rows2, provs2, models2, clean2)
+    meta2 = json.load(open(out))["meta"]
+    check("mixed: single_provider_and_model is False",
+          lambda: expect("clean", meta2["single_provider_and_model"], False))
+    check("mixed: path_mismatch_withheld is True",
+          lambda: expect("withheld", meta2["path_mismatch_withheld"], True))
+    check("mixed: both providers recorded",
+          lambda: expect("providers", sorted(meta2["providers"].keys()), ["gemini", "groq"]))
+
+    print("  CASE 2  negative controls")
+    must_fail("mixed single_provider_and_model == True",
+              lambda: expect("clean", meta2["single_provider_and_model"], True))
+    must_fail("mixed path_mismatch_withheld == False",
+              lambda: expect("withheld", meta2["path_mismatch_withheld"], False))
+    must_fail("mixed providers == gemini only",
+              lambda: expect("providers", sorted(meta2["providers"].keys()), ["gemini"]))
+
+    # ── CASE 3: the three mentioned states are distinct values
+    print("  CASE 3  three-state mentioned_state")
+    check("FIELD_ABSENT, NULL and VALUE are distinct",
+          lambda: expect("distinct", len({FIELD_ABSENT, MENTIONED_NULL, MENTIONED_VALUE}), 3))
+    must_fail("the three states collapse to one",
+              lambda: expect("distinct", len({FIELD_ABSENT, MENTIONED_NULL, MENTIONED_VALUE}), 1))
+
+    print("=" * 60)
+    if failures:
+        print("SELF-TEST FAILED (%d)" % len(failures))
+        for f in failures:
+            print("  " + f)
+        return 1
+    print("SELF-TEST PASSED -- all assertions held, all negative controls failed")
+    print("scratch: " + tmpdir)
+    return 0
 
 DATASETS = ["q4fy26_eternal.json", "q_titan.json", "q_paytm.json",
             "q_eternal_transcript.json"]
@@ -24,7 +253,16 @@ def main():
     ap.add_argument("--delay", type=float, default=20.0)
     ap.add_argument("--out", default="/app/eval_results/router_probe.json")
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
+    ap.add_argument("--self-test", action="store_true",
+                    help="Exercise the {meta,rows} writer and its gate on synthetic "
+                         "rows. ZERO LLM calls, zero network. Exits before any "
+                         "dataset is read.")
     args = ap.parse_args()
+
+    # Placed BEFORE the dataset load and the classify loop, deliberately:
+    # a self-test that could spend quota is not a self-test.
+    if args.self_test:
+        sys.exit(_self_test())
 
     records = []
     for name in DATASETS:
@@ -71,8 +309,11 @@ def main():
             "path_mismatch": bool(exp_path and r["path"] != exp_path),
             "llm_provider": getattr(llm, "provider", None),
             "llm_model": getattr(llm, "model", None),
-            # what step 2 would do if it were wired
-            "would_refuse": bool(mentioned and got is None),
+            # What step 2 ACTUALLY does, asked of the shipped predicate
+            # rather than restated here. None = no such predicate at this
+            # revision. See _would_refuse.
+            "would_refuse": _would_refuse(mentioned),
+            "mentioned_state": _mentioned_state(mentioned),
             "company_mismatch": bool(exp and got != exp),
             "company_null": got is None,
         }
@@ -85,8 +326,7 @@ def main():
         if i < len(records):
             time.sleep(args.delay)
 
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    json.dump(rows, open(args.out, "w"), indent=2)
+    _write_rows_only(args.out, rows)
 
     would = [r for r in rows if r["would_refuse"]]
     mism = [r for r in rows if r["company_mismatch"]]
@@ -101,12 +341,10 @@ def main():
     # across a mixed run says nothing about the classifier. The number is
     # WITHHELD rather than annotated: a figure printed under a caveat still
     # ends up quoted without it.
-    provs = collections.Counter(r["llm_provider"] for r in rows)
-    models = collections.Counter(r["llm_model"] for r in rows)
+    provs, models, clean = _gate_counters(rows)
     print(f"Providers         {dict(provs)}")
     print(f"Models served     {dict(models)}")
     pmis = [r for r in rows if r["path_mismatch"]]
-    clean = len([k for k in provs if k]) <= 1 and len([k for k in models if k]) <= 1
     if not clean:
         print("path mismatch     WITHHELD -- mixed providers/models above")
     else:
@@ -115,6 +353,11 @@ def main():
         print(f"  {r['id']:10} expected={r['expected_path']:14} got={r['path']:14} "
               f"[{r['llm_provider']}] {r['question'][:44]}")
     print(f"mentioned set     {sum(1 for r in rows if r['company_mentioned']):3} / {len(rows)}")
+    ms = collections.Counter(r["mentioned_state"] for r in rows)
+    print(f"  mentioned_state  FIELD_ABSENT={ms[FIELD_ABSENT]:3} "
+          f"NULL={ms[MENTIONED_NULL]:3} VALUE={ms[MENTIONED_VALUE]:3}")
+    if not _HAVE_RESOLVER:
+        print("  would_refuse     NOT COMPUTABLE -- no step-2 predicate at this revision")
     for r in would + mism:
         print(f"  {r['id']:10} {r['question'][:70]}")
         print(f"             got={r['company']!r} mentioned={r['company_mentioned']!r}")
@@ -123,18 +366,7 @@ def main():
     # the provider/model counts that decide whether its aggregates are
     # readable is the same defect as an eval_results JSON read without its
     # header check. Same values as the printed gate -- read, not recomputed.
-    json.dump({
-        "meta": {
-            "run_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-            "questions_run": len(rows),
-            "datasets": DATASETS,
-            "providers": dict(provs),
-            "models_served": dict(models),
-            "single_provider_and_model": clean,
-            "path_mismatch_withheld": not clean,
-        },
-        "rows": rows,
-    }, open(args.out, "w"), indent=2)
+    _write_full(args.out, rows, provs, models, clean)
     print("=" * 60)
     print(f"written: {args.out}")
 
