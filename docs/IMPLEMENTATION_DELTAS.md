@@ -2613,7 +2613,7 @@ different axes — the former drops *blocked* queries, the latter drops *outage*
 queries — so `Providers:` and the tally denominator will legitimately disagree.
 That is correct and should not be reconciled.
 
-#### TQ008 2026-08-20 — a log-only prompt block moved an unrelated route
+#### TQ008 2026-08-20 — a change called LOG ONLY moved an unrelated route
 
 TQ008 (`semantic_business`, `expected_path: semantic`) routes `cross` on the
 primary model. Recorded as "cause unknown, stable" since 2026-08-16. It is a
@@ -2622,7 +2622,9 @@ regression introduced by `d365f4b`, and the measurement is now on record.
 **THE EXPERIMENT.** Three calls to `_classify_query` at HEAD (`d8030cf`), three
 at `d365f4b^` = `b8048dd`, same question, 20s apart, provider and model printed
 per call. `d365f4b` touched one file, `router.py`, 27 insertions, zero
-deletions — a `company_mentioned` prompt block added LOG ONLY. Complete
+deletions — a `company_mentioned` prompt block AND the matching
+`RouterResponse` field, described by that commit as LOG ONLY. That description
+is false about the request; see the CORRECTION below. Complete
 separation between arms, zero variance within either:
 
     HEAD      3/3 cross     route_reason byte-identical across all three
@@ -2634,8 +2636,15 @@ that row is NOT a semantic route and was not counted. A fourth call at the
 parent was considered and NOT spent: nothing had cast doubt on the two clean
 ones, and the parent commit's own 8s timeout made a repeat failure likely.
 
-**THE MECHANISM: log-only protected the code path, not the model.** Nothing
-reads `company_mentioned`; the field is inert by design. But the prompt is the
+**THE MECHANISM: log-only protected the code path, not the request.** Two
+statements have to be kept apart here. *As of `d365f4b`* nothing read
+`company_mentioned` and the field was inert by design — true when this
+entry was written, and retained on that basis. *At HEAD it is FALSE:*
+`_resolve_mentioned_issuers` (`router.py:101-126`) reads it, wired by
+`04643cb` on 2026-08-13. Neither statement rescues "LOG ONLY", because the
+field changed the model's INPUT the moment it was declared — the response
+schema travels with the prompt on both providers. See `The response schema is
+part of the prompt` in section D. And the prompt is the
 input to a model output, and classification is a model output. The route
 reasons show the drift directly — the parent says "qualitative information
 regarding the Managing Director's commentary on performance", HEAD says the
@@ -2647,9 +2656,17 @@ reasoning the same.
 **THE FIX IS UNDECIDED.** Three options, none evaluated: revert the block;
 relocate it; or accept the reroute and correct TQ008's `expected_path`, since
 a two-clause question ("who is X and what did they say") may sit near a genuine
-boundary regardless of any commit. F2 step 2 must not be wired until this is
-settled — the block whose side effect is unresolved is the same block step 2
-would build on.
+boundary regardless of any commit.
+
+**CORRECTION 2026-08-20 — the step-2 gate this paragraph carried was moot
+before it was written.** It read "F2 step 2 must not be wired until this is
+settled". `04643cb` wired step 2 on 2026-08-13, seven days earlier, so the
+gate never held anything. TQ008 stays OPEN regardless, for a different reason
+than the one that gate named: the input change `d365f4b` made is wider than
+the prompt block blamed above — the `company_mentioned` schema field is
+itself an input change on both providers (`The response schema is part of the
+prompt`, section D), so reverting the prompt block alone would not restore the
+`b8048dd` input.
 
 See the new-class entry in section D; this is its first instance.
 
@@ -3405,9 +3422,13 @@ check never touched what it claimed to measure.
 ### "Log only" describes the code path, never the model's behaviour
 
 `d365f4b` added a `company_mentioned` block to the router prompt, deliberately
-log-only: nothing reads the field, no refusal can fire from it, and the commit
-message says so explicitly. The isolation was real at the code level and did
-not hold at the behavioural level. TQ008's route moved from `semantic` to
+log-only: at that commit nothing read the field, no refusal could fire from
+it, and the commit message says so explicitly. Both halves have since moved.
+`04643cb` wired the field into `_resolve_mentioned_issuers` on 2026-08-13, so
+something reads it now; and the log-only claim was never true of the REQUEST
+at any commit — see `The response schema is part of the prompt` below, which
+supersedes the rule this entry draws. The isolation was real at the code level
+and did not hold at the behavioural level. TQ008's route moved from `semantic` to
 `cross` — a question about neither companies nor resolution — and stayed
 moved. See section A for the measurement.
 
@@ -3425,6 +3446,58 @@ The code-level blast radius of a log-only field is zero; the behavioural blast
 radius is every output that prompt produces. Any prompt change therefore needs
 a before/after on outputs it was not intended to touch — for a router, the full
 path set, which `router_probe.py` already produces in one pass at 91 calls.
+
+**SUPERSEDED IN SCOPE, NOT RETIRED.** This rule reaches prompt TEXT only. The
+next entry generalises it to the response schema, which is the wider and
+stricter statement. Read that one; this stays as the instance that produced
+it.
+
+### The response schema is part of the prompt
+
+Verified 2026-08-20 by running the `google-genai` transformer offline, no
+network call, on `RouterResponse` with and without `company_mentioned`.
+
+- **Gemini.** `generate_structured` passes `response_schema=schema`
+  (`client.py:303-324`). `google.genai._transformers.t_schema` converts the
+  pydantic class via `model_json_schema()` and it serialises into the request
+  as `generationConfig.responseSchema`. Adding the one field is **+131 bytes**
+  and an added entry in `required`.
+- **Groq.** No `response_schema` parameter and no function declarations; the
+  schema is serialised into the SYSTEM MESSAGE via
+  `json.dumps(schema.model_json_schema(), indent=2)`. Same field is **+210
+  bytes**, plus the `required` entry.
+- **Comments do not travel.** `model_json_schema()` discards them. `d365f4b`
+  added 7 lines to `RouterResponse`: 6 comment lines worth zero bytes on the
+  wire, and 1 field declaration that changes both payloads.
+
+So "LOG ONLY" was accurate about the code path and false about the request.
+Every description of `d365f4b` as log-only in section A has been corrected on
+that basis.
+
+**THE RULE. Adding a field to a structured-output model is an input change on
+every provider.** It is not a schema-only edit, not a parsing detail, and not
+free because nothing reads the field yet. It requires the same before/after on
+untouched outputs that a prompt edit requires — for the router, the full path
+set. This supersedes `A prompt is not modular` above, which named the narrower
+case of prompt text.
+
+### Gemini structured replies are not shape-validated locally; Groq's are
+
+FLAGGED OBSERVATION 2026-08-20, recorded only — not scheduled, not a task.
+
+The two branches of `generate_structured` end differently. Groq's validates:
+`schema.model_validate_json(text)`, with an off-schema reply raising
+`LLMUnavailable` and counting as a provider failure. Gemini's returns
+`resp.text.strip()` with no `model_validate_json` at all, and the in-code
+comment calls the shape a thing "Gemini gives for free".
+
+Constrained decoding makes a malformed Gemini reply unlikely, not impossible.
+The asymmetry is that the two providers fail differently for the same fault: a
+Groq shape failure is caught at the boundary and named, while a Gemini shape
+failure passes the boundary and surfaces downstream as a missing key —
+attributed to whichever consumer reads it first, not to the provider that
+produced it. No instance has been observed; the mechanism is read from
+`client.py:303-361`.
 
 ### Comment-vs-behaviour drift — four instances, one cause
 
