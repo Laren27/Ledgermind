@@ -37,6 +37,37 @@ FIELD_ABSENT = "FIELD_ABSENT"
 MENTIONED_NULL = "NULL"
 MENTIONED_VALUE = "VALUE"
 
+# route_reason is the field that explains WHY a route was chosen. It was on
+# _classify_query's return dict and dropped at row-build time, so the two-arm
+# probe of 2026-08-21 recorded WHICH routes moved (TQ008, ETQ001) and could not
+# say why -- 182 calls that answered half the question.
+#
+# Three states, same shape as mentioned_state and for the same reason. An
+# ABSENT key and an EMPTY string are different facts: router.py builds the
+# success path with `result.get("route_reason", "")`, so a model that omits
+# the field yields "" at a revision where the key exists. Collapsing that into
+# "missing" would repeat the null-overloading defect F2 was about.
+ROUTE_REASON_ABSENT = "FIELD_ABSENT"
+ROUTE_REASON_EMPTY = "EMPTY"
+ROUTE_REASON_VALUE = "VALUE"
+
+_MISSING = object()
+
+
+def _route_reason(result):
+    """
+    Return (state, value) for route_reason on a _classify_query result dict.
+
+    Sentinel, not `.get(key, "")`: a default of "" is exactly the conflation
+    this function exists to prevent.
+    """
+    raw = result.get("route_reason", _MISSING)
+    if raw is _MISSING:
+        return ROUTE_REASON_ABSENT, None
+    if raw is None or raw == "":
+        return ROUTE_REASON_EMPTY, raw
+    return ROUTE_REASON_VALUE, raw
+
 
 def _mentioned_state(raw):
     """Three states, because two lose the control condition."""
@@ -110,6 +141,7 @@ def _synthetic_row(rid, provider, model, **kw):
         "dataset": "synthetic.json", "id": rid, "question": "synthetic " + rid,
         "expected_company": None, "company": None,
         "company_mentioned": None, "mentioned_state": MENTIONED_NULL,
+        "route_reason": "synthetic reason", "route_reason_state": ROUTE_REASON_VALUE,
         "company_unresolved": None, "path": "semantic",
         "expected_path": "semantic", "path_mismatch": False,
         "llm_provider": provider, "llm_model": model,
@@ -132,12 +164,14 @@ def _self_test():
     """
     import tempfile
     failures = []
+    counts = {"assert": 0, "neg": 0}
 
     def expect(label, actual, want):
         if actual != want:
             raise AssertionError("%s: got %r, want %r" % (label, actual, want))
 
     def must_fail(label, fn):
+        counts["neg"] += 1
         try:
             fn()
         except AssertionError:
@@ -147,6 +181,7 @@ def _self_test():
         print("    neg-control FAIL  %s passed when it must not" % label)
 
     def check(label, fn):
+        counts["assert"] += 1
         try:
             fn()
             print("    assert OK         %s" % label)
@@ -233,6 +268,78 @@ def _self_test():
     must_fail("the three states collapse to one",
               lambda: expect("distinct", len({FIELD_ABSENT, MENTIONED_NULL, MENTIONED_VALUE}), 1))
 
+    # ── CASE 4: route_reason -- three states, and the round trip
+    print("  CASE 4  route_reason three-state + round trip")
+    check("ABSENT, EMPTY and VALUE are distinct",
+          lambda: expect("distinct",
+                         len({ROUTE_REASON_ABSENT, ROUTE_REASON_EMPTY, ROUTE_REASON_VALUE}), 3))
+    # The discriminator that matters: key-absent vs present-but-empty. A
+    # `.get(key, "")` default would make these two identical.
+    check("missing key -> ABSENT, value None",
+          lambda: expect("absent", _route_reason({}), (ROUTE_REASON_ABSENT, None)))
+    check("empty string -> EMPTY, not ABSENT",
+          lambda: expect("empty", _route_reason({"route_reason": ""}), (ROUTE_REASON_EMPTY, "")))
+    check("None -> EMPTY, not ABSENT",
+          lambda: expect("none", _route_reason({"route_reason": None}), (ROUTE_REASON_EMPTY, None)))
+    check("prose -> VALUE, verbatim",
+          lambda: expect("value", _route_reason({"route_reason": "because X"}),
+                         (ROUTE_REASON_VALUE, "because X")))
+    check("FALLBACK_ERROR prose -> VALUE, verbatim",
+          lambda: expect("fallback",
+                         _route_reason({"route_reason": "FALLBACK_ERROR: classification failed on all providers"}),
+                         (ROUTE_REASON_VALUE, "FALLBACK_ERROR: classification failed on all providers")))
+
+    rows4 = [
+        _synthetic_row("S201", "gemini", "gemini-3.1-flash-lite",
+                       route_reason="quantitative: names a metric and a period",
+                       route_reason_state=ROUTE_REASON_VALUE),
+        _synthetic_row("S202", "gemini", "gemini-3.1-flash-lite",
+                       route_reason="", route_reason_state=ROUTE_REASON_EMPTY),
+        _synthetic_row("S203", "gemini", "gemini-3.1-flash-lite",
+                       route_reason=None, route_reason_state=ROUTE_REASON_ABSENT),
+    ]
+    provs4, models4, clean4 = _gate_counters(rows4)
+    _write_full(out, rows4, provs4, models4, clean4)
+    back = json.load(open(out))["rows"]
+    check("route_reason survives the JSON round trip verbatim",
+          lambda: expect("rr", back[0]["route_reason"],
+                         "quantitative: names a metric and a period"))
+    check("EMPTY row round-trips as '' not null",
+          lambda: expect("rr empty", back[1]["route_reason"], ""))
+    check("ABSENT row round-trips with state preserved",
+          lambda: expect("rr absent state", back[2]["route_reason_state"], ROUTE_REASON_ABSENT))
+    check("all three states distinguishable after round trip",
+          lambda: expect("states",
+                         [r["route_reason_state"] for r in back],
+                         [ROUTE_REASON_VALUE, ROUTE_REASON_EMPTY, ROUTE_REASON_ABSENT]))
+
+    print("  CASE 4  negative controls")
+    must_fail("missing key claimed to be EMPTY",
+              lambda: expect("absent", _route_reason({}), (ROUTE_REASON_EMPTY, None)))
+    must_fail("empty string claimed to be ABSENT",
+              lambda: expect("empty", _route_reason({"route_reason": ""}), (ROUTE_REASON_ABSENT, "")))
+    must_fail("prose claimed to be EMPTY",
+              lambda: expect("value", _route_reason({"route_reason": "because X"}),
+                             (ROUTE_REASON_EMPTY, "because X")))
+    must_fail("round-tripped route_reason claimed to be something else",
+              lambda: expect("rr", back[0]["route_reason"], "a different reason"))
+    must_fail("EMPTY row claimed to round-trip as None",
+              lambda: expect("rr empty", back[1]["route_reason"], None))
+    must_fail("the three route_reason states collapse to one",
+              lambda: expect("distinct",
+                             len({ROUTE_REASON_ABSENT, ROUTE_REASON_EMPTY, ROUTE_REASON_VALUE}), 1))
+
+    # The crash-safe partial write, re-asserted with the new keys present.
+    _write_rows_only(out, rows4)
+    partial4 = json.load(open(out))
+    check("rows-only partial write still fires and is a bare LIST",
+          lambda: expect("partial type", isinstance(partial4, list), True))
+    check("rows-only partial carries route_reason",
+          lambda: expect("partial rr", partial4[0]["route_reason"],
+                         "quantitative: names a metric and a period"))
+    must_fail("rows-only partial claimed to carry a meta key",
+              lambda: expect("partial type", isinstance(partial4, dict), True))
+
     print("=" * 60)
     if failures:
         print("SELF-TEST FAILED (%d)" % len(failures))
@@ -240,6 +347,8 @@ def _self_test():
             print("  " + f)
         return 1
     print("SELF-TEST PASSED -- all assertions held, all negative controls failed")
+    print("  assertions: %d   negative controls: %d"
+          % (counts["assert"], counts["neg"]))
     print("scratch: " + tmpdir)
     return 0
 
@@ -294,6 +403,7 @@ def main():
         # a WOULD_REFUSE count computed over silently-unclassified rows is not
         # the measurement this probe exists to make.
         llm = r.get("llm_result")
+        rr_state, rr_value = _route_reason(r)
         row = {
             "dataset": ds, "id": rec["id"], "question": rec["question"],
             "expected_company": exp, "company": got,
@@ -314,6 +424,9 @@ def main():
             # revision. See _would_refuse.
             "would_refuse": _would_refuse(mentioned),
             "mentioned_state": _mentioned_state(mentioned),
+            # WHY the route was chosen, not just which. See _route_reason.
+            "route_reason": rr_value,
+            "route_reason_state": rr_state,
             "company_mismatch": bool(exp and got != exp),
             "company_null": got is None,
         }
