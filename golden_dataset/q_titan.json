@@ -121,7 +121,7 @@
         "id": "TQ008",
         "category": "semantic_business",
         "question": "Who is Titan's Managing Director and what did they say about Q1FY26 performance?",
-        "expected_path": "semantic",
+        "expected_path": "cross",
         "expected_is_blocked": false,
         "expected_confidence_tier": "high",
         "expected_keywords": [
