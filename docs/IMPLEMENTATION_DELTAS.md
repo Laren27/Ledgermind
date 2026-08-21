@@ -2670,6 +2670,65 @@ prompt`, section D), so reverting the prompt block alone would not restore the
 
 See the new-class entry in section D; this is its first instance.
 
+#### Two-arm router probe 2026-08-21 — the schema field moves two routes, in opposite directions
+
+The measurement the entry above could not make. `d365f4b` bundled a prompt
+block AND a schema field; the prompt block was removed by `c2d4ab9` and the
+field kept, so the arms here isolate the FIELD alone: `b8048dd`
+(`company_mentioned` absent from `RouterResponse`) against `23b0bcd` (present).
+91 questions per arm, 182 calls, `gemini-3.1-flash-lite`.
+
+Both variables were pinned to container `/tmp` BEFORE either checkout and
+sha256-verified after both — `golden_dataset/` differs across these revisions
+(the PQ018 keyword widening) and is bind-mounted, so a checkout would otherwise
+have swapped the questions under the container and confounded the arms. The
+probe binary was likewise pinned: it does not exist at `b8048dd` at all, so the
+hardened `23b0bcd` copy ran against both revisions' router code.
+
+**ARM A (`b8048dd`) IS CONTAMINATED. Read the arm before reading the diff.**
+87 of 91 rows clean. `Q005` and `Q053` never classified — `FALLBACK_ERROR`,
+both providers failed, and the error handler wrote `path: "semantic"` as a
+hardcoded default. **That default is not a classification** and those two rows
+were excluded rather than scored as moved or unmoved. `Q026` and `Q043` were
+served by groq. Comparable rows: **89**. Arm B (`23b0bcd`) is clean: 91/91
+`gemini-3.1-flash-lite`, zero classify failures, provider gate not withheld.
+
+**88 of 89 comparable rows held their path.** Two moved with gemini on both
+sides:
+
+    TQ008    semantic -> cross
+    ETQ001   cross    -> semantic
+
+A third, `Q043` (`semantic -> cross`), is EXCLUDED as groq-confounded: arm A
+served it on groq, and groq-vs-gemini classification divergence is already
+recorded twice in this document (TQ006, Q054). Its move cannot be attributed to
+the field.
+
+**THE DIRECTIONS ARE OPPOSITE, and that is the finding.** A systematic
+cross-ward pull would have moved both the same way and would have argued for
+reverting the schema change. Two moves in two directions, out of 89 comparable
+rows, does not. Both are two-clause "who said X and what did they say about Y"
+questions sitting near a genuine semantic/cross boundary. Decision: the field
+stays, and both expectations were corrected to the measured behaviour
+(`f60a88a`, `e4ff933`).
+
+**TQ008's direction is independently corroborated.** The prior session measured
+2/2 semantic at `b8048dd` against 3/3 cross at HEAD, by a different method on a
+different day. That agreement is what raises TQ008 above a single before/after
+pair — the instrument this document names three times as the one that settles
+attribution.
+
+**PQ012 IS NOT PART OF THIS.** It routes `cross` against a `semantic`
+expectation in BOTH arms, so it predates the field and is unattributable to it.
+It carries `known_deliberate_failure` and was not touched.
+
+**WHAT IS NOT MEASURED: `route_reason` was not captured.** It exists on
+`_classify_query`'s return dict and is dropped when `router_probe.py` builds its
+row, so the two moves are recorded as WHICH route changed and not WHY. The
+prose that showed the drift for TQ008 last time — the parent's route reason
+versus HEAD's — has no counterpart here. Anyone treating this as a mechanism
+rather than an observation needs a probe that records the field first.
+
 #### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
 
 The default `--out` is a single path, so each dataset's detail JSON overwrites the previous one. A three-dataset sweep therefore ends holding only the LAST dataset's detail. Eternal's JSON from the 2026-08-08 sweep is gone; the human-readable report survives only because each run was `tee`d to its own `/tmp/sweep_<dataset>.txt`.
