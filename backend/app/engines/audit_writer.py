@@ -58,7 +58,24 @@ def audit_writer_node(state: QueryState) -> QueryState:
     vector_scores = [c["rrf_score"] for c in state.get("retrieved_chunks", [])]
     reranker_scores = [c["reranker_score"] for c in state.get("retrieved_chunks", [])]
 
-    response_summary = (state.get("response_text") or "")[:500]
+    # Bound in FULL. This line used to take a 500-character prefix, under
+    # a variable named for a summary, and that name is why the truncation
+    # read as intentional for as long as it did: 1516 of 4168 stored
+    # rows (36.4%) were unmarked prefixes. The column is unbounded TEXT in
+    # sql/init.sql and live, and `query_text` and `sql_executed` on this
+    # same parameter tuple always bound whole -- the database would have
+    # accepted the full text all along; the writer never offered it.
+    response_full = state.get("response_text") or ""
+
+    # DETECT AND REPORT, pre-write. Every stored value above 486 chars is
+    # a prefix, so the true length distribution has never been observed by
+    # anything. Record it and act on nothing: no cap, and deliberately no
+    # warn-above-N, because a threshold warning is a cap that has not
+    # fired yet. Single line -- Render truncates multi-line output.
+    logger.info(
+        "Audit response length | request_id=%s chars=%d path=%s",
+        state["request_id"], len(response_full), state.get("path"),
+    )
 
     try:
         conn = _get_db_connection()
@@ -92,7 +109,7 @@ def audit_writer_node(state: QueryState) -> QueryState:
                         json.dumps(_safe_json(state.get("dsl_object"))) if state.get("dsl_object") else None,
                         state.get("sql_query"),
                         state.get("confidence_score", 0.0),
-                        response_summary,
+                        response_full,
                         latency_ms,
                         state.get("tokens_used", 0),
                         # NULL is a real state, not missing data: a blocked
