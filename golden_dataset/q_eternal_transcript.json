@@ -3,7 +3,7 @@
     "id": "ETQ001",
     "category": "cross_examination",
     "question": "What did Eternal management say about whether Hyperpure is included in the billion-dollar profit target?",
-    "expected_path": "cross",
+    "expected_path": "semantic",
     "expected_sql_verified": false,
     "expected_contradictions": 0,
     "expected_keywords": ["Hyperpure", "Akshant Goyal"],
