@@ -188,7 +188,7 @@ def _build_dsl_user_message(
 
 def _generate_dsl(
     query: str,
-    company: Optional[str],
+    companies: list[str],
     fiscal_year: Optional[str],
     quarter: Optional[str],
     financial_type: str,
@@ -690,7 +690,11 @@ def quant_engine_node(state: QueryState) -> QueryState:
         # accurate, not a placeholder.
         state["dsl_object"] = {
             "metric": unqueryable,
-            "entity": company,
+            # F14: same len(...) == 1 form as the DSL prompt and the entity
+            # override. One issuer names it; zero or several record None,
+            # which is what the pre-F14 `company` held in both of those
+            # cases -- it nulled on a two-issuer query.
+            "entity": companies[0] if len(companies) == 1 else None,
             "fiscal_year": fiscal_year,
             "quarter": quarter,
             "financial_type": financial_type,
