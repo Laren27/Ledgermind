@@ -57,6 +57,23 @@ def resolve_parent_entity(entity: Optional[str]) -> Optional[str]:
     return SUBSIDIARY_TO_PARENT.get(entity, entity)
 
 
+def resolve_parent_entities(entities: list) -> list:
+    """
+    F14: the list form. Maps every named issuer through the subsidiary table,
+    preserving order and dropping duplicates -- two subsidiaries of one parent
+    must not produce that parent twice in an any-of filter.
+
+    The scalar version above is kept and unchanged: it is the single-entity
+    contract the rest of this module's DSL handling still speaks.
+    """
+    out = []
+    for e in entities or []:
+        r = resolve_parent_entity(e)
+        if r is not None and r not in out:
+            out.append(r)
+    return out
+
+
 
 # ---------------------------------------------------------------------------
 # Stage 0c — no-metric-anchor guard
@@ -118,13 +135,13 @@ def cross_engine_node(state: QueryState) -> QueryState:
     path. Step 4's error-clearing below runs BEFORE response_generator and
     was previously undone by it. Do not re-implement reconciliation here.
     """
-    original_entity = state.get("company")
-    resolved_entity = resolve_parent_entity(original_entity)
+    original_entities = state.get("companies") or []
+    resolved_entities = resolve_parent_entities(original_entities)
 
-    if resolved_entity != original_entity:
+    if resolved_entities != original_entities:
         logger.info(
-            "CrossEngine: subsidiary '%s' resolved to parent '%s' for retrieval/SQL",
-            original_entity, resolved_entity,
+            "CrossEngine: subsidiaries %s resolved to parents %s for retrieval/SQL",
+            original_entities, resolved_entities,
         )
 
     # ── Step 1: Run quant engine with resolved entity ──────────────────────
@@ -168,7 +185,7 @@ def cross_engine_node(state: QueryState) -> QueryState:
         quant_succeeded = False
     else:
         quant_state = dict(state)
-        quant_state["company"] = resolved_entity
+        quant_state["companies"] = resolved_entities
         quant_result = quant_engine_node(QueryState(**quant_state))
         quant_succeeded = quant_result.get("error") is None and quant_result.get("sql_verified")
 
@@ -197,7 +214,7 @@ def cross_engine_node(state: QueryState) -> QueryState:
     # Runs AFTER quant so response_generator can hand the verified figure to
     # the synthesis call. Temporarily substitute resolved entity, restore after.
     semantic_state = dict(state)
-    semantic_state["company"] = resolved_entity
+    semantic_state["companies"] = resolved_entities
     semantic_result = semantic_engine_node(QueryState(**semantic_state))
 
     # Pull qualitative results back into main state
