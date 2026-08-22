@@ -122,6 +122,25 @@ export interface PendingUpload {
 
 export class UnauthorizedError extends Error {}
 
+/**
+ * The pipeline RAN and reported its own failure: the server emitted an SSE
+ * `error` event. Re-running reproduces it at double cost, so this never
+ * retries. api/query.py sends this once headers are gone and a 500 is no
+ * longer possible, so it is the only way a mid-flight pipeline failure can
+ * reach us.
+ */
+export class PipelineError extends Error {}
+
+/** HTTP-level failure BEFORE the stream began (non-2xx, or a 2xx with no body). */
+export class RequestFailedError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+/** The connection never established, or failed before a single byte arrived. */
+export class TransportError extends Error {}
+
 export async function submitQuery(
   question: string,
   executionContext?: Record<string, any>
@@ -172,8 +191,19 @@ export interface TraceEvent {
  * and cannot set an Authorization header, and moving the JWT into a query
  * string would put it in server access logs and browser history.
  *
- * Falls back to submitQuery() on ANY streaming failure. The trace is an
- * enhancement to the wait, never a precondition for getting an answer.
+ * RETRIES EXACTLY ONE CASE: the socket dropped after the stream started and
+ * before `complete` arrived. Nothing else falls back.
+ *
+ * The previous version retried every failure, and the cost was not
+ * theoretical. api/query.py deliberately never cancels the graph task on
+ * client disconnect ("the pipeline must still finish so audit_writer_node
+ * writes its row"), so one user question became two full pipeline runs, two
+ * LLM spends against a 500/day ceiling, and two audit_log rows with nothing
+ * marking either as a retry. A server-emitted `error` event and a non-2xx are
+ * both pipeline failures: re-running reproduces them and doubles the bill.
+ *
+ * Non-retried failures surface as distinct classes so a caller can tell a
+ * refusal from an outage from a dead connection.
  */
 export async function submitQueryStreaming(
   question: string,
@@ -184,6 +214,11 @@ export async function submitQueryStreaming(
   if (!session) {
     throw new UnauthorizedError("Not logged in");
   }
+
+  // Set the moment a readable body is in hand. Distinguishes "the stream
+  // started and then died" (retryable) from "we never connected" (not).
+  let streamStarted = false;
+  let outcome: QueryResponse | "retry";
 
   try {
     const res = await fetch(`${API_URL}/api/query/stream`, {
@@ -203,9 +238,10 @@ export async function submitQueryStreaming(
       throw new UnauthorizedError("Session expired");
     }
     if (!res.ok || !res.body) {
-      throw new Error(`Stream failed (${res.status})`);
+      throw new RequestFailedError(`Stream failed (${res.status})`, res.status);
     }
 
+    streamStarted = true;
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -247,15 +283,36 @@ export async function submitQueryStreaming(
       }
     }
 
-    if (streamError) throw new Error(streamError);
-    if (!result) throw new Error("Stream ended without a complete event");
-    return result;
+    if (streamError) throw new PipelineError(streamError);
+
+    // Reader drained with no `complete`: the connection ended mid-pipeline.
+    // THE ONE RETRYABLE CASE -- nothing reported a failure, the bytes just
+    // stopped arriving.
+    outcome = result ?? "retry";
   } catch (err) {
     // A dead session is a real failure, not a transport problem -- retrying
     // over the non-streaming endpoint would just 401 again.
     if (err instanceof UnauthorizedError) throw err;
-    return submitQuery(question, executionContext);
+    // The pipeline ran and failed. Re-running reproduces the failure and
+    // spends a second LLM budget and a second audit row to do it.
+    if (err instanceof PipelineError) throw err;
+    // The server rejected the request outright. Same reasoning.
+    if (err instanceof RequestFailedError) throw err;
+    // Threw before a single byte: DNS, refused connection, TLS. There is no
+    // stream to have dropped, and submitQuery would hit the same wall.
+    if (!streamStarted) {
+      throw new TransportError(
+        err instanceof Error ? err.message : "Could not reach the query endpoint"
+      );
+    }
+    // reader.read() threw part-way through -- a dropped socket by another name.
+    outcome = "retry";
   }
+
+  // Outside the try on purpose: a throw from this call must reach the caller,
+  // not be caught by the block above and retried a second time.
+  if (outcome === "retry") return submitQuery(question, executionContext);
+  return outcome;
 }
 
 export async function uploadDocument(
