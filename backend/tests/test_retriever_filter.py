@@ -17,7 +17,7 @@ import logging
 
 import pytest
 
-from qdrant_client.models import FieldCondition, Filter
+from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 
 from app.engines.retriever import _build_filter
 
@@ -25,7 +25,8 @@ from app.engines.retriever import _build_filter
 def _conditions_by_key(built: Filter) -> dict:
     """key -> matched value, for the flat FieldConditions in `must`."""
     return {
-        c.key: c.match.value
+        c.key: getattr(c.match, "value", None) if hasattr(c.match, "value")
+        else getattr(c.match, "any", None)
         for c in built.must
         if isinstance(c, FieldCondition)
     }
@@ -51,7 +52,7 @@ class TestAlwaysApplied:
         """
         built = _build_filter(
             tenant_id="tenant-1",
-            company=None, fiscal_year=None, quarter=None, financial_type=None,
+            companies=None, fiscal_year=None, quarter=None, financial_type=None,
         )
         assert _conditions_by_key(built)["tenant_id"] == "tenant-1"
 
@@ -67,14 +68,14 @@ class TestAlwaysApplied:
 class TestFullySpecified:
     def test_all_arguments_produce_six_conditions(self):
         built = _build_filter(
-            tenant_id="t", company="ETERNAL", fiscal_year="FY26",
+            tenant_id="t", companies=["ETERNAL"], fiscal_year="FY26",
             quarter="Q4", financial_type="consolidated",
         )
         assert len(built.must) == 6
         assert _conditions_by_key(built) == {
             "tenant_id": "t",
             "is_latest": True,
-            "company": "ETERNAL",
+            "company": ["ETERNAL"],
             "fiscal_year": "FY26",
             "quarter": "Q4",
         }
@@ -117,9 +118,9 @@ class TestFalsyArgumentsSkipTheFilter:
     not of the code.
     """
 
-    @pytest.mark.parametrize("falsy", [None, ""])
+    @pytest.mark.parametrize("falsy", [None, []])
     def test_falsy_company_is_dropped_entirely(self, falsy):
-        built = _build_filter(tenant_id="t", company=falsy)
+        built = _build_filter(tenant_id="t", companies=falsy)
         assert "company" not in _conditions_by_key(built)
 
     @pytest.mark.parametrize("falsy", [None, ""])
@@ -136,7 +137,7 @@ class TestFalsyArgumentsSkipTheFilter:
         """The exact dict router._classify returns on total provider failure."""
         built = _build_filter(
             tenant_id="t",
-            company=None, fiscal_year=None, quarter=None,
+            companies=None, fiscal_year=None, quarter=None,
             financial_type="consolidated",
         )
         flat = _conditions_by_key(built)
@@ -177,7 +178,7 @@ class TestCompanyOmissionIsExplicitAndLogged:
     an unfiltered whole-tenant search was a falsy branch nobody could see. The
     test above still asserts the BEHAVIOUR is unchanged — None and "" drop the
     condition, exactly as before. What is new is that the branch is named
-    (`company is None or len(company) == 0`) and emits a WARNING.
+    (`companies is None or len(companies) == 0`) and emits a WARNING.
 
     Landed ahead of F14 deliberately. That change makes the field
     `companies: list[str]`, and `[]` is falsy too, so it would have taken the
@@ -191,16 +192,16 @@ class TestCompanyOmissionIsExplicitAndLogged:
 
     def test_present_company_still_produces_the_condition(self, caplog):
         with caplog.at_level(logging.WARNING, logger="app.engines.retriever"):
-            built = _build_filter(tenant_id="t", company="ETERNAL")
-        assert _conditions_by_key(built)["company"] == "ETERNAL"
+            built = _build_filter(tenant_id="t", companies=["ETERNAL"])
+        assert _conditions_by_key(built)["company"] == ["ETERNAL"]
         assert "UNFILTERED WHOLE-TENANT SEARCH" not in caplog.text
         with pytest.raises(AssertionError):          # NEGATIVE CONTROL
             assert "company" not in _conditions_by_key(built)
 
-    @pytest.mark.parametrize("empty", [None, ""])
+    @pytest.mark.parametrize("empty", [None, []])
     def test_absent_company_drops_the_condition_and_warns(self, caplog, empty):
         with caplog.at_level(logging.WARNING, logger="app.engines.retriever"):
-            built = _build_filter(tenant_id="tenant-42", company=empty)
+            built = _build_filter(tenant_id="tenant-42", companies=empty)
         assert "company" not in _conditions_by_key(built)
         assert "UNFILTERED WHOLE-TENANT SEARCH" in caplog.text
         with pytest.raises(AssertionError):          # NEGATIVE CONTROL
@@ -213,7 +214,7 @@ class TestCompanyOmissionIsExplicitAndLogged:
         unfiltered search attributable at all.
         """
         with caplog.at_level(logging.WARNING, logger="app.engines.retriever"):
-            _build_filter(tenant_id="tenant-42", company=None)
+            _build_filter(tenant_id="tenant-42", companies=None)
         assert "tenant_id=tenant-42" in caplog.text
         with pytest.raises(AssertionError):          # NEGATIVE CONTROL
             assert "tenant_id=some-other-tenant" in caplog.text
@@ -223,7 +224,7 @@ class TestCompanyOmissionIsExplicitAndLogged:
         record = logging.LogRecord(
             "app.engines.retriever", logging.WARNING, __file__, 0,
             "UNFILTERED WHOLE-TENANT SEARCH | no company condition applied | "
-            "tenant_id=%s company=%r fiscal_year=%r quarter=%r financial_type=%r",
+            "tenant_id=%s companies=%r fiscal_year=%r quarter=%r financial_type=%r",
             ("t", None, None, None, None), None,
         )
         assert "\n" not in record.getMessage()
@@ -238,7 +239,7 @@ class TestCompanyOmissionIsExplicitAndLogged:
         matching an empty list.
         """
         with caplog.at_level(logging.WARNING, logger="app.engines.retriever"):
-            built = _build_filter(tenant_id="t", company=[])
+            built = _build_filter(tenant_id="t", companies=[])
         assert "company" not in _conditions_by_key(built)
         assert "UNFILTERED WHOLE-TENANT SEARCH" in caplog.text
         with pytest.raises(AssertionError):          # NEGATIVE CONTROL
@@ -249,6 +250,71 @@ class TestCompanyOmissionIsExplicitAndLogged:
         Detect and report only. Q051 passes BECAUSE this path runs unfiltered;
         a refusal here would refuse a passing golden question.
         """
-        assert isinstance(_build_filter(tenant_id="t", company=None), Filter)
+        assert isinstance(_build_filter(tenant_id="t", companies=None), Filter)
         with pytest.raises(AssertionError):          # NEGATIVE CONTROL
-            assert _build_filter(tenant_id="t", company=None) is None
+            assert _build_filter(tenant_id="t", companies=None) is None
+
+
+# ---------------------------------------------------------------------------
+# F14 — the company condition is an any-of over every named issuer
+# ---------------------------------------------------------------------------
+
+class TestAnyOfOverNamedIssuers:
+    """
+    F14. `MatchValue` held one issuer, so a two-issuer query had nowhere to put
+    the second and the field nulled — which `_build_filter` then read as "no
+    filter at all". `MatchAny` carries every named issuer.
+
+    The `company` payload key is already indexed KEYWORD (qdrant_writer.py:81),
+    which is the type MatchAny operates on, so this required no re-index.
+    """
+
+    def _company_condition(self, built):
+        return [c for c in built.must
+                if isinstance(c, FieldCondition) and c.key == "company"]
+
+    def test_single_issuer_produces_an_any_of_with_one_value(self):
+        """
+        A one-element any-of matches exactly what the pre-F14 MatchValue
+        matched, so single-issuer result sets are unchanged.
+        """
+        cond = self._company_condition(_build_filter(tenant_id="t", companies=["ETERNAL"]))
+        assert len(cond) == 1
+        assert cond[0].match.any == ["ETERNAL"]
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert cond[0].match.any == ["PAYTM"]
+
+    def test_two_issuers_produce_an_any_of_over_both(self):
+        cond = self._company_condition(
+            _build_filter(tenant_id="t", companies=["ETERNAL", "PAYTM"])
+        )
+        assert len(cond) == 1
+        assert cond[0].match.any == ["ETERNAL", "PAYTM"]
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert cond[0].match.any == ["ETERNAL"]
+
+    def test_the_second_issuer_is_not_silently_dropped(self):
+        """
+        F14's defect in one line: the old shape kept one issuer and the answer
+        then denied the other existed. ETERNAL is 732 rows.
+        """
+        cond = self._company_condition(
+            _build_filter(tenant_id="t", companies=["ETERNAL", "PAYTM"])
+        )
+        assert "PAYTM" in cond[0].match.any
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert "PAYTM" not in cond[0].match.any
+
+    def test_it_is_a_match_any_not_a_match_value(self):
+        cond = self._company_condition(_build_filter(tenant_id="t", companies=["ETERNAL"]))
+        assert isinstance(cond[0].match, MatchAny)
+        assert not hasattr(cond[0].match, "value")
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert isinstance(cond[0].match, MatchValue)
+
+    def test_tenant_isolation_survives_a_multi_issuer_filter(self):
+        """tenant_id has no guard around it; whatever else changes, that holds."""
+        built = _build_filter(tenant_id="tenant-1", companies=["ETERNAL", "PAYTM"])
+        assert _conditions_by_key(built)["tenant_id"] == "tenant-1"
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert _conditions_by_key(built)["tenant_id"] == "tenant-2"
