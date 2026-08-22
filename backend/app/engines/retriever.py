@@ -20,6 +20,7 @@ Design decisions:
 
 import logging
 import os
+import time
 from typing import List, Optional
 
 from fastembed import SparseTextEmbedding, TextEmbedding
@@ -96,6 +97,47 @@ def _get_reranker() -> TextCrossEncoder:
         logger.info("Loading CrossEncoder reranker (ONNX/fastembed): %s", RERANKER_MODEL_NAME)
         _reranker_model = TextCrossEncoder(model_name=RERANKER_MODEL_NAME, threads=1)
     return _reranker_model
+
+
+# Fixed and short: the retry rides out a single dropped packet or a refused
+# socket, not an outage. Mirrors TRANSPORT_RETRY_BACKOFF_S in app/llm/client.py
+# but is deliberately a separate constant -- these are different providers on
+# different links, and coupling them would tie one's tuning to the other's.
+COHERE_RETRY_BACKOFF_S = 1.0
+
+
+def _cohere_with_retry(fn):
+    """
+    One attempt, plus exactly one retry — never a ladder. Same shape as
+    _call_gemini in app/llm/client.py, for the same measured reason.
+
+    2026-08-21, PQ020: a single [Errno 111] Connection refused dropped one row
+    of a 20-question sweep to the local ONNX reranker. That is not merely a
+    slower path — it is a DIFFERENT SCORING SCALE. Cohere returns
+    probabilities in [0,1]; ONNX returns unbounded logits, frequently negative.
+    PQ020 was then scored tier=medium against cohere-calibrated thresholds and
+    FAILED its expected_tier_low assertion. On a clean re-run, cohere-served,
+    it passed. The failure was an artifact of the fallback, not a defect in
+    the answer, and the mixed backend withheld the whole sweep on the
+    reranker integrity gate.
+
+    The ONNX fallback REMAINS the second-failure path. It is the correct
+    behaviour when Cohere is genuinely down; what it should not be is the
+    response to one refused socket.
+
+    The retry is logged at WARNING and distinctly from the fallback, so a row
+    that retried and recovered is visible in the logs instead of looking
+    identical to a row that never stumbled.
+    """
+    try:
+        return fn()
+    except Exception as e:
+        logger.warning(
+            "Cohere rerank attempt failed (%s: %s) — retrying once in %.1fs",
+            type(e).__name__, e, COHERE_RETRY_BACKOFF_S,
+        )
+        time.sleep(COHERE_RETRY_BACKOFF_S)
+        return fn()
 
 
 def _get_cohere_client():
@@ -382,7 +424,7 @@ def rerank(
         logger.debug("Reranking %d chunks via Cohere API (rerank-english-v3.0)", len(chunks))
         try:
             doc_texts = [chunk["text"] for chunk in chunks]
-            response = cohere_client.rerank(
+            response = _cohere_with_retry(lambda: cohere_client.rerank(
                 model="rerank-english-v3.0",
                 query=query,
                 documents=doc_texts,
@@ -392,7 +434,7 @@ def rerank(
                 # dropping a near-duplicate left 4 chunks instead of swapping
                 # in the 6th-best.
                 top_n=len(doc_texts),
-            )
+            ))
             
             scored_chunks: List[ChunkResult] = []
             for hit in response.results:
