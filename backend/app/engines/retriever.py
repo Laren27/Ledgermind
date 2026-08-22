@@ -29,6 +29,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import (
     FieldCondition,
     Filter,
+    MatchAny,
     Fusion,
     FusionQuery,
     MatchValue,
@@ -201,7 +202,7 @@ def _encode_sparse(query: str) -> SparseVector:
 
 def _build_filter(
     tenant_id: str,
-    company: Optional[str] = None,
+    companies: Optional[list] = None,
     fiscal_year: Optional[str] = None,
     quarter: Optional[str] = None,
     financial_type: Optional[str] = None,
@@ -234,19 +235,24 @@ def _build_filter(
     # entity/comparison_entity -- measured 2026-08-22: path=quantitative,
     # ETERNAL faster, 168.56 vs 22.28, sql_verified=true, confidence 1.0.
     # Refusing on empty would refuse a passing golden question.
-    if company is None or len(company) == 0:
+    if companies is None or len(companies) == 0:
         # Single line: Render truncates multi-line output. tenant_id is the
         # only identifier in scope at this layer -- _build_filter receives no
         # request_id or query, and widening its signature to carry one is a
         # change to every caller rather than to this guard.
         logger.warning(
             "UNFILTERED WHOLE-TENANT SEARCH | no company condition applied | "
-            "tenant_id=%s company=%r fiscal_year=%r quarter=%r financial_type=%r",
-            tenant_id, company, fiscal_year, quarter, financial_type,
+            "tenant_id=%s companies=%r fiscal_year=%r quarter=%r financial_type=%r",
+            tenant_id, companies, fiscal_year, quarter, financial_type,
         )
     else:
+        # ANY-OF over every named issuer. A single-element list produces the
+        # same result set as the pre-F14 MatchValue -- MatchAny with one
+        # value matches exactly what MatchValue matched. The `company`
+        # payload key is already indexed KEYWORD, which is the type MatchAny
+        # operates on, so no re-index is required.
         must_conditions.append(
-            FieldCondition(key="company", match=MatchValue(value=company))
+            FieldCondition(key="company", match=MatchAny(any=list(companies)))
         )
 
     if fiscal_year:
@@ -279,7 +285,7 @@ def _build_filter(
 def hybrid_search(
     query: str,
     tenant_id: str,
-    company: Optional[str] = None,
+    companies: Optional[list] = None,
     fiscal_year: Optional[str] = None,
     quarter: Optional[str] = None,
     financial_type: str = "consolidated",
@@ -293,15 +299,15 @@ def hybrid_search(
 
     search_filter = _build_filter(
         tenant_id=tenant_id,
-        company=company,
+        companies=companies,
         fiscal_year=fiscal_year,
         quarter=quarter,
         financial_type=financial_type,
     )
 
     logger.debug(
-        "hybrid_search | company=%s fiscal_year=%s quarter=%s financial_type=%s top_k=%d",
-        company, fiscal_year, quarter, financial_type, top_k,
+        "hybrid_search | companies=%s fiscal_year=%s quarter=%s financial_type=%s top_k=%d",
+        companies, fiscal_year, quarter, financial_type, top_k,
     )
 
     try:
@@ -527,7 +533,7 @@ def rerank(
 def retrieve_and_rerank(
     query: str,
     tenant_id: str,
-    company: Optional[str] = None,
+    companies: Optional[list] = None,
     fiscal_year: Optional[str] = None,
     quarter: Optional[str] = None,
     financial_type: str = "consolidated",
@@ -542,7 +548,7 @@ def retrieve_and_rerank(
     candidates = hybrid_search(
         query=query,
         tenant_id=tenant_id,
-        company=company,
+        companies=companies,
         fiscal_year=fiscal_year,
         quarter=quarter,
         financial_type=financial_type,
