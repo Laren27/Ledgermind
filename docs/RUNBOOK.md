@@ -152,11 +152,20 @@ on WSL2).
 
 ## Eval quota
 
-Gemini free tier is 5 RPM and 500/day PER MODEL. A semantic question makes TWO
-calls (router + synthesis), so **`--delay 25`**. Runs at 15 are over budget by
-construction (~8 RPM) — they have survived on luck and have also caused a
-withheld sweep.
+Gemini free tier is 5 RPM and 500/day PER MODEL. **`--delay 45`.**
 
-Run the LARGEST dataset first as a gate. Read **Providers, then Models served,
-then the score** — in that order. If either gate fires the score is withheld;
-stop rather than annotate. A full three-dataset sweep is ~165 calls.
+The two-calls-per-question arithmetic (router + synthesis) yields ~25s, and 25
+is what this file said until 2026-08-22. It is optimistic: a cross-examination
+question runs both engines, DSL self-healing can add a repair call, and the
+ceiling is per model across every process sharing the key — router_probe.py
+bypasses the audit writer entirely, so **the daily call count is not
+recoverable from audit_log** and the budget cannot be checked after the fact.
+45 is the number every clean sweep since 2026-08-15 has actually used. Runs at
+15 are over budget by construction (~8 RPM); they have survived on luck and
+have also caused a withheld sweep.
+
+Run the LARGEST dataset first as a gate. Read, in this order: **api_base,
+Providers, Models served, Reranker backends, then the score.** If any gate
+fires the score is withheld; stop rather than annotate. There are FOUR
+datasets, not three — the 1-question transcript set is a cheap config probe
+worth running before spending ETERNAL's ~110 calls.
