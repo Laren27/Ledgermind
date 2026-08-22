@@ -55,6 +55,34 @@ def role_filtered_response(response: dict, role: str) -> dict:
         "error": response.get("error"),
     }
 
+    # OMITTED, NOT SUBSTITUTED -- the same rule `companies` follows six lines
+    # up, applied to the one field that was still asserting an unmeasured
+    # value.
+    #
+    # A Prompt Shield block goes prompt_shield -> audit_writer directly
+    # (graph.py's "blocked" edge), so confidence_node NEVER RUNS and nothing
+    # ever writes a tier. What reached the client was make_initial_state's
+    # default "low" -- indistinguishable on the wire from a tier that was
+    # computed and came out low. Confirmed live against Render 2026-08-22:
+    # a blocked query returned confidence_tier="low", confidence_score=0.0.
+    #
+    # OMITTED rather than nulled, and that is a MEASURED choice, not a taste
+    # one. scripts/eval_runner.py's out_of_corpus scorer reads the tier
+    # through `.get("confidence_tier", "low")` inside a PASS condition, so an
+    # absent key scores exactly as today while an explicit null flips that
+    # verdict from pass to fail. Verified by running score_result over all
+    # twelve golden categories with the field set three ways: absent and
+    # "low" agree everywhere; null diverges on out_of_corpus.
+    #
+    # `confidence_score` is deliberately LEFT AT 0.0. It is a stored
+    # audit_log column and metrics.py aggregates over it (refusal_rate_pct,
+    # confidence_distribution); making it null would retroactively change
+    # what those aggregates mean for every blocked row ever written. That is
+    # a stored-data change, not a response change, and belongs in its own
+    # decision.
+    if response["is_blocked"]:
+        base.pop("confidence_tier", None)
+
     # Fail closed. Any role that isn't explicitly recognised -- a typo, a null,
     # a future role added to the DB but not here -- gets the most restrictive
     # payload, never the least. Without this the function falls through every
