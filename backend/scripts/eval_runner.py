@@ -70,7 +70,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__f
 # CLI args
 # ---------------------------------------------------------------------------
 parser = argparse.ArgumentParser(description="LedgerMind eval runner")
-parser.add_argument("--api-base", default="http://localhost:8000")
+parser.add_argument("--api-base", required=True)
 parser.add_argument("--email",    default="admin@alpha.ledgermind.test",
                     help="Login email. MUST be admin: llm_provider is admin-tier only "
                          "in response_shaping.py, and without it the provider guard "
