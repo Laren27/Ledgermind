@@ -42,7 +42,21 @@ export interface QueryResponse {
   is_blocked: boolean;
   block_reason: string | null;
 
-  company: string | null;
+  // F14 (2026-08-22): the backend emits a LIST and OMITS the scalar `company`
+  // entirely -- api/response_shaping.py says "OMITTED, not substituted", because
+  // a multi-issuer answer has no single correct value for a scalar field.
+  //
+  // `[]` IS A LEGAL STATE, not an error: it means no issuer resolved, and
+  // retriever._build_filter then drops the company condition and logs a WARNING,
+  // so the search ran UNFILTERED across the whole tenant. Rendering a corpus
+  // name for that case would assert something the system did not resolve.
+  //
+  // The old scalar declaration described a field that has not been on the wire
+  // since F14 shipped. Confirmed live against Render 2026-08-22: top-level keys
+  // include `companies` and do not include `company`. That is why every working
+  // paper header read "GENERAL CORPUS ARCHIVE" and every quantitative section
+  // heading rendered empty.
+  companies: string[];
   fiscal_year: string | null;
   quarter: string | null;
   financial_type: string;
