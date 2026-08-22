@@ -39,7 +39,11 @@ def role_filtered_response(response: dict, role: str) -> dict:
         "path": response.get("path"),
         "is_blocked": response["is_blocked"],
         "block_reason": response.get("block_reason"),
-        "company": response.get("company"),
+        # F14: OMITTED, not substituted. A multi-issuer result has no single
+        # correct value for a scalar "company", and the zero-UI-hallucination
+        # mandate says omit rather than pick one. `companies` carries the real
+        # answer; a frontend that wants to show issuers reads that.
+        "companies": response.get("companies") or [],
         "fiscal_year": response.get("fiscal_year"),
         "quarter": response.get("quarter"),
         "financial_type": response.get("financial_type"),
