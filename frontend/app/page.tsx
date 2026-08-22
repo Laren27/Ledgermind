@@ -43,6 +43,20 @@ function cleanBlockReason(reason: string): string {
   return reason.replace(/^[a-z_]+:\s*/i, "");
 }
 
+/**
+ * One heading label from the issuer LIST. The join belongs at the render site:
+ * a section heading has room for one line, `companies` may hold zero, one or
+ * several, and each of those means something different.
+ *
+ * Returns null for the empty list rather than a stand-in string. Empty means no
+ * issuer resolved and retrieval ran unfiltered across the tenant -- the caller
+ * must omit the label, not print a name the system never produced.
+ */
+function issuerLabel(companies: string[] | null | undefined): string | null {
+  if (!companies || companies.length === 0) return null;
+  return companies.join(" / ");
+}
+
 function buildCitationItems(data: QueryResponse) {
   return (data.citations ?? []).map((c, i) => {
     // financial_type is UNKNOWN for every non-FINANCIAL_STATEMENT chunk by
@@ -201,7 +215,9 @@ function composeDocumentBody(data: QueryResponse) {
       <>
         {rows.length > 0 && (
           <SectionHeading sourceTable="audited_financials">
-            {data.company} — {data.fiscal_year ?? "Period"}
+            {[issuerLabel(data.companies), data.fiscal_year ?? "Period"]
+              .filter(Boolean)
+              .join(" — ")}
           </SectionHeading>
         )}
         {rows.length > 0 && <LedgerTable columns={["PERIOD", "VALUE (₹ Cr)", "Δ YoY"]} rows={rows} />}
@@ -391,7 +407,7 @@ export default function Home() {
       <div key={`sheet-tree-${idx}-${targetAnswer?.request_id ?? "pending"}`} className="flex-1 flex flex-col justify-between space-y-[var(--rhythm-major,72px)]">
         <div>
           <WorkingPaperHeader
-            company={targetAnswer?.company ?? null}
+            companies={targetAnswer ? targetAnswer.companies : null}
             fiscalYear={targetAnswer?.fiscal_year ?? null}
             quarter={targetAnswer?.quarter ?? null}
             financialType={targetAnswer?.financial_type ?? null}
