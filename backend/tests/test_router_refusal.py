@@ -15,7 +15,9 @@ until it is.
 
 from pathlib import Path
 
-from app.engines.router import route_after_router
+import pytest
+
+from app.engines.router import _build_resolved_query, route_after_router
 from app.engines.state import make_initial_state
 
 
@@ -95,3 +97,63 @@ def test_mixed_known_and_unknown_resolves_known():
 def test_empty_mentions_resolve_to_nothing():
     assert _rmi(None) == ([], [])
     assert _rmi("") == ([], [])
+
+
+# ---------------------------------------------------------------------------
+# F14 — a two-issuer query must not refuse anywhere on the path
+# ---------------------------------------------------------------------------
+
+def test_two_issuer_state_is_not_refused():
+    """
+    THE MEASURED CONSTRAINT. Q051 ("Who grew revenue faster in FY26, Eternal or
+    Paytm?") passed on 2026-08-22 at path=quantitative, ETERNAL faster, 168.56
+    vs 22.28, sql_verified=true, confidence 1.0. Nothing in F14 may make a
+    two-issuer query refuse.
+    """
+    s = _state(companies=["ETERNAL", "PAYTM"], path="quantitative")
+    assert route_after_router(s) == "quant_engine"
+    with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+        assert route_after_router(s) == "refused"
+
+
+def test_empty_companies_is_not_refused():
+    """
+    `[]` is the no-issuer case and is legal. It is guarded and logged in
+    _build_filter, not refused -- refusing here would refuse Q051's shape.
+    """
+    s = _state(companies=[], path="semantic")
+    assert route_after_router(s) == "semantic_engine"
+    with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+        assert route_after_router(s) == "refused"
+
+
+def test_resolved_query_prefixes_every_named_issuer():
+    built = _build_resolved_query(
+        original_query="who grew faster",
+        companies=["ETERNAL", "PAYTM"],
+        fiscal_year="FY26", quarter=None, financial_type="consolidated",
+    )
+    assert built.startswith("ETERNAL PAYTM FY26 consolidated ")
+    with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+        assert built.startswith("ETERNAL FY26 consolidated ")
+
+
+def test_single_issuer_prefix_is_identical_to_pre_f14():
+    """One issuer must produce exactly the string the scalar field produced."""
+    built = _build_resolved_query(
+        original_query="q", companies=["TITAN"],
+        fiscal_year="FY26", quarter="Q1", financial_type="consolidated",
+    )
+    assert built == "TITAN FY26 Q1 consolidated q"
+    with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+        assert built == "FY26 Q1 consolidated q"
+
+
+def test_no_issuer_prefix_is_identical_to_pre_f14():
+    built = _build_resolved_query(
+        original_query="q", companies=[],
+        fiscal_year=None, quarter=None, financial_type="consolidated",
+    )
+    assert built == "consolidated q"
+    with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+        assert built == "q"
