@@ -155,7 +155,7 @@ DSL_SYSTEM_PROMPT = _build_dsl_system_prompt()
 
 def _build_dsl_user_message(
     query: str,
-    company: Optional[str],
+    companies: list,
     fiscal_year: Optional[str],
     quarter: Optional[str],
     financial_type: str,
@@ -165,7 +165,14 @@ def _build_dsl_user_message(
     context = (
         f"Query: {query}\n"
         f"Already extracted from query:\n"
-        f"  entity: {company or 'unknown'}\n"
+        # F14 DECISION. One issuer names it. ZERO OR SEVERAL both render
+        # 'unknown', which is byte-identical to what `company or 'unknown'`
+        # produced pre-F14: a two-issuer query nulled `company` and rendered
+        # 'unknown' then too. Q051 therefore sees the SAME DSL prompt it saw
+        # when it was measured passing, and the model keeps producing
+        # entity/comparison_entity itself rather than being handed one issuer
+        # of the two as if it were the only one.
+        f"  entity: {companies[0] if len(companies) == 1 else 'unknown'}\n"
         f"  fiscal_year: {fiscal_year or 'unknown'}\n"
         f"  quarter: {quarter or 'null (annual)'}\n"
         f"  financial_type: {financial_type}\n"
@@ -208,7 +215,7 @@ def _generate_dsl(
 
         user_message = _build_dsl_user_message(
             query=query,
-            company=company,
+            companies=companies,
             fiscal_year=fiscal_year,
             quarter=quarter,
             financial_type=financial_type,
@@ -243,8 +250,14 @@ def _generate_dsl(
             # pairing must be preserved here.
             is_comparison = raw_dict.get("operation") == "comparison"
 
-            if company and not is_comparison:
-                raw_dict["entity"] = company
+            # F14 DECISION. Override ONLY when exactly one issuer was named.
+            # Pre-F14 this fired on any truthy `company`, and a two-issuer
+            # query nulled it, so it did not fire -- len(...) == 1 preserves
+            # that exactly while making the reason explicit instead of
+            # incidental. Handing one of two named issuers to `entity` would
+            # silently drop the other, which is the F14 defect itself.
+            if len(companies) == 1 and not is_comparison:
+                raw_dict["entity"] = companies[0]
             if fiscal_year and not raw_dict.get("fiscal_year"):
                 raw_dict["fiscal_year"] = fiscal_year
             if quarter is not None and not raw_dict.get("quarter"):
@@ -619,14 +632,14 @@ def quant_engine_node(state: QueryState) -> QueryState:
     """
     query         = state["query"]
     tenant_id     = state["tenant_id"]
-    company       = state.get("company")
+    companies     = state.get("companies") or []
     fiscal_year   = state.get("fiscal_year")
     quarter       = state.get("quarter")
     financial_type = state.get("financial_type", "consolidated")
 
     logger.info(
-        "QuantEngine | company=%s fiscal_year=%s quarter=%s financial_type=%s",
-        company, fiscal_year, quarter, financial_type,
+        "QuantEngine | companies=%s fiscal_year=%s quarter=%s financial_type=%s",
+        companies, fiscal_year, quarter, financial_type,
     )
 
     # ── Stage 0: derived-metric guard (see _query_names_derived_metric) ───
@@ -704,7 +717,7 @@ def quant_engine_node(state: QueryState) -> QueryState:
     # ── Stage 1: DSL generation ────────────────────────────────────────────
     dsl, attempts, dsl_error, dsl_llm = _generate_dsl(
         query=query,
-        company=company,
+        companies=companies,
         fiscal_year=fiscal_year,
         quarter=quarter,
         financial_type=financial_type,
