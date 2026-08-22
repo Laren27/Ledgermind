@@ -48,14 +48,24 @@ scripts/X.py` puts `/app/scripts` on `sys.path` instead of `/app` and fails with
 **eval_runner is the exception — run it from the HOST**, in `backend/`, with
 `../golden_dataset/` paths. It is an HTTP client and does not need to be inside
 the container; the container has no golden datasets mounted (`/app/golden_dataset/`
-holds eval OUTPUTS only). Its `--api-base` defaults to `http://localhost:8000`,
-which is the local stack — confirm that is the intended target, since code
-committed to git is not deployed to Render.
+holds eval OUTPUTS only). **`--api-base` is REQUIRED and has no default.** It defaulted to
+`http://localhost:8000` until 2026-08-22, and that default silently measured
+the local stack: the 90/91 baseline of 08-21/22 recorded clean provider, model
+and reranker gates against a host nobody chose, and left ZERO rows in
+Supabase's audit_log while local Postgres took 153. Code committed to git is
+not deployed to Render, and the local corpus is 11 documents against Render's
+9 — a retrieval number measured on one is not a baseline for the other.
 
-    cd ~/ledgermind/backend && python scripts/eval_runner.py \
+The runner now prints the resolved base under `Stated model:` and records it in
+the output JSON's `meta.api_base`. **Read it alongside Providers, Models served
+and Reranker backends** — a field nobody checks is indistinguishable from one
+that is wrong.
+
+    cd ~/ledgermind/backend && python -m scripts.eval_runner \
+      --api-base https://ledgermind-shaz.onrender.com \
       --model gemini-3.1-flash-lite \
       --dataset ../golden_dataset/q_paytm.json \
-      --delay 25 --out ../eval_results/eval_paytm.json
+      --delay 45 --out ../eval_results/eval_paytm.json
 
 **Outputs go to `eval_results/`, never `golden_dataset/`.** That directory holds
 ONLY the three `q*.json` inputs. It once accumulated 79 files against those 3,
