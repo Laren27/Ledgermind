@@ -270,42 +270,72 @@ class TestMarkerMembership:
 
 
 # ---------------------------------------------------------------------------
-# The unwrapped NameResolutionError — CURRENT BEHAVIOUR, and it is a gap
+# The unwrapped NameResolutionError — GAP CLOSED, assertions moved with the fix
 # ---------------------------------------------------------------------------
 
 class TestUnwrappedNameResolution:
     """
-    CURRENT BEHAVIOUR, asserted per the conftest convention.
+    GAP CLOSED 2026-08-22 by adding "resolution" to _TRANSPORT_MARKERS.
 
-    The marker list carries no "resolve"/"resolution" entry, so a
-    NameResolutionError stripped of its urllib3 wrapper matches nothing: it
-    neither retries nor falls back. PQ016 matched only because urllib3 wrapped
-    it in HTTPSConnectionPool / "Max retries exceeded", which means the
-    fallback path currently depends on an exception's incidental packaging.
+    These assertions previously recorded the DEFECT as current behaviour: the
+    marker list carried no "resolve"/"resolution" entry, so a
+    NameResolutionError stripped of its urllib3 wrapper matched nothing and
+    neither retried nor fell back. PQ016 (2026-08-21) matched only on
+    "connection" (HTTPSConnectionPool) and "max retries" from that wrapper,
+    which meant the fallback path depended on an exception's incidental
+    packaging.
 
-    When that gap is closed these assertions SHOULD fail. That is the suite
-    working — read this docstring, confirm the change was intended, and move
-    the assertions in the same commit as the fix.
+    They failed when the fix landed — 3 failed, 199 passed — and are moved in
+    the same commit, which is the workflow conftest.py prescribes. The
+    transition itself is asserted below: both the old and the new value are
+    named, so a silent revert fails here rather than passing quietly.
+
+    Transport, not provider: a name that will not resolve is the same class as
+    a socket that will not open, and it should retry once before falling back.
     """
 
     BARE = Exception(
         "NameResolutionError: Failed to resolve 'generativelanguage.googleapis.com'"
     )
 
-    def test_bare_name_resolution_error_has_no_marker_class(self):
-        assert _marker_class(self.BARE) is None
+    def test_bare_name_resolution_error_classifies_as_transport(self):
+        assert _marker_class(self.BARE) == "transport"
         with pytest.raises(AssertionError):          # NEGATIVE CONTROL
-            assert _marker_class(self.BARE) == "transport"
+            assert _marker_class(self.BARE) is None   # the pre-fix value
 
-    def test_bare_name_resolution_error_does_not_fall_back(self):
-        assert _should_fall_back(self.BARE) is False
+    def test_bare_name_resolution_error_now_falls_back(self):
+        assert _should_fall_back(self.BARE) is True
         with pytest.raises(AssertionError):          # NEGATIVE CONTROL
-            assert _should_fall_back(self.BARE) is True
+            assert _should_fall_back(self.BARE) is False  # the pre-fix value
 
-    def test_bare_name_resolution_error_makes_one_attempt(self):
-        assert _attempts(_call_gemini, self.BARE) == 1
+    def test_bare_name_resolution_error_retries_once(self):
+        assert _attempts(_call_gemini, self.BARE) == 2
         with pytest.raises(AssertionError):          # NEGATIVE CONTROL
-            assert _attempts(_call_gemini, self.BARE) == 2
+            assert _attempts(_call_gemini, self.BARE) == 1  # the pre-fix value
+
+    def test_resolution_is_a_transport_marker_not_a_provider_one(self):
+        """
+        Placement is the claim, not mere presence: in the provider tuple it
+        would fall back without retrying, which is the behaviour this change
+        exists to avoid.
+        """
+        assert "resolution" in client_mod._TRANSPORT_MARKERS
+        assert "resolution" not in client_mod._PROVIDER_MARKERS
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert "resolution" in client_mod._PROVIDER_MARKERS
+
+    def test_union_grew_by_exactly_one_entry(self):
+        added = set(client_mod._FALLBACK_MARKERS) - set(MARKERS_BEFORE_HOIST)
+        assert added == {"resolution"}
+        assert len(client_mod._FALLBACK_MARKERS) == len(MARKERS_BEFORE_HOIST) + 1
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert len(client_mod._FALLBACK_MARKERS) == len(MARKERS_BEFORE_HOIST)
+
+    def test_wrapped_pq016_still_classifies_transport(self):
+        """The fix must not change how the originally-matching form behaves."""
+        assert _marker_class(DNS_VERBATIM) == "transport"
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert _marker_class(DNS_VERBATIM) is None
 
 
 # ---------------------------------------------------------------------------

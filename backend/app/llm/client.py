@@ -260,6 +260,14 @@ _TRANSPORT_MARKERS = (
     # transport-level: a bound was hit, or the socket never opened
     "timeout", "timed out", "deadline", "connection", "connecterror",
     "network", "unreachable", "max retries", "remote end closed",
+    # A name that will not resolve is the same class as a socket that will
+    # not open, so it belongs here and not among the provider markers.
+    # Added 2026-08-22: without it a NameResolutionError stripped of its
+    # urllib3 wrapper matched NOTHING and so neither retried nor fell back.
+    # PQ016 (2026-08-21) matched only on "connection" (HTTPSConnectionPool)
+    # and "max retries" from that wrapper -- the fallback path was
+    # depending on an exception's incidental packaging.
+    "resolution",
 )
 _PROVIDER_MARKERS = (
     # provider-level
