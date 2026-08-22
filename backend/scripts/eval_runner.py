@@ -936,6 +936,7 @@ def main():
 
     token = get_token(args.email, args.password)
     print(f"Stated model: {args.model}")
+    print(f"API base:     {API_BASE}")
 
     all_results = []
     n = len(golden_questions)
@@ -1030,6 +1031,7 @@ def main():
     payload = {
         "meta": {
             "stated_model": args.model,
+            "api_base": API_BASE,
             "dataset": args.dataset,
             "dataset_total": dataset_total,
             "questions_run": len(all_results),
