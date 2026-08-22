@@ -204,19 +204,96 @@ def _short_retry_delay(exc: Exception) -> Optional[float]:
 
 def _call_gemini(fn: Callable):
     """
-    One attempt, plus exactly one retry if the server asked for a short wait.
-    No ladder: a second failure means the condition is not transient and the
-    caller should fall through to Groq rather than keep a user waiting.
+    One attempt, plus exactly one retry — never a ladder.
+
+    TWO retry triggers, in priority order:
+
+    1. SERVER-ADVISED. The error carries a retryDelay <= MAX_RPM_RETRY_WAIT_S.
+       Unchanged: the server told us how long to wait, so honour it.
+
+    2. TRANSPORT-CLASS. Timeout, DNS, connection, socket. Added 2026-08-22
+       after three measured contamination events in one day, each a SINGLE
+       transport failure with no retry that immediately switched provider
+       and withheld a whole sweep on an integrity gate:
+         PQ016  Gemini -> Groq   NameResolutionError [Errno -3]
+         PQ008  Gemini -> Groq   Read timed out (read timeout=20.0)
+         PQ020  Cohere -> ONNX   [Errno 111] Connection refused
+       Rate limiting was POSITIVELY EXCLUDED, not merely unobserved: zero
+       429s, no resource_exhausted, no retryDelay in any error, spacing
+       >=45s against a 5 RPM ceiling, and failures at scattered positions
+       (16/20 and 8/20) with the provider serving normally either side.
+
+    NOT retried: the provider-level markers (429 / 5xx / resource_exhausted).
+    Those are the server saying something, trigger 1 already covers the case
+    where it asks us to wait, and retrying them just doubles latency before
+    the same answer.
+
+    STILL NOT A LADDER. The original rationale stands unchanged: a second
+    failure means the condition is not transient and the caller should fall
+    through to Groq rather than keep a user waiting. What changed is only
+    that a transport failure now gets the one retry a rate-limit already had.
     """
     try:
         return fn()
     except Exception as e:
         delay = _short_retry_delay(e)
-        if delay is None:
-            raise
-        logger.info("Gemini rate-limited — honouring server retryDelay %.1fs", delay)
-        time.sleep(delay + 0.2)
-        return fn()
+        if delay is not None:
+            logger.info("Gemini rate-limited — honouring server retryDelay %.1fs", delay)
+            time.sleep(delay + 0.2)
+            return fn()
+        if _marker_class(e) == "transport":
+            logger.warning(
+                "Gemini transport failure (%s: %s) — retrying once in %.1fs",
+                type(e).__name__, e, TRANSPORT_RETRY_BACKOFF_S,
+            )
+            time.sleep(TRANSPORT_RETRY_BACKOFF_S)
+            return fn()
+        raise
+
+
+# The fallback markers, split by CLASS and hoisted to module level so the
+# retry decision and the fallback decision read the SAME list. Membership is
+# byte-identical to the tuple that lived inside _should_fall_back -- only the
+# location and the split changed. A second copy would drift from the first,
+# which is exactly what left router_probe.py scoring a stale predicate.
+_TRANSPORT_MARKERS = (
+    # transport-level: a bound was hit, or the socket never opened
+    "timeout", "timed out", "deadline", "connection", "connecterror",
+    "network", "unreachable", "max retries", "remote end closed",
+)
+_PROVIDER_MARKERS = (
+    # provider-level
+    "429", "resource_exhausted", "rate limit", "rate_limit",
+    "500", "502", "503", "504", "unavailable", "internal server error",
+)
+_FALLBACK_MARKERS = _TRANSPORT_MARKERS + _PROVIDER_MARKERS
+
+# Fixed, short, and deliberately not tunable per call: the retry exists to
+# ride out a single dropped packet or a stalled socket, not to wait out an
+# outage. Not derived from any measurement -- see the docstring on
+# _call_gemini for what was measured.
+TRANSPORT_RETRY_BACKOFF_S = 1.0
+
+
+def _marker_class(exc: Exception) -> Optional[str]:
+    """
+    Which marker class matched: "transport", "provider", or None.
+
+    Exists because _should_fall_back substring-matches a stringified
+    exception, so a 429 and a DNS failure produced an IDENTICAL fallback log
+    line. On 2026-08-21 PQ016 was distinguishable from PQ008 only because
+    their exception text happened to differ; nothing recorded the class.
+
+    Transport is checked FIRST. A message carrying both (an HTTPSConnection
+    error that also names a status) is a transport failure that mentions a
+    status, and the retry decision follows transport.
+    """
+    s = f"{type(exc).__name__}: {exc}".lower()
+    if any(m in s for m in _TRANSPORT_MARKERS):
+        return "transport"
+    if any(m in s for m in _PROVIDER_MARKERS):
+        return "provider"
+    return None
 
 
 def _should_fall_back(exc: Exception) -> bool:
@@ -227,21 +304,13 @@ def _should_fall_back(exc: Exception) -> bool:
     than to a wrong answer.
     """
     s = f"{type(exc).__name__}: {exc}".lower()
-    markers = (
-        # transport-level: a bound was hit, or the socket never opened
-        "timeout", "timed out", "deadline", "connection", "connecterror",
-        "network", "unreachable", "max retries", "remote end closed",
-        # provider-level
-        "429", "resource_exhausted", "rate limit", "rate_limit",
-        "500", "502", "503", "504", "unavailable", "internal server error",
-    )
     # Deliberately NOT here: 401/403/invalid-argument. A bad key or a
     # malformed request is a config error, and serving those from the
     # fallback would hide the real fault (2026-07-29: the 1ms probe
     # surfaced as ConnectionError, not "timeout", and was missed by an
     # earlier, narrower list — transport failures are exactly the case
     # blueprint 17 exists for).
-    return any(m in s for m in markers)
+    return any(m in s for m in _FALLBACK_MARKERS)
 
 
 # ---------------------------------------------------------------------------
@@ -272,7 +341,10 @@ def generate_text(
         if not _should_fall_back(e):
             logger.error("Gemini text call failed (no fallback): %s", e)
             raise LLMUnavailable(str(e)) from e
-        logger.warning("Gemini text call failed (%s) — falling back to Groq", e)
+        logger.warning(
+            "Gemini text call failed [class=%s] (%s) — falling back to Groq",
+            _marker_class(e), e,
+        )
 
     try:
         resp = _get_groq().chat.completions.create(
@@ -327,7 +399,10 @@ def generate_structured(
         if not _should_fall_back(e):
             logger.error("Gemini structured call failed (no fallback): %s", e)
             raise LLMUnavailable(str(e)) from e
-        logger.warning("Gemini structured call failed (%s) — falling back to Groq", e)
+        logger.warning(
+            "Gemini structured call failed [class=%s] (%s) — falling back to Groq",
+            _marker_class(e), e,
+        )
 
     # Groq has no response_schema. The shape is described in the prompt and
     # then verified here; an unverifiable response is a provider failure.
