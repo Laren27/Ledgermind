@@ -80,11 +80,28 @@ class QueryState(TypedDict):
     block_reason: Optional[str]
 
     # ── entity_resolver output ─────────────────────────────────────────────
-    company: Optional[str]
+    # F14: a LIST, never a single value. `company: Optional[str]` could not
+    # represent a two-issuer query -- it nulled, and null already meant "no
+    # issuer", so "Eternal or Paytm" and "no company named" were the same
+    # state. Measured 2026-08-21: on the groq fallback the same query
+    # collapsed to company=PAYTM and the answer denied ETERNAL existed, with
+    # ETERNAL being 732 rows and the largest part of the corpus.
+    #
+    # EMPTY LIST IS THE NO-ISSUER CASE and is legal. It is not a refusal:
+    # retriever._build_filter drops the company condition and logs a WARNING,
+    # which is what lets a two-issuer quantitative question run unfiltered
+    # while the DSL carries both issuers through entity/comparison_entity.
+    companies: list[str]
+    # WRITTEN AND NEVER READ on the query path (verified by grep 2026-08-22:
+    # the only other `ticker` is a database row in api/documents.py). Kept
+    # single-valued and derived, rather than made a list, because making a
+    # dead field plural would imply a consumer that does not exist.
     ticker: Optional[str]
     # The raw company name the router extracted when it did NOT resolve to a
     # known ticker. F2 (audit 2026-08-11): company=None previously conflated
-    # "no company mentioned" with "named a company we do not hold", and
+    # "no company mentioned" with "named a company we do not hold" -- a
+    # conflation F14 removed one level up by making the field a list, and
+    # this field still records the unresolvable RAW name either way. Also,
     # retriever._build_filter reads a falsy company as "no filter" -- so an
     # unresolvable name produced an unfiltered whole-tenant search that still
     # answered confidently. Recorded rather than echoed into response_text:
@@ -172,7 +189,7 @@ def make_initial_state(
         is_blocked=False,
         block_reason=None,
 
-        company=None,
+        companies=[],
         ticker=None,
         company_unresolved=None,
         fiscal_year=None,
