@@ -51,7 +51,15 @@ export default function AnswerCard({ data }: { data: QueryResponse }) {
   return (
     <div className="rounded-card border border-hairline bg-card-solid p-7 pb-6 shadow-floating">
       <div className="mb-5 flex items-center justify-between">
-        <ConfidenceBadge tier={data.confidence_tier} verified={data.sql_verified} />
+        {/* confidence_tier is omitted on a Prompt Shield block: no tier was
+            ever computed. Guarded at the CALL SITE rather than by widening
+            ConfidenceBadge, whose TIER_STYLES lookup would return undefined
+            and crash on `s.bg`. Its contract -- a real tier or nothing -- is
+            correct and stays intact. (This branch is unreachable in practice:
+            the blocked case returns above.) */}
+        {data.confidence_tier && (
+          <ConfidenceBadge tier={data.confidence_tier} verified={data.sql_verified} />
+        )}
         <span className="font-mono text-[10.5px] text-text-muted">
           {data.path ?? "unknown"}
         </span>
