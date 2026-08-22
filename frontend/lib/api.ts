@@ -63,7 +63,12 @@ export interface QueryResponse {
 
   response_text: string | null;
   confidence_score?: number;
-  confidence_tier: "high" | "medium" | "low";
+  // OPTIONAL because the backend now OMITS it on a Prompt Shield block.
+  // graph.py routes a block straight to audit_writer, so confidence_node never
+  // runs and no tier is ever computed; the key is absent rather than carrying
+  // the default "low", which was indistinguishable from a measured low.
+  // Absent means NOT SCORED. It does not mean low.
+  confidence_tier?: "high" | "medium" | "low";
   crag_triggered?: boolean;
   crag_count?: number;
 
