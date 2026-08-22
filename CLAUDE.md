@@ -11,12 +11,15 @@ blueprint), `docs/RUNBOOK.md` (stack startup, script invocation, quota procedure
 `docs/audit/repo_audit_20260811.md` (13 findings ranked by blast radius, F1–F13 —
 referenced by number throughout this file and in the test suite).
 
-**Audit progress.** Closed: F1, F2, F8, F11, F12, F13. Open, in order: **F3** (unit scale detection — the blocker for arbitrary documents), **F14**
-(multi-entity queries — `RouterResponse.company` is single-valued, so a two-issuer
-query either nulls it or collapses to one issuer and asserts the other is absent from
-the corpus; observed live returning "no company named Eternal" when ETERNAL is 732 rows.
-Same class as F3: a confident wrong claim, not a visible failure. Fix shape is
-`companies: list[str]` plus an IN-style filter, not a patch to the single field),
+**Audit progress.** Closed: F1, F2, F8, F11, F12, F13, F14. Open, in order: **F3** (unit scale
+detection — the blocker for arbitrary documents),
+**F14 closed 2026-08-22**: `RouterResponse.companies: list[str]`, required with no
+default, and `_build_filter` emits `MatchAny`. SHIPPED WITHOUT A ROUTER PROBE on
+instruction — it is a schema change, the schema is model input on both providers
+(Gemini +32 bytes and the node loses `nullable`; Groq −39), and the classifier is
+therefore UNMEASURED across it. Treat any later route difference as possibly
+originating here. Q051's preservation is argued from code paths and unit tests, not
+from a run.
 F7 (split chunk `financial_type='unknown'` into narrative vs undetermined), F4 + F9
 (metadata validation and the gate scan window, designed together). Recorded but not
 tasks: F5, F6.
