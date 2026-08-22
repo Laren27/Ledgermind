@@ -19,7 +19,18 @@ logger = logging.getLogger(__name__)
 
 
 class RouterResponse(BaseModel):
-    company: Optional[str]
+    # F14: a LIST, REQUIRED, no default. `company: Optional[str]` held one
+    # issuer, so a two-issuer query nulled it -- and null already meant "no
+    # issuer named", so "Eternal or Paytm" was indistinguishable from "no
+    # company". Measured 2026-08-21 on the groq fallback: the same query
+    # collapsed to PAYTM and the answer stated the documents contain no
+    # company named Eternal. ETERNAL is 732 rows.
+    #
+    # REQUIRED WITH NO DEFAULT, deliberately. The empty list is the
+    # no-issuer case and the model must emit it explicitly; a default would
+    # let an omission and a genuine "no issuer" produce the same value,
+    # which is the exact overloading this field exists to remove.
+    companies: list[str]
     # F2: the raw issuer name AS SEEN, independent of resolvability. `company`
     # is normalise-or-null, so when the model saw a company it could not
     # normalise it had nowhere to say so and returned null -- measured
@@ -62,10 +73,12 @@ Given a user query, extract entities and classify the query path.
 
 ## ENTITY EXTRACTION
 
-company:
-  - Identify the Indian company being asked about
-  - Normalise to canonical ticker from this list: {_KNOWN_TICKERS}
-  - If no company mentioned, return null
+companies:
+  - Every Indian company whose OWN results the query asks about
+  - Normalise each to a canonical ticker from this list: {_KNOWN_TICKERS}
+  - Return a JSON array. One company -> one element. Two companies -> both,
+    in the order named. No company -> []
+  - NEVER null. The empty array is how "no company" is expressed
 
 fiscal_year:
   - Indian fiscal year runs April to March
@@ -146,24 +159,39 @@ def _classify_query(query: str) -> dict:
             cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.DOTALL).strip()
             result = json.loads(cleaned)
 
-        company_raw = result.get("company")
-        company = None
-        company_unresolved = None
-        if company_raw and company_raw.lower() != "null":
-            resolved = resolve_ticker(company_raw)
-            if resolved in _KNOWN_TICKERS:
-                company = resolved
+        # F14: resolve EVERY named issuer, preserving order and dropping
+        # duplicates. A str here would be a model that ignored the array
+        # instruction; wrapping it is cheaper than a parse failure and keeps
+        # the single-issuer path identical to the pre-F14 behaviour.
+        companies_raw = result.get("companies") or []
+        if isinstance(companies_raw, str):
+            companies_raw = [companies_raw]
+        companies = []
+        unresolved_names = []
+        for _raw in companies_raw:
+            if _raw is None or str(_raw).strip() == "" or str(_raw).lower() == "null":
+                continue
+            _resolved = resolve_ticker(str(_raw))
+            if _resolved in _KNOWN_TICKERS:
+                if _resolved not in companies:
+                    companies.append(_resolved)
             else:
-                # F2: resolve_ticker NEVER returns None -- it uppercases its
-                # input -- so this gate, not resolve_ticker, is where an
-                # unknown company is actually detected. Recording it keeps
-                # "named a company we do not hold" distinguishable from "named
-                # no company", which company=None alone cannot express.
-                company_unresolved = company_raw
-                logger.warning(
-                    "Router named an unknown company: %r (resolved: %r) -- "
-                    "not in _KNOWN_TICKERS", company_raw, resolved,
-                )
+                unresolved_names.append(str(_raw))
+
+        company_unresolved = None
+        # REFUSE ONLY WHEN NOTHING RESOLVED. For one issuer this is exactly
+        # the pre-F14 rule: a single unresolvable name refuses, as Reliance
+        # did. For several it is strictly weaker on purpose -- one unknown
+        # name alongside a known one must not refuse the known one.
+        # F2: resolve_ticker NEVER returns None -- it uppercases its input --
+        # so this gate, not resolve_ticker, is where an unknown company is
+        # actually detected.
+        if unresolved_names and not companies:
+            company_unresolved = ", ".join(unresolved_names)
+            logger.warning(
+                "Router named only unknown companies: %r -- "
+                "none in _KNOWN_TICKERS", unresolved_names,
+            )
 
         company_mentioned = result.get("company_mentioned")
         if company_mentioned and company_mentioned.lower() == "null":
@@ -177,9 +205,15 @@ def _classify_query(query: str) -> dict:
                 "Router named only unknown issuers: %r -- refusing",
                 company_mentioned,
             )
-        elif company is None and len(_res) > 1:
+        elif len(companies) > 1:
+            # NOT "unfiltered" any more. Pre-F14 a two-issuer query nulled
+            # `company` and _build_filter dropped the condition entirely;
+            # now every named issuer is carried and the filter is an any-of
+            # over all of them. Saying "unfiltered" here would be a false
+            # log the moment this change landed.
             logger.info(
-                "Multi-entity query (%s) -- proceeding unfiltered", _res,
+                "Multi-entity query %s -- filtering to all named issuers",
+                companies,
             )
 
         path = result.get("path", "semantic").lower()
@@ -205,8 +239,11 @@ def _classify_query(query: str) -> dict:
             financial_type = "consolidated"
 
         return {
-            "company": company,
-            "ticker": company,
+            "companies": companies,
+            # Written and never read on the query path; single-valued and
+            # derived rather than made plural, because a dead field with a
+            # plural type implies a consumer that does not exist.
+            "ticker": companies[0] if len(companies) == 1 else None,
             "company_unresolved": company_unresolved,
             "company_mentioned": company_mentioned,
             "fiscal_year": fiscal_year,
@@ -227,7 +264,7 @@ def _classify_query(query: str) -> dict:
     # an error-masked-as-semantic route is indistinguishable otherwise, which
     # is the defect class that cost two sessions of investigation.
     return {
-        "company": None,
+        "companies": [],
         "ticker": None,
         "company_unresolved": None,
         "company_mentioned": None,
@@ -242,12 +279,15 @@ def _classify_query(query: str) -> dict:
 
 def _build_resolved_query(
     original_query: str,
-    company: Optional[str],
+    companies: list[str],
     fiscal_year: Optional[str],
     quarter: Optional[str],
     financial_type: str,
 ) -> str:
-    prefix_parts = [p for p in [company, fiscal_year, quarter, financial_type] if p]
+    # Every named issuer joins the BM25 prefix. One issuer produces exactly
+    # the pre-F14 string; none produces no prefix, also as before. Two now
+    # contribute both tickers where previously the null contributed nothing.
+    prefix_parts = [p for p in [*companies, fiscal_year, quarter, financial_type] if p]
     return f"{' '.join(prefix_parts)} {original_query}" if prefix_parts else original_query
 
 
@@ -260,7 +300,7 @@ def router_node(state: QueryState) -> QueryState:
     # 1. Always run Gemini to preserve entity & period extraction
     result = _classify_query(state["query"])
 
-    state["company"]        = result["company"]
+    state["companies"]      = result["companies"]
     state["ticker"]         = result["ticker"]
     state["fiscal_year"]    = result["fiscal_year"]
     state["quarter"]        = result["quarter"]
@@ -269,7 +309,7 @@ def router_node(state: QueryState) -> QueryState:
         record_llm_call(state, result["llm_result"])
     state["resolved_query"] = _build_resolved_query(
         original_query=state["query"],
-        company=result["company"],
+        companies=result["companies"],
         fiscal_year=result["fiscal_year"],
         quarter=result["quarter"],
         financial_type=result["financial_type"],
