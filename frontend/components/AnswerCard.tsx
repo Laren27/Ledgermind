@@ -57,9 +57,17 @@ export default function AnswerCard({ data }: { data: QueryResponse }) {
         </span>
       </div>
 
-      {(data.company || data.fiscal_year) && (
+      {/* F14: `companies` is a list and `[]` is legal -- it means no issuer
+          resolved and retrieval ran unfiltered, so the segment is omitted
+          rather than filled with a stand-in. */}
+      {(data.companies.length > 0 || data.fiscal_year) && (
         <div className="mb-3 text-xs text-text-secondary">
-          {[data.company, data.fiscal_year, data.quarter, data.financial_type]
+          {[
+            data.companies.length > 0 ? data.companies.join(" / ") : null,
+            data.fiscal_year,
+            data.quarter,
+            data.financial_type,
+          ]
             .filter(Boolean)
             .join(" · ")}
         </div>
