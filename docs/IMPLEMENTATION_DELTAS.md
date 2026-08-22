@@ -160,6 +160,78 @@ raw-excerpt floor, on a single-question run whose actual subject was PQ018.
 Nothing in the eval gate would have caught it — the gate withheld the score
 correctly, but a withheld score reports contamination, not a dead dependency.
 
+#### Packet loss, not DNS 2026-08-21 — and a gate that could not see it
+
+Root cause of a week of provider flap: **intermittent UDP packet loss on a weak
+wifi link** (Intel AX201 negotiating 98 Mbps). NOT a resolver fault. Both
+upstream resolvers are healthy — `dig` against 8.8.8.8 and 1.1.1.1 returned in
+12-88ms, six for six.
+
+**THE 4s/5s/9s/18s "RESOLVE TIMES" WERE NEVER RESOLUTION TIMES.** They are the
+stub resolver's retry schedule after a query was dropped: the default 5s x 2
+attempts, laddering. Reading them as slow DNS pointed a week of investigation
+at the wrong layer. The signature of a dropped packet and the signature of a
+slow server are the same number on a stopwatch, and only the schedule tells
+them apart.
+
+Fixed by SHORTENING THE SCHEDULE so each loss costs 1s and exhaustion becomes
+effectively unreachable:
+- host `/etc/resolv.conf`: `options timeout:1 attempts:5 rotate`, pinned via
+  `generateResolvConf=false` in `/etc/wsl.conf` and made immutable with
+  `chattr +i`. **An edit FAILS under sudo until the flag is cleared** — that is
+  deliberate, and it will look like a broken editor to whoever hits it first.
+- container: `dns_opt` in `docker-compose.yml` (`23b0bcd`). Needs a
+  `restart` to take effect; `--force-recreate` also works but destroys
+  container `/tmp`.
+
+**THE DNS-ONLY GATE WAS INSUFFICIENT, and this is the transferable part.** It
+passed clean at 09:11 — zero failures, worst resolve 0.161s — and a TCP connect
+to `api.cohere.com` was REFUSED nineteen minutes later, dropping PQ020 to the
+local ONNX reranker and withholding that sweep. Both withheld runs passed the
+DNS gate. Name resolution and reachability are different questions, and a gate
+that answers only the first will certify a link that cannot open a socket.
+
+The gate now has a **PART B**: real TCP+TLS connects to `api.cohere.com:443`
+and `generativelanguage.googleapis.com:443`, 6 rounds, 5s timeout, zero
+failures required, run LAST and chained to the launch on exit code. A gate is
+evidence about the moment it ran, so the gap between gate and launch is
+reported in seconds and has been 0 on every run since.
+
+#### Transport-class retry 2026-08-22 — deployed, and never yet executed
+
+`3cae191` (Gemini), `e711e53` (Cohere), `e1ca737` (the `resolution` marker).
+One retry after a fixed 1.0s backoff on transport-class failures, then fall
+back. Not a ladder: a second failure means the condition is not transient.
+Provider-level markers (429/5xx/`resource_exhausted`) are deliberately NOT
+retried — the server is saying something, and the existing server-advised
+`retryDelay` path already covers the case where it asks us to wait.
+
+Motivated by three measured events in one day, each a SINGLE transport failure
+with no retry that immediately switched provider and withheld a whole sweep:
+
+    PQ016  Gemini -> Groq   NameResolutionError [Errno -3]
+    PQ008  Gemini -> Groq   Read timed out (read timeout=20.0)
+    PQ020  Cohere -> ONNX   [Errno 111] Connection refused
+
+Rate limiting was POSITIVELY EXCLUDED, not merely unobserved: zero 429s in any
+log, no `resource_exhausted`, no `retryDelay` in any error, spacing >=45s
+against a 5 RPM ceiling, and failures at scattered positions (16/20 and 8/20)
+with the provider serving normally on both sides.
+
+**DEPLOYED AND NEVER EXECUTED IN PRODUCTION. READ THIS BEFORE CITING IT.**
+Three consecutive clean sweeps followed — Paytm, Titan+transcript, Eternal —
+and every one emitted **zero retry lines, zero fallbacks, and zero
+ERROR/WARNING of any kind**. A 22-poll quota watch over the 43-minute Eternal
+run returned 0 events on every poll.
+
+Those three sweeps are evidence that **the network stabilised**. They are NOT
+evidence that the retry works. No retry has ever fired against a real failure;
+the paths are covered only by offline unit tests driving fake callables
+(`tests/test_transport_retry.py`, 30 assertions / 24 negative controls). The
+post hoc reading — clean sweeps followed the retry, therefore the retry
+produced them — is available to any future reader and is unsupported. The
+network fix in the entry above is the change with a demonstrated effect.
+
 ### §13 — Confidence thresholds are backend-dependent
 Blueprint gives flat cutoffs (HIGH >0.8, LOW <0.5). Reranking runs on two
 backends with incompatible score scales: Cohere Rerank returns 0–1, the local
@@ -2565,8 +2637,33 @@ never failed, and were deliberately NOT touched. `diversified` sits on TQ008,
 whose route diagnosis is open; editing its keywords would confound two
 questions that must stay separate.
 
-**Baseline is unchanged at 87/91.** The fix is landed and unconfirmed at dataset
-level. A one-question run is not a baseline, and this entry does not claim one.
+**Baseline was unchanged at 87/91 when this entry was written.** The fix was
+landed and unconfirmed at dataset level; a one-question run is not a baseline,
+and the entry did not claim one.
+
+**CONFIRMED AT DATASET LEVEL 2026-08-22.** PQ018 passes in a full Paytm sweep
+on clean gates, all four keyword groups verified independently against the
+untruncated `audit_log.response_text` rather than the runner's score reason.
+
+**THE ACRONYM RATE, MEASURED — ~1 GENERATION IN 4.** Across FOUR dataset-level
+runs of the same question, same model `gemini-3.1-flash-lite`, temperature 0:
+
+    03:2x run   'Paytm Payments Bank Limited (PPBL)'   ppbl x?  both forms
+    09:1x run   'Paytm Payments Bank Limited (PPBL)'   ppbl x3  both forms
+    17:29 run   'Paytm Payments Bank Limited'          ppbl x0  EXPANSION ONLY
+    2026-08-22  'Paytm Payments Bank Limited (PPBL)'   ppbl x3  both forms
+
+One run in four wrote the expansion with the acronym ABSENT. In the other
+three a bare `ppbl` keyword would have matched, so the widened alternative was
+redundant; in the 17:29 run it is the only thing that carried the assertion.
+**The widened keyword is load-bearing in roughly one generation in four.**
+
+That is a measured frequency, not an anecdote, and it is the sharpest instance
+of the phrasing-instability rule this document holds: temperature 0 does not
+make a model's phrasing stable, and a keyword pinned to one surface form is a
+coin-flip against a distribution nobody has sampled. Two observations of a
+model's phrasing were never enough to justify the original single form — the
+rate above is what enough looks like.
 
 #### synthesis_unavailable 2026-08-19 — an LLM outage was being scored as an answer
 
@@ -2728,6 +2825,85 @@ row, so the two moves are recorded as WHICH route changed and not WHY. The
 prose that showed the drift for TQ008 last time — the parent's route reason
 versus HEAD's — has no counterpart here. Anyone treating this as a mechanism
 rather than an observation needs a probe that records the field first.
+
+#### Audit-writer truncation 2026-08-21 — 36.4% of audit rows were silent prefixes
+
+`audit_writer.py` sliced `(state.get("response_text") or "")[:500]` and bound
+the result to an unbounded column. Measured across the whole table: **1516 of
+4168 rows (36.4%)** were truncated prefixes carrying no marker that anything
+was cut.
+
+**IT IS A WALL, NOT A TAIL.** 1516 rows sit at exactly 500; **zero** rows fall
+between 490 and 499; the longest untruncated value is 486. A natural length
+distribution does not produce an empty 13-character gap followed by a spike.
+
+**NOT A SCHEMA LIMIT.** `response_text` is `TEXT` with no cap in `sql/init.sql`
+and `character_maximum_length` NULL in the live schema, and `query_text` and
+`sql_executed` on the SAME parameter tuple always bound whole. The database
+would have accepted the full text throughout; the writer never offered it.
+
+**THE SHAPE IS THE FINDING, and it is worse than the percentage.** Post-fix
+runs measure a consistent ~30% over 500 — 7/20, 6/20, 6/15, 17/55 — and the
+distribution is BIMODAL by path:
+
+    quantitative   48-358 chars     (median ~70)
+    blocked        397-410 chars
+    semantic       719-1611 chars   (median ~1226)
+    cross          990-1611 chars
+
+Every over-500 row is semantic or cross. Truncation therefore destroyed the
+REASONING-BEARING answers and left the numeric ones untouched — the class of
+answer whose keywords, citations and argument live past character 500 is
+exactly the class that was cut. PQ018 is the worked example: at 1550-1648 chars
+its `190` and `optionally convertible debentures` keywords sit around character
+600-650 and were unverifiable from any stored artifact.
+
+**THE 1516 ROWS ARE UNRECOVERABLE.** The discarded characters were never sent
+to the database. Fixed in `5bff364`, which also logs the character length at
+INFO pre-write — before that, nothing had ever recorded the true distribution,
+so the observed maximum was an artifact of the cap that hid it.
+
+#### Sweep 2026-08-22 — 90/91 fully measured at e1ca737, on clean gates
+
+Every dataset re-run at HEAD `e1ca737` with single provider
+`gemini-3.1-flash-lite`, single reranker `cohere`, and **zero excluded rows** in
+every arm. No run emitted a SCORE WITHHELD block.
+
+    Eternal      55/55    providers {gemini: 48} (+7 blocked)  rerank {cohere: 17}
+    Titan        15/15    providers {gemini: 13} (+2 blocked)  rerank {cohere: 6}
+    transcript    1/1     providers {gemini: 1}                rerank {cohere: 1}
+    Paytm        19/20    providers {gemini: 18} (+2 blocked)  rerank {cohere: 6}
+
+`PQ012` is the only failure across all 91: `expected_path=semantic`, routed
+`cross`. Known deliberate, `expected_path` only, and it routed `cross` in BOTH
+arms of the two-arm probe, so it predates the schema field.
+
+**PROVENANCE — THE SYSTEM DID NOT GET THREE QUESTIONS BETTER.** 87/91 -> 90/91
+is three questions, and only ONE of them is the system improving:
+
+- **PQ018 — a real fix, confirmed.** The keyword widening of 2026-08-18 now
+  holds at dataset level.
+- **TQ008 — an EXPECTATION correction.** The golden said `semantic`; the
+  measured behaviour is `cross`.
+- **ETQ001 — an EXPECTATION correction.** The golden said `cross`; the measured
+  behaviour is `semantic`.
+
+Two of the three are our DESCRIPTION becoming accurate, not our system becoming
+correct. A reader who takes 90/91 as three questions' worth of improvement has
+been misled by this document, which is why the split is stated before the
+number is used anywhere.
+
+**BOTH CORRECTIONS CONFIRMED ON FRESH INDEPENDENT RUNS.** TQ008 routed `cross`
+and ETQ001 routed `semantic`, both on gemini, both on clean gates, in sweeps
+that had nothing to do with the two-arm probe that produced the corrections.
+That matters because the corrections were made from a probe whose Arm A was
+contaminated: it rules out the reading that an expectation was fitted to a
+noisy observation. Neither question routed against its corrected expectation.
+
+Q051 also read clean on this baseline — `path=quantitative`, `sql_verified`,
+confidence 1.0, faster entity ETERNAL, yoy 168.56% vs 22.28%, with both issuers
+carried through `entity_a`/`entity_b`. That is the last reading before F14
+changes `RouterResponse.company` to a list.
 
 #### `eval_runner --out` overwrites across datasets in a multi-dataset sweep
 
@@ -3590,6 +3766,51 @@ until the INSERT, so an expensive parse precedes a cheap validation. Loud and
 pre-commit, so acceptable — recorded, not queued.
 
 
+
+### `expected_confidence_tier` is carried in golden rows and asserted by nobody
+
+Observed 2026-08-22, recorded and NOT scheduled.
+
+TQ008 carries `expected_confidence_tier: "high"`. It served `tier=medium` and
+**passed**, because the `semantic_business` scorer requires
+`confidence_tier != "low"` plus keyword presence — not an exact tier match. The
+field is read by no scorer on that path.
+
+**A FIELD NOBODY CHECKS IS INDISTINGUISHABLE FROM ONE THAT IS WRONG.** It is
+also indistinguishable from one that is right, which is the harm: it reads as
+an assertion in every golden row that carries it, and a future reader tuning
+confidence against these values would be tuning against a number the suite has
+never enforced. Same class as the `segments_to_skip` guard that never fired and
+the `detect_sections` docstring that described behaviour the code did not have
+— see the comment-vs-behaviour entry below.
+
+Not a defect in any answer, and no question's pass/fail changes today. Left
+alone deliberately: deciding whether the field should be enforced, dropped, or
+scoped to particular categories is a golden-dataset decision, and those need
+explicit approval.
+
+### The daily LLM call count is unrecoverable
+
+Observed 2026-08-22 while trying to establish remaining quota against the free
+tier's 500/day. It cannot be established from anything this system stores.
+
+- **`audit_log` writes one row per QUERY, not per CALL.** A semantic question
+  makes a router call and a synthesis call; both collapse into a single row
+  with one `llm_provider`. The row count is a lower bound and nothing more.
+- **`router_probe.py` bypasses the audit writer entirely.** It calls
+  `_classify_query` directly, so its 182 calls on 2026-08-21 appear nowhere in
+  `audit_log`.
+- **No per-call counter exists anywhere** — not in `client.py`, not in the
+  state, not in any table.
+
+So on the heaviest day recorded here the true total is bounded below by 61
+audit rows plus 182 probe calls, and is otherwise unknown. **Do not estimate a
+remaining budget from `audit_log`; the number will be low by roughly the
+synthesis half of every semantic question.** The working procedure while this
+stands is empirical rather than predictive: watch for a wall (429,
+`resource_exhausted`, `retryDelay`, a `[class=provider]` fallback) and stop on
+the third event in one run, rather than forecasting exhaustion from a count
+that does not exist.
 
 ### F3 — `unit` is hardcoded to crore, and the number cleaner is calibrated to crore too
 
