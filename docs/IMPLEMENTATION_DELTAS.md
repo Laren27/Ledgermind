@@ -3611,6 +3611,48 @@ error one level up. Re-measure Q051 and any comparison question after.
 **Do not** build a mentioned-vs-omitted distinction alongside it: no golden question
 carries no company, and CLAUDE.md records that constraint.
 
+**CLOSED 2026-08-22.** Finding text above is preserved as written; this note records the
+resolution, not a revision. `RouterResponse.companies: list[str]`, REQUIRED with no
+default, and `_build_filter` emits `MatchAny(any=[...])`. Commits `1c23b63` (state),
+`0a24aa1` (router + prompt), `8c93fdf` (filter), `c20c9bc`, `a9ece65`, `39a18d4`,
+`6764d03`, `51191f6`, `214f092`. Suite 212 → 222.
+
+**SHIPPED WITHOUT A ROUTER PROBE, deliberately and on instruction.** This is a schema
+change, and the schema is model input on both providers — measured offline with the
+transformer, no model call: Gemini `responseSchema` 882 → 914 bytes (+32), the node
+going from `{"nullable":true,"type":"STRING"}` to
+`{"type":"ARRAY","items":{"type":"STRING"}}`; Groq's system-message schema 1243 → 1204
+(−39) as the anyOf/null union collapses. The prompt's `company:` block was also replaced
+in place. By the rule recorded in section D under *The response schema is part of the
+prompt*, a change of this shape calls for a before/after on outputs it was not intended
+to touch. **That was not run.** The two-arm probe of 2026-08-21 found a single added
+field moved two routes; this change is larger. Anyone reading a later route difference
+should treat this commit as an unmeasured input change and not assume the classifier is
+stable across it.
+
+**THE GEMINI NODE LOSES `nullable`**, which is the load-bearing detail. Under the list
+type there is no null to return, so `[]` becomes the model's ONLY way to express "no
+issuer" — making the empty branch in `_build_filter` MORE reachable than the null it
+replaced, not less. That is why `28206c8` landed the explicit
+`is None or len(...) == 0` guard and its WARNING one commit ahead of this change. The
+guard needed no logic edit here: the same test reads correctly for a list, and only the
+identifier moved with the parameter rename.
+
+**Q051 IS PRESERVED BY CONSTRUCTION, not by luck.** It passed 2026-08-22 at
+`path=quantitative`, ETERNAL faster, 168.56 vs 22.28, `sql_verified=true`, confidence
+1.0 — and it passed BECAUSE `company` was null, the search ran unfiltered, and the DSL
+carried both issuers through `entity`/`comparison_entity`. Both quantitative decision
+sites now key on `len(companies) == 1`, so a two-issuer query renders `entity: unknown`
+in the DSL prompt and takes no override — byte-identical to what the null produced. The
+SQL was deliberately NOT converted to an IN form: that path reads `dsl["entity"]`, never
+the query's issuer set, and `comparison_entity` already executes as two single-entity
+queries. Five tests pin the non-refusal and the identical one-issuer / no-issuer prefix
+strings.
+
+**Not verified by any run.** Every claim above about Q051 is about the code paths it
+takes, checked by unit tests over pure functions. The last live reading of Q051 predates
+this change.
+
 ### A check satisfied by absence — three instances, one cause
 
 Three separate gates in this project have reported success while measuring
