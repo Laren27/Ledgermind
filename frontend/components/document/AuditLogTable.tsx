@@ -6,7 +6,11 @@ export interface AuditLogEntry {
   pageNumber: number;
   query: string;
   path: string | null;
-  confidenceTier: string;
+  // OPTIONAL: the backend OMITS confidence_tier on a Prompt Shield block,
+  // because graph.py sends a block straight to audit_writer and
+  // confidence_node never runs. Absent means NOT SCORED -- it does not mean
+  // low, and it must not render as a tier.
+  confidenceTier?: string;
   // Admin-only field. Absent for viewer/analyst per role_filtered_response,
   // so this must render as "not available", never as a bare unit.
   latencyMs?: number | null;
@@ -73,7 +77,11 @@ export function AuditLogTable({ entries, onJump }: { entries: AuditLogEntry[]; o
                     {e.path ?? "—"}
                   </td>
                   <td className="py-3.5 pr-4 uppercase tracking-wider text-[11px]" style={{ color: e.confidenceTier === "high" ? "var(--color-teal-500, #2E6B4A)" : "var(--ink-metadata, #8B8378)" }}>
-                    {e.confidenceTier}
+                    {/* Same em-dash idiom as the admin-only Latency column
+                        below: a field that is not available reads as absent,
+                        never as a value. A bare {undefined} renders an empty
+                        cell, which looks like a rendering fault. */}
+                    {e.confidenceTier ?? "—"}
                   </td>
                   <td className="py-3.5 text-right tabular-nums font-medium" style={{ color: "var(--ink-secondary, #5F574D)" }}>
                     {e.latencyMs != null ? `${e.latencyMs}ms` : "—"}
