@@ -213,7 +213,38 @@ def _build_filter(
         FieldCondition(key="is_latest", match=MatchValue(value=is_latest)),
     ]
 
-    if company:
+    # EXPLICIT, not truthiness -- and behaviour-identical to the `if company:`
+    # this replaces. For Optional[str] the falsy set is exactly {None, ""}, so
+    # `is None or len(...) == 0` takes the same branch on every reachable
+    # value. Nothing about WHICH branch runs has changed; what changed is that
+    # the branch is now named and recorded.
+    #
+    # WHY NOW, ahead of F14. That change makes this field `companies:
+    # list[str]`, and `[]` is falsy too -- it would have fallen into the same
+    # silent branch. Worse, the Gemini schema node loses `nullable` under a
+    # list type (measured 2026-08-20: {"type":"ARRAY","items":{"type":"STRING"}}
+    # with no nullable flag), so `[]` becomes the model's ONLY way to say "no
+    # issuer" -- making this branch MORE reachable than the null it replaces.
+    # `len(...) == 0` already reads correctly for a list, so the guard does not
+    # need revisiting when the type changes underneath it.
+    #
+    # DETECT AND REPORT. This deliberately does NOT refuse. Q051 ("Who grew
+    # revenue faster in FY26, Eternal or Paytm?") passes BECAUSE the search
+    # runs unfiltered here while the DSL carries both issuers through
+    # entity/comparison_entity -- measured 2026-08-22: path=quantitative,
+    # ETERNAL faster, 168.56 vs 22.28, sql_verified=true, confidence 1.0.
+    # Refusing on empty would refuse a passing golden question.
+    if company is None or len(company) == 0:
+        # Single line: Render truncates multi-line output. tenant_id is the
+        # only identifier in scope at this layer -- _build_filter receives no
+        # request_id or query, and widening its signature to carry one is a
+        # change to every caller rather than to this guard.
+        logger.warning(
+            "UNFILTERED WHOLE-TENANT SEARCH | no company condition applied | "
+            "tenant_id=%s company=%r fiscal_year=%r quarter=%r financial_type=%r",
+            tenant_id, company, fiscal_year, quarter, financial_type,
+        )
+    else:
         must_conditions.append(
             FieldCondition(key="company", match=MatchValue(value=company))
         )

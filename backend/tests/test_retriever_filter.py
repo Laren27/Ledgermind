@@ -13,6 +13,8 @@ are never touched by these tests.
 The filter's fail-open behaviour is audit finding F2. Those assertions record
 what the code does today.
 """
+import logging
+
 import pytest
 
 from qdrant_client.models import FieldCondition, Filter
@@ -98,9 +100,14 @@ class TestFullySpecified:
 
 class TestFalsyArgumentsSkipTheFilter:
     """
-    documents F2 — company, fiscal_year and financial_type are guarded by bare
-    truthiness (retriever.py:174, 179, 189), so None AND empty string both mean
-    "do not filter on this at all" rather than "match nothing".
+    documents F2 — fiscal_year and financial_type are guarded by bare
+    truthiness, so None AND empty string both mean "do not filter on this at
+    all" rather than "match nothing".
+
+    COMPANY IS NO LONGER BARE TRUTHINESS as of 2026-08-22: it is an explicit
+    `is None or len(...) == 0` that also emits a WARNING. The BEHAVIOUR below
+    is unchanged and these assertions still hold — see
+    TestCompanyOmissionIsExplicitAndLogged for what changed.
 
     Combined with the router's all-null fallback (router.py:151-160, returned
     when both LLM providers fail), a routing failure produces an unfiltered
@@ -156,3 +163,92 @@ class TestQuarterUsesAnIsNoneGuard:
         """
         built = _build_filter(tenant_id="t", quarter="")
         assert _conditions_by_key(built)["quarter"] == ""
+
+
+# ---------------------------------------------------------------------------
+# The company omission is now explicit and recorded
+# ---------------------------------------------------------------------------
+
+class TestCompanyOmissionIsExplicitAndLogged:
+    """
+    F2's mechanism, made legible 2026-08-22.
+
+    `_build_filter` used to gate the company condition on bare truthiness, so
+    an unfiltered whole-tenant search was a falsy branch nobody could see. The
+    test above still asserts the BEHAVIOUR is unchanged — None and "" drop the
+    condition, exactly as before. What is new is that the branch is named
+    (`company is None or len(company) == 0`) and emits a WARNING.
+
+    Landed ahead of F14 deliberately. That change makes the field
+    `companies: list[str]`, and `[]` is falsy too, so it would have taken the
+    same silent branch — and because the Gemini schema node loses `nullable`
+    under a list type, `[]` becomes the model's only way to express "no
+    issuer", making the branch more reachable than the null it replaces.
+
+    It does NOT refuse, and must not start to: Q051 passes today precisely
+    because the search runs unfiltered here while the DSL carries both issuers.
+    """
+
+    def test_present_company_still_produces_the_condition(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="app.engines.retriever"):
+            built = _build_filter(tenant_id="t", company="ETERNAL")
+        assert _conditions_by_key(built)["company"] == "ETERNAL"
+        assert "UNFILTERED WHOLE-TENANT SEARCH" not in caplog.text
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert "company" not in _conditions_by_key(built)
+
+    @pytest.mark.parametrize("empty", [None, ""])
+    def test_absent_company_drops_the_condition_and_warns(self, caplog, empty):
+        with caplog.at_level(logging.WARNING, logger="app.engines.retriever"):
+            built = _build_filter(tenant_id="tenant-42", company=empty)
+        assert "company" not in _conditions_by_key(built)
+        assert "UNFILTERED WHOLE-TENANT SEARCH" in caplog.text
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert "UNFILTERED WHOLE-TENANT SEARCH" not in caplog.text
+
+    def test_the_warning_names_the_tenant(self, caplog):
+        """
+        tenant_id is the only identifier in scope at this layer — _build_filter
+        receives no request_id or query — so it is what makes a logged
+        unfiltered search attributable at all.
+        """
+        with caplog.at_level(logging.WARNING, logger="app.engines.retriever"):
+            _build_filter(tenant_id="tenant-42", company=None)
+        assert "tenant_id=tenant-42" in caplog.text
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert "tenant_id=some-other-tenant" in caplog.text
+
+    def test_the_warning_is_a_single_line(self):
+        """Render truncates multi-line output, so a wrapped record loses its tail."""
+        record = logging.LogRecord(
+            "app.engines.retriever", logging.WARNING, __file__, 0,
+            "UNFILTERED WHOLE-TENANT SEARCH | no company condition applied | "
+            "tenant_id=%s company=%r fiscal_year=%r quarter=%r financial_type=%r",
+            ("t", None, None, None, None), None,
+        )
+        assert "\n" not in record.getMessage()
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert "\n" in record.getMessage()
+
+    def test_empty_list_takes_the_same_branch_as_none(self, caplog):
+        """
+        FORWARD COMPAT, asserted now so F14 cannot land it silently. `[]` is the
+        shape `companies: list[str]` will produce for "no issuer"; it must drop
+        the condition and warn, exactly as None does — not append a condition
+        matching an empty list.
+        """
+        with caplog.at_level(logging.WARNING, logger="app.engines.retriever"):
+            built = _build_filter(tenant_id="t", company=[])
+        assert "company" not in _conditions_by_key(built)
+        assert "UNFILTERED WHOLE-TENANT SEARCH" in caplog.text
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert "company" in _conditions_by_key(built)
+
+    def test_no_refusal_is_raised_on_the_empty_path(self):
+        """
+        Detect and report only. Q051 passes BECAUSE this path runs unfiltered;
+        a refusal here would refuse a passing golden question.
+        """
+        assert isinstance(_build_filter(tenant_id="t", company=None), Filter)
+        with pytest.raises(AssertionError):          # NEGATIVE CONTROL
+            assert _build_filter(tenant_id="t", company=None) is None
