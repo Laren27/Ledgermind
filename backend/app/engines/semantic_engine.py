@@ -209,7 +209,7 @@ def _build_citations(chunks: List[ChunkResult]) -> List[Citation]:
 def _broaden_retrieval(
     query: str,
     tenant_id: str,
-    company: Optional[str],
+    companies: list,
     fiscal_year: Optional[str],
     quarter: Optional[str],
     financial_type: str,
@@ -242,7 +242,7 @@ def _broaden_retrieval(
         return retrieve_and_rerank(
             query=query,
             tenant_id=tenant_id,
-            company=company,
+            companies=companies,
             fiscal_year=fiscal_year,
             quarter=None,           # drop quarter
             financial_type=financial_type,
@@ -255,7 +255,7 @@ def _broaden_retrieval(
         return retrieve_and_rerank(
             query=query,
             tenant_id=tenant_id,
-            company=company,
+            companies=companies,
             fiscal_year=None,       # drop fiscal_year too
             quarter=None,
             financial_type=financial_type,
@@ -285,21 +285,21 @@ def semantic_engine_node(state: QueryState) -> QueryState:
     # Use resolved_query for retrieval (entity-prefixed, better BM25 signal)
     query = state.get("resolved_query") or state["query"]
     tenant_id = state["tenant_id"]
-    company = state.get("company")
+    companies = state.get("companies") or []
     fiscal_year = state.get("fiscal_year")
     quarter = state.get("quarter")
     financial_type = state.get("financial_type", "consolidated")
 
     logger.info(
-        "SemanticEngine | company=%s fiscal_year=%s quarter=%s financial_type=%s",
-        company, fiscal_year, quarter, financial_type,
+        "SemanticEngine | companies=%s fiscal_year=%s quarter=%s financial_type=%s",
+        companies, fiscal_year, quarter, financial_type,
     )
 
     # ── Initial retrieval ──────────────────────────────────────────────────
     chunks = retrieve_and_rerank(
         query=query,
         tenant_id=tenant_id,
-        company=company,
+        companies=companies,
         fiscal_year=fiscal_year,
         quarter=quarter,
         financial_type=financial_type,
@@ -324,7 +324,7 @@ def semantic_engine_node(state: QueryState) -> QueryState:
         broadened = _broaden_retrieval(
             query=query,
             tenant_id=tenant_id,
-            company=company,
+            companies=companies,
             fiscal_year=fiscal_year,
             quarter=quarter,
             financial_type=financial_type,
