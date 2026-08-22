@@ -1,7 +1,12 @@
 import React from "react";
 
 interface WorkingPaperHeaderProps {
-  company?: string | null;
+  // F14: a LIST, and the three states are genuinely different.
+  //   undefined/null -> no query has run yet (pending sheet)
+  //   []             -> a query ran and resolved NO issuer, so retrieval was
+  //                     UNFILTERED across the tenant
+  //   [a, b, ...]    -> the issuers the router actually resolved
+  companies?: string[] | null;
   fiscalYear?: string | null;
   quarter?: string | null;
   financialType?: string | null;
@@ -11,7 +16,7 @@ interface WorkingPaperHeaderProps {
 }
 
 export function WorkingPaperHeader({
-  company,
+  companies,
   fiscalYear,
   quarter,
   financialType,
@@ -19,8 +24,22 @@ export function WorkingPaperHeader({
   revision = 1,
   preparer = "analyst",
 }: WorkingPaperHeaderProps) {
-  // 💡 Replaced "UNKNOWN ENTITY LIMITED" with "GENERAL CORPUS ARCHIVE" for clean draft state
-  const entityName = company ? `${company.toUpperCase()} LIMITED` : "GENERAL CORPUS ARCHIVE";
+  // The previous fallback stood in for a falsy scalar company. After F14 that
+  // field stopped existing, so the fallback became the label on EVERY working
+  // paper -- a corpus name asserted even for answers that named one issuer.
+  // It is not a safe default: an empty issuer list means the search ran
+  // unfiltered, which is a fact about SCOPE and must read as one, never as the
+  // name of a thing in the archive.
+  const entityName =
+    companies == null
+      ? "NO QUERY EXECUTED"
+      : companies.length === 0
+      ? "NO ISSUER RESOLVED — SEARCH UNFILTERED"
+      : companies.length === 1
+      ? `${companies[0].toUpperCase()} LIMITED`
+      // Plural: no "LIMITED" suffix. It is one legal entity's suffix and
+      // appending it to a set of issuers would be a claim about none of them.
+      : companies.map((c) => c.toUpperCase()).join(" · ");
   const statementType = financialType
     ? `${financialType.charAt(0).toUpperCase() + financialType.slice(1)} Financial Statements`
     : "Consolidated Financial Statements";
