@@ -243,9 +243,20 @@ Guessing the environment has cost time repeatedly. All of the below were verifie
 - psycopg2 adapts Python UUIDs as TEXT. Cast: `ANY(%s::uuid[])` with `[str(i) for i in ids]`.
 - Scripts run as `python -m scripts.X`, not `python scripts/X.py`. `eval_runner` runs
   from the **host**, in `backend/`, with `../golden_dataset/` paths.
-- **pytest suite** (177 tests, pure functions, zero network/DB/LLM, ~2s):
+- **pytest suite** (194 test functions across 12 files, 243 collected after
+  parametrisation; pure functions, zero network/DB/LLM, ~5s):
   `docker compose exec -T -w /app backend env PYTHONPATH=/app python -m pytest tests/ -q`
-  The `-w /app` is load-bearing. Cheap enough to run on every change, unlike
+  **The suite is NOT green and has not been since 2026-08-22.** Measured
+  2026-08-23: **218 passed, 25 errors**. All 25 are `test_eval_helpers.py`
+  erroring at fixture setup — `conftest.py`'s `eval_runner` fixture supplies
+  `sys.argv = ["eval_runner.py", "--model", ...]`, and `0cf7e7c` made
+  `--api-base` required with no default, so the import raises `SystemExit(2)`.
+  One line in the fixture. **Compare against 218/25, not against green**, until
+  it is fixed — see CAVEAT-025.
+  (The old "177 tests" counted an earlier revision of the suite.)
+  The `-w /app` is load-bearing; from Git Bash on Windows prefix the command
+  with `MSYS_NO_PATHCONV=1` or the path is rewritten and exec fails with
+  "Cwd must be an absolute path". Cheap enough to run on every change, unlike
   `regression_check`. Several tests assert **known defects as current behaviour** with
   the audit finding named in the docstring (F1, F2, F7, F9, F12b) — when one starts
   failing, that is the fix landing, and its assertion moves in the same commit.
