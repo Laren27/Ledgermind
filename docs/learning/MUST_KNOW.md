@@ -7,6 +7,13 @@ it does not belong here.
 section. Sections are seeded with their headings and fill in as the course
 proceeds; empty ones are marked *(pending Day N)*.
 
+**Current state, 2026-08-23.** Sections **7, 22, 23, 24, 25 and 26** are filled,
+from Days 38-47. **Sections 1-6 and 8-21 remain pending**, because Days 1-37
+were written in an earlier session that did not carry their `MUST REMEMBER`
+blocks across. That gap is stated rather than hidden - each of those days ends
+with its own `MUST REMEMBER` block, and moving them here is a mechanical pass
+that has not been done.
+
 **What goes here vs. elsewhere:**
 
 | This file | `GLOSSARY.md` | `LEARNING_PROGRESS.md` |
@@ -58,7 +65,37 @@ you *read* the codebase, not just what you know about it.
 
 # 6. Authentication and JWT · *(pending Day 7–8)*
 
-# 7. Authorization and security · *(pending Day 9, 42)*
+# 7. Authorization and security
+
+*Day 9's items land here when that day is worked; below is what Days 41-42
+established.*
+
+- **Three gates on an admin feature, and only two are security.** The sidebar's
+  role check is **usability** - `session.role` comes from `localStorage` and is
+  editable. `require_role` reads a **signature-verified** JWT claim.
+  `role_filtered_response` filters by field and **fails closed** on an unknown
+  role.
+- **The client decides what is SHOWN; the token decides what is SERVED.**
+- **The Prompt Shield is the graph's entry point.** 18 patterns - 11 advice, 7
+  injection - pure regex, no LLM, no network, on every query.
+- **Match the request STRUCTURE, not the word.** *"should I buy"* blocks;
+  *"what did Zomato buy?"* passes.
+- **Compliance blocks explain and show how to rephrase. Injection blocks say
+  nothing** - an attacker gets no feedback signal. CAVEAT-021 is the cost: a
+  false positive is indistinguishable from a real block.
+- **A block costs ZERO LLM calls** and still writes an audit row:
+  `query_path='blocked'`, `llm_provider=NULL`.
+- **Indirect injection via corpus content is UNDEFENDED.** The shield inspects
+  `state["query"]` only.
+- **What bounds an injection is ARCHITECTURE, not the shield.** The model never
+  sees the schema, never writes SQL, never does arithmetic - so it can influence
+  prose and cannot forge a verified figure.
+- **CAVEAT-001 is the highest-priority security item**: the request body can
+  override the JWT's `tenant_id`, and RLS, the vector filter and the audit row
+  then all faithfully enforce the attacker's choice. **Unexploitable only because
+  one tenant is seeded** - a property of the data, not the code.
+- **No rate limiting anywhere**, including `/auth/login`.
+- **Layered defences downstream of one poisoned variable do not compose.**
 
 # 8. PostgreSQL and SQL · *(pending Day 13–16)*
 
@@ -88,15 +125,162 @@ you *read* the codebase, not just what you know about it.
 
 # 21. Financial data · *(pending Day 13, 22, 31)*
 
-# 22. Frontend, React, Next.js · *(pending Day 38–41)*
+# 22. Frontend, React, Next.js
 
-# 23. Docker and deployment · *(pending Day 1, 45)*
+- **`frontend/app/` holds THREE files, so exactly ONE route.** There is no second
+  entry point a component could be mounted from.
+- **ONE page, FIVE views**; `Sidebar` declares four. `upload-history` is a
+  continuation of Intake, not a destination.
+- **`"use client"` is a BOUNDARY, not a per-file label.** Everything imported
+  below one joins the client bundle whether or not it declares the directive.
+  Eleven files carry it; `app/layout.tsx` is the only Server Component.
+- **State or an event handler means a client component.**
+- **THIRTEEN `useState` in `page.tsx`.** State lives at the lowest common
+  ancestor of everything that reads it - `QueryDock`'s input text is not lifted.
+- **`setState` is async.** The value in scope is fixed for the whole render,
+  which is why the trace is collected into a **local array** as well as into
+  state.
+- **`useCallback` preserves FUNCTION IDENTITY** for dependency arrays. Not
+  performance.
+- **NOT `EventSource`**: GET-only, and cannot set `Authorization`.
+- **SSE frames split on a blank line; `frames.pop()` puts the PARTIAL frame
+  back.** Decode with `{stream: true}`, because a chunk boundary can split a
+  multi-byte character.
+- **FOUR error classes - `UnauthorizedError`, `PipelineError`,
+  `RequestFailedError`, `TransportError` - and NONE is retried.** The one
+  retryable case has no class: the stream started and nothing reported a failure.
+- **A retry is a SECOND PIPELINE** - a second LLM spend against 500/day and a
+  second append-only audit row with nothing marking it a retry.
+- **`composeDocumentBody()` is the ONLY path-aware frontend function** (ED-024).
+  Five branches, and **order is semantics**.
+- **Branches 3 and 4 DUCK-TYPE a SQL row** across a language boundary. No type
+  error, no test, if a backend key is renamed.
+- **OMIT rather than substitute - but omission still needs a glyph.** An em-dash,
+  never an empty cell.
+- **`companies: []` is legal** and means retrieval ran **unfiltered**.
+- **The evidence list is rebuilt FROM DATA**; `cleanProseText` strips the model's
+  own `Sources:` block.
+- **The JWT lives in `localStorage`** (CAVEAT-011), and `expiresAt` is computed
+  **client-side** - a convenience, not a control.
+- **`tsc --noEmit` proves types, never reachability.** It validates dead code
+  just as carefully.
 
-# 24. Testing and evaluation · *(pending Day 43)*
+# 23. Docker and deployment
 
-# 25. Observability and debugging · *(pending Day 44)*
+*Day 1's items land here when that day is worked; below is Day 45.*
 
-# 26. Transferable system design · *(pending — accumulates from Day 9 onward)*
+- **512 MB is Render's free tier. Exit 137 = 128 + 9 = SIGKILL = OOM.** No
+  traceback exists.
+- **EIGHT decisions traceable to 512 MB:** fastembed not torch, Cohere primary,
+  `BATCH_SIZE = 8`, offline ingestion, one uvicorn worker, six thread-limit
+  ENVs, no self-hosted LLM, no cache.
+- **SIX thread ENVs**, because four libraries read four different variables with
+  non-uniform precedence, and they size pools from **core count**, not memory.
+- **`--workers 1`**, because a worker is a process and the three models are
+  in-process objects with no sharing.
+- **`environment:` WINS over `env_file:`.** `DATABASE_URL` is overridden at
+  `docker-compose.yml:51`, so the stack reads **local** Postgres.
+- **The two databases differ in document counts (11 vs 9) AND in grants
+  (CAVEAT-028). Always state which one.**
+- **`golden_dataset/` is read-only** - the mount flag that prevented 79 outputs
+  against 3 inputs.
+- **`./backend:/app` is a bind mount**: `docker compose cp` writes into the repo.
+  Container scratch goes in `/tmp`. Check `git status`.
+- **`up -d` returns when the container STARTS, not when uvicorn SERVES.** Poll
+  `/health`, and echo the token length so an empty token fails loudly.
+- **`basicConfig` before any `app.*` import, `force=True`** - and again in
+  `worker.py`, which never imports `main.py`.
+- **Redis is the Celery broker and a `/health` target.** Nothing on the request
+  path uses it, and **there is no Redis in production**.
+- **A TIMEOUT IS THE PRECONDITION FOR A FALLBACK.** A hang throws nothing.
+
+# 24. Testing and evaluation
+
+- **Never run `eval_runner.py` without explicit per-run approval.**
+- **`--delay 25`, not 15.** 5 RPM, 500/day, **two** calls per semantic question.
+- **Largest dataset first, as a gate.** Read `Providers:`, then `Models served:`,
+  then the score. **If either gate is unclean, STOP.**
+- **REPORT, DO NOT INTERPRET.** A withheld score is withheld, not annotated - a
+  tally under a caveat ends up in a README.
+- **91 questions, 4 files, 12 categories.** 11 adversarial (12 per cent).
+- **THREE integrity gates, deliberately SEPARATE**: provider, model, reranker
+  backend. Different faults, different remedies.
+- **Blocked queries are EXCLUDED from the provider gate** - no LLM call is made.
+  The tell was the unknown count matching the adversarial count exactly, in
+  three datasets.
+- **`synthesis_unavailable` is EXCLUDED from numerator AND denominator**, and the
+  IDs are listed: clustered means a defect, scattered means transient.
+- **pytest baseline is 218 passed / 25 errors. NOT GREEN.** CAVEAT-025.
+- **conftest patches `socket` AND `psycopg2.connect` BY NAME** - libpq bypasses
+  Python sockets, and that was **measured**.
+- **Some tests assert KNOWN DEFECTS. Their failure means the fix landed.**
+- **`eval_results/*.json` are NOT baselines.** Print rows, passes, providers,
+  backends and mtime **before** the score. Baselines live in
+  `IMPLEMENTATION_DELTAS.md`, dated.
+- **Quota fails by POSITION. A real defect fails by CATEGORY.**
+- **RAGAS was rejected**: a score is not a decision, and the judge shares the
+  failure modes of the judged.
+- **A keyword a WRONG answer also satisfies is not an assertion.**
+- **`regression_check.py` is zero LLM calls** - after **every** extraction
+  change, not batched. Parse each PDF **once**.
+
+# 25. Observability and debugging
+
+- **ONE audit row per request**, written by the **terminal node of every path**,
+  including blocks and refusals.
+- **`query_path` has a CHECK constraint** - semantic, quantitative, cross,
+  blocked, unknown. A fourth path needs a **migration**.
+- **Audit failure LOGS AND SWALLOWS.** The user already has the answer
+  (CAVEAT-014).
+- **APPEND-ONLY, EXACTLY:** no `DELETE` grant on either database (**enforced**);
+  `UPDATE` **is** granted on both (**convention**). CAVEAT-028.
+- **`NULL` in `llm_provider` is a RECORD**, not missing data - and
+  `eval_runner`'s provider gate depends on it.
+- **`response_text` is bound IN FULL.** It was a 500-char prefix under a variable
+  named for a summary: **1516 of 4168 rows, unmarked.**
+- **"A threshold warning is a cap that has not fired yet."**
+- **`cache_hit_rate_pct` is structurally 0.0 and SHIPS ANYWAY** (D1,
+  CAVEAT-009). Marked in SQL, in CAVEATS, and in `lib/api.ts`. **Not deleted,
+  not rendered.** `tokens_used` is the same (CAVEAT-010).
+- **`refusal_rate_pct` is a PROXY**: `confidence_score < 0.5`, counting every
+  block - and that `0.5` is a **third copy** of `COHERE_HIGH`.
+- **EMPTY candidate set means NETWORK. LOW-SCORING means RETRIEVAL.** Establish
+  which before theorising.
+- **The layer ladder puts the LLM LAST.**
+- **Single-line logs with pgcode.** Render truncates multi-line, and is **UTC**
+  while the shell is IST.
+- **`SET LOCAL`, not `SET`** - transaction-scoped, cannot leak into a pooled
+  connection.
+- **"possible container breakout detected" is a STALE MOUNT NAMESPACE**, not a
+  security event. Confirm with a bare `echo alive` exec.
+
+# 26. Transferable system design
+
+*Accumulates from Day 9 onward. Below is what Days 38-47 added.*
+
+- **Keep FACT, EVIDENCE, INFERENCE and UNKNOWN separate.** The failure mode is
+  not being wrong - it is **category slippage**, an inference written in the
+  grammar of a fact. **The test: what command reproduces this?**
+- **A heading is not a record.** Read to the end of an entry before quoting its
+  title.
+- **A permission claim is checkable in ONE QUERY.**
+- **Live code with no input is more dangerous than code with no caller** - it
+  returns a number, and a number looks like a measurement.
+- **Do not delete evidence of unfinished work.** Mark it at every layer, and do
+  not render it.
+- **A "safe default" is a claim**, and a schema change can turn a correct
+  fallback into a 100-per-cent-firing falsehood without the fallback changing.
+- **A correct measurement can justify a WRONG constant** (the 0.05 citation
+  floor). *Measure before reverting*, not only before shipping.
+- **A documented invariant the code violates is a finding to RECORD**, not a bug
+  to fix - fixing means deciding which side was right, and that is the author's
+  call.
+- **The strongest security property here is a SIDE EFFECT of a correctness
+  decision.** Reducing what a component may *do* shrinks what compromising it is
+  worth.
+- **Some coverage gaps need a DOCUMENT, not a better test** - and manufacturing
+  the missing case would be worse than leaving it open.
+- **A refusal you can only defend is not understood.** Argue both sides.
 
 ---
 
