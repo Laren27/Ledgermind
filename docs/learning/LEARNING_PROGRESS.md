@@ -801,6 +801,37 @@ and say what the substitute would have implied.
 **Check yourself:** what does git history tell you here, and what does it *not*?
 **Still unclear:**
 
+### `"use client"` as a boundary, not a per-file label
+```text
+[ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
+```
+**Status:** NOT STARTED · **Day:** 38
+**Locate:** the eleven files that carry the directive; `EntityComparisonTable.tsx`,
+which does not and still uses `document.createElement`
+**Check yourself:** why can you not classify a file by opening it? What single
+change would break `EntityComparisonTable`?
+**Still unclear:**
+
+### Client session storage, and an expiry the server does not read
+```text
+[ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
+```
+**Status:** NOT STARTED · **Day:** 41
+**Locate:** `lib/auth.ts` — `expiresAt` is computed from `Date.now()`
+**Check yourself:** name two ways it can disagree with the token's own `exp`, and
+say why being wrong is not the same as being a vulnerability here.
+**Still unclear:**
+
+### UI role gating is not a security boundary
+```text
+[ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
+```
+**Status:** NOT STARTED · **Day:** 41
+**Locate:** `Sidebar.tsx`'s `views` array vs `require_role("admin")`
+**Check yourself:** edit `role` in `localStorage` and submit an upload. What
+appears, what happens, and which of the three gates did the work?
+**Still unclear:**
+
 ---
 
 ## I. Security
@@ -855,11 +886,18 @@ still bound the damage?
 What is the pattern actually matching?
 **Still unclear:**
 
-### Append-only audit as a **grant**, not a convention
+### Append-only audit — the half that is a grant, and the half that is a convention
 ```text
 [ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
 ```
 **Status:** NOT STARTED · **Day:** 44
+**Corrected 2026-08-23.** This block was titled *"Append-only audit as a grant,
+**not** a convention"*, which is the claim `SECURITY_MODEL.md:151` makes.
+**Measured on both databases: `audit_log` HAS an `UPDATE` grant.** `DELETE` is
+genuinely absent everywhere — a row cannot disappear — but a row **can be
+rewritten in place**, and nothing does, which is a convention. **CAVEAT-028.**
+**Check yourself:** which half is enforced, which is convention, and what one
+query settles it?
 **Still unclear:**
 
 ---
@@ -922,6 +960,16 @@ stored figures were stale. How?
 [ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
 ```
 **Status:** NOT STARTED · **Day:** 44
+**Still unclear:**
+
+### A metric with no producer, kept rather than deleted
+```text
+[ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
+```
+**Status:** NOT STARTED · **Day:** 44
+**Locate:** `api/metrics.py`'s `cache_hit_rate_pct`; `lib/api.ts`'s `cache_hit`
+**Check yourself:** why is this a *different* problem from dead code, and which
+three layers is it marked at? Name the other two fields in the same situation.
 **Still unclear:**
 
 ### Debugging by layer, backwards from a symptom
@@ -1010,6 +1058,34 @@ would be lost if the comment were deleted?
 [ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
 ```
 **Status:** NOT STARTED · **Day:** 43, 44
+**Still unclear:**
+
+### FACT · EVIDENCE · INFERENCE · UNKNOWN, kept separate
+```text
+[ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
+```
+**Status:** NOT STARTED · **Day:** 40, 47
+**Check yourself:** the failure mode is not being wrong — name it. What is the
+test that tells a FACT from an INFERENCE?
+**Still unclear:**
+
+### Recording a drift rather than fixing it
+```text
+[ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
+```
+**Status:** NOT STARTED · **Day:** 40, 44
+**Locate:** CAVEAT-027, CAVEAT-028
+**Check yourself:** when a document and the code disagree, why is "fix the code"
+not automatically right? Who has to decide, and what does that cost?
+**Still unclear:**
+
+### A guarantee that is enforced vs one that holds by convention
+```text
+[ ] studied  [ ] explain  [ ] trace  [ ] modify  [ ] debug  [ ] revised
+```
+**Status:** NOT STARTED · **Day:** 44, 45, 47
+**Check yourself:** name three of each in this system, and the command that
+settles which is which.
 **Still unclear:**
 
 ---
