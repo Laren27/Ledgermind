@@ -4,6 +4,10 @@
 material lives in [`days/DAY_NN.md`](days/); this file is the plan, the ordering
 argument, and the contract each day is produced under.
 
+**Status: all 47 day files exist** (Days 1–37 written 2026-08-23; Days 38–47
+the same day, in a second session). The plan was not changed to fit them — see
+*Maintaining this file* at the end for what was refined and what was found.
+
 Read [`00_LEARNING_MAP.md`](00_LEARNING_MAP.md) first. Track progress in
 [`LEARNING_PROGRESS.md`](LEARNING_PROGRESS.md).
 
@@ -683,3 +687,22 @@ Refinements so far:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-08-23 | `financial_extractor.py` moved from Phase 6 to Day 31; `entity_resolver.py` split across Days 31 and 36 | The first audit pass left the repo's largest undocumented file unassigned. Its job is registry-anchored record production, so it belongs with the registry, and `entity_resolver` genuinely has two halves used by two different subsystems |
+| 2026-08-23 | **Days 38–47 written. All 47 day files now exist.** No day was split, merged, renumbered or compressed | The plan held. Phases 11–13 were produced against the specification above without needing a change to it |
+| 2026-08-23 | **Day 37 §8 and §13 corrected**: the cross path is *measured* — six `cross_examination` questions, six with `expected_path="cross"`, and a dedicated `score_result` branch | Day 37 quoted `IMPLEMENTATION_DELTAS.md` §C's **heading** and missed the correction beneath it, which reads *"Superseded 2026-08-02 … kept only so the correction has something to attach to."* Found while writing Day 43. Corrected visibly, with the original struck through, because **a heading is not a record** is the lesson |
+| 2026-08-23 | Divergence **D6**'s day is 43; **D1**'s is 44; **D5** and **D4** are cited in 47's roads-not-taken | No change to the register — recorded here so the divergences can be found from the day side |
+
+### What Days 38–47 added that the specification did not anticipate
+
+Four findings, each recorded in the engineering documents rather than only in a
+day file:
+
+| Finding | Where | Day |
+|---|---|---|
+| **CAVEAT-027** — four stated UI invariants the code no longer satisfies: the glass/blur rule is *inverted*; a hardcoded `Generated:` date; a `Source Table:` naming a table that does not exist; `Immutable System Log` over React state | `CAVEATS.md` | 40, 41 |
+| **CAVEAT-028** — `audit_log` is append-only against `DELETE` only (`UPDATE` **is** granted, on both databases), and the two databases disagree about `DELETE` on `documents`/`financials` | `CAVEATS.md` | 44 |
+| **KU-004 narrowed** — `git log -S` established the commit that orphaned the three dead components, and that two of their four siblings were deleted. The *retention* question stays open | `KNOWN_UNKNOWNS.md` | 40 |
+| **The `refusal_rate_pct` threshold is a third copy of `COHERE_HIGH`** | Day 44 §4.8, as an observation with no victim today | 44 |
+
+**None was fixed.** `CODE_DOCUMENTATION_LOG.md` rule 5 — *anything that looks
+wrong gets DOCUMENTED, not fixed* — and every one of them requires either a
+migration or a decision about intent.
