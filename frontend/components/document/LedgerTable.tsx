@@ -1,3 +1,17 @@
+/**
+ * LedgerTable — a three-column accounting table.
+ *
+ * `rule` is not decoration. In a financial statement a SINGLE rule above a row
+ * marks the current period against the prior one, and a DOUBLE rule under a row
+ * marks a total. Accountants read the rules before they read the numbers, which
+ * is why the border weight is a prop rather than a style choice made here.
+ * `double` also bolds the row, for the same reason.
+ *
+ * The component knows nothing about paths, engines or sql_verified: it receives
+ * three column headings and a list of pre-formatted rows. composeDocumentBody()
+ * in app/page.tsx is the only function aware of where they came from (ED-024).
+ */
+
 interface LedgerRow {
   label: string;
   value: string | number;
