@@ -1,3 +1,43 @@
+"""
+app/api/metrics.py
+
+Admin dashboard aggregates over `audit_log`. Read-only; no node, no engine,
+nothing on the query path reaches this module.
+
+WHY IT READS audit_log AND NOT A PURPOSE-BUILT TABLE.
+audit_writer_node already writes one row per request, for EVERY outcome
+including blocks and refusals (see its module docstring). A second store
+would be a second copy of the same facts, which is the failure class this
+project has paid for three times -- three metric registries, two formula
+copies, a writer and its dry-run. The aggregates below are therefore
+projections of the lineage record, not a parallel record.
+
+TENANT SCOPING IS BELT AND BRACES HERE, DELIBERATELY.
+Every statement carries an explicit `WHERE tenant_id = current_setting(...)`
+even though db_transaction() sets `app.tenant_id` and RLS applies regardless.
+Harmless duplication, and it makes each SQL string readable in isolation.
+
+WHAT THESE NUMBERS CAN AND CANNOT BE TRUSTED FOR -- read before quoting one:
+
+  cache_hit_rate_pct  STRUCTURALLY 0.0. See the warning on _SQL_SUMMARY.
+  total_queries       counts a client retry as a separate question; nothing
+                      in audit_log marks a row as a retry (lib/api.ts).
+  avg_latency_ms      includes blocked rows, which cost single-digit ms and
+                      pull the mean down. p95 is the more useful figure.
+  refusal_rate_pct    a PROXY: confidence_score < 0.5. It never reads
+                      `error`, so it counts every Prompt Shield block (score
+                      0.0 by design) and any merely-mediocre answer. And the
+                      0.5 is a THIRD copy of a measured constant that also
+                      lives as COHERE_HIGH in semantic_engine.py and again in
+                      _SQL_CONFIDENCE_DIST below -- nothing keeps the three in
+                      step, and only CLAUDE.md's freeze on that constant is
+                      currently preventing a silent divergence. [inferred: no
+                      document records this duplication as a known risk.]
+
+Admin-only via require_role("admin"), the same tier as llm_provider and
+latency_ms in response_shaping.py.
+"""
+
 import logging
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
