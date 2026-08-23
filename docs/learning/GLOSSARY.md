@@ -569,3 +569,148 @@ is currently **hardcoded** at extraction — audit finding F3 (CAVEAT-005).
 ## Restatement vs parser correction
 See `is_latest` above. The distinction is one of the sharper pieces of thinking
 in this codebase: *did the filing change, or did our reading of it change?*
+
+## Server Component vs Client Component (Next.js App Router)
+A **Server Component** renders on the server and its code never reaches the
+browser. `"use client"` marks the **boundary** where the client subtree begins —
+and **everything imported below that boundary joins the client bundle whether or
+not it declares the directive.**
+
+**The consequence people get wrong:** you cannot classify a file by opening it.
+`EntityComparisonTable.tsx` carries no directive and uses `document.createElement`,
+and works — because its only importer is `page.tsx`. Correct **by inheritance**,
+not by declaration.
+
+Eleven files here carry the directive; `app/layout.tsx` is the only genuine
+Server Component, which is why it is the only place `export const metadata` can
+live. **Rule of thumb: state or an event handler means a client component.**
+
+## Props / JSX / state lifting
+**Props** are a component's single input argument, declared as a TypeScript
+`interface` — the compile-time contract, the same role Pydantic plays on the
+backend. **JSX** is markup as an expression: `<div>{count}</div>` is TypeScript,
+not HTML, and `{}` switches back out of markup.
+
+**State lifting** is moving a value up to the **lowest common ancestor of
+everything that reads it**. `page.tsx` holds thirteen pieces of state for that
+reason; `QueryDock`'s half-typed input is *not* lifted, because nothing above
+needs it. The documented case is `pending`, lifted when a second consumer
+appeared, *"so both … read from the same fetch — no duplicate requests, no
+drift."*
+
+## Zero UI-Hallucination Mandate
+`CLAUDE.md` §6: no badge, count, stat or citation number may exist as static
+copy; every one is wired to a real backend field, and **where a field is absent
+the UI omits rather than substitutes.**
+
+**"Omit rather than substitute" is the operative half**, and the interesting
+cases are all *"a field is missing — now what?"* The `financial_type` tag is
+dropped when it is `"unknown"`, because `(unknown)` would assert a classification
+failure where the truth is *not applicable*. `issuerLabel` returns `null` for an
+empty list, because printing a corpus name would assert a scope the system never
+resolved.
+
+**But omission still needs a glyph.** `AuditLogTable` renders `—`, not nothing:
+*"a bare `{undefined}` renders an empty cell, which looks like a rendering
+fault."* Omit the **claim**, not the **cell**.
+
+Four instances currently violate it — see **CAVEAT-027**.
+
+## Dead code / orphaned component
+Code that **cannot be reached by any execution of the shipped program**. An
+*orphaned component* is the frontend case: it exports correctly, type-checks, and
+is imported by nothing the entry point can reach.
+
+**Five checks establish it**, and none subsumes another: static references,
+**dynamic** references (`next/dynamic`, `React.lazy`, string-keyed maps), entry
+points, other branches and stashes, and a typecheck.
+
+**`tsc --noEmit` proves types, never reachability** — it validates dead code
+exactly as carefully as live code, which is the reason dead frontend code
+survives.
+
+**Distinguish it from a metric with no producer** (below), which is a different
+and more dangerous problem.
+
+## `git log -S` (the pickaxe)
+`git log --oneline -S "<string>" -- <file>` finds the commits where the **number
+of occurrences** of a string changed — i.e. where a reference was **added or
+removed**, in a file that was never itself deleted.
+
+`git log -- <file>` shows commits that touched the file; the pickaxe shows
+commits that touched the *fact*. It is what turned KU-004's stated guess into
+evidence: two commits, one adding the reference and one (`9ce004a`) removing it.
+
+**It establishes what and when. It never establishes why.**
+
+## FACT · EVIDENCE · INFERENCE · UNKNOWN
+The four categories a claim about a codebase falls into, kept apart deliberately.
+
+| Category | Test |
+|---|---|
+| **FACT** | *What command reproduces this?* |
+| **EVIDENCE** | *Which claim does this support or weaken?* |
+| **INFERENCE** | *What would have to be true for this to be wrong?* |
+| **UNKNOWN** | *Which person or artefact outside the repo holds this?* |
+
+**The failure mode is not being wrong — it is category slippage**, an inference
+written in the grammar of a fact, so the next reader inherits a conclusion with
+its uncertainty stripped off. This repository's own convention is to write
+*"Likely rationale — inferred:"*, and `KNOWN_UNKNOWNS.md` exists for the fourth
+category.
+
+## A metric with no producer
+A field that is declared, stored, aggregated and served — and that **nothing ever
+writes**. `cache_hit_rate_pct` returns a permanent `0.0`; `tokens_used` is always
+`0`.
+
+**Kept rather than deleted, deliberately.** Removing the column, the SQL and the
+response field would delete the *record of the debt*: the cache was specified,
+was not built, and the decision would leave no trace. The mitigation is a warning
+at the point of use, a caveat, and a `// Do not render` in the TypeScript —
+**marked at every layer it passes through.**
+
+**More dangerous than dead code.** Dead code ships nothing; this **executes on
+every request and returns a number, and a number looks like a measurement.**
+
+## Integrity gate (evaluation)
+A check that can **withhold a score entirely** rather than annotate it. Three
+exist, deliberately separate: **provider** (any non-Gemini answer means the
+failover fired), **model** (the served `llm_model` disagrees with `--model`), and
+**reranker backend** (a run spanning Cohere and local ONNX measured two systems).
+
+**Separate because the remedies differ** — wait for quota, versus fix the
+environment and re-run, versus check the Cohere key — *"and one combined message
+means reading the wrong instruction at the worst possible moment."*
+
+**Withheld, never annotated:** *"a raw tally printed under a caveat ends up in a
+README."*
+
+## Quota signature vs real defect
+**Quota** fails by **position**: everything before question *k* passes and
+everything after fails, where *k* is wherever the daily budget ran out. `groq`
+appears in the provider set, and it passes on a re-run tomorrow.
+
+**A real defect** fails by **category**: every `quantitative_standalone` question,
+or every question about one company. It reproduces exactly.
+
+## Append-only (as it is actually true here)
+`audit_log` has **no `DELETE` grant** on either database, so a row **cannot be
+made to disappear** — an enforced guarantee, checkable in one query.
+
+**`UPDATE` *is* granted, on both**, so a row **can be rewritten in place**.
+Nothing in `app/` or `scripts/` does, which makes content immutability a
+**convention** — and `SECURITY_MODEL.md` claims the stronger version.
+**CAVEAT-028.**
+
+**Enforced versus by convention is the distinction to keep**, not the phrase
+"append-only".
+
+## Exit 137
+`128 + 9` — the process was **SIGKILLed**, i.e. the OOM killer. **No traceback
+exists**, because SIGKILL cannot be caught: the application logs nothing because
+the application is gone mid-instruction.
+
+Render's free tier is **512 MB**, and this signature is the reason ingestion is
+offline, the reranker is hosted, `BATCH_SIZE` is 8, and uvicorn runs one worker.
+
