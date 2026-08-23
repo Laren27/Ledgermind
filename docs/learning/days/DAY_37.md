@@ -697,11 +697,22 @@ place.
 - **`metric_anchor_phrases()` matches substrings, not words** —
   `IMPLEMENTATION_DELTAS.md` §D records it as a latent risk.
 - **The result-shape sniffing** (`"value" in row`) is an unenforced contract.
-- **`cross` is BUILT but UNMEASURED against the golden set** —
-  `IMPLEMENTATION_DELTAS.md` §C says so explicitly.
+- **~~`cross` is BUILT but UNMEASURED against the golden set~~** — **CORRECTED
+  2026-08-23, while writing Day 43. This day read `IMPLEMENTATION_DELTAS.md`
+  §C's HEADING and missed the correction directly beneath it**, which begins
+  *"Superseded 2026-08-02. The heading is now wrong in both directions and is
+  kept only so the correction has something to attach to."* The measured
+  position: a `cross_examination` category exists with **6 questions** (Q053,
+  Q054, PQ018, PQ019, PQ020, ETQ001), `eval_runner.score_result` has a
+  **dedicated `cross_examination` branch**, and **6 questions assert
+  `expected_path="cross"`**. What remains true is narrower and is stated in §C:
+  **three quadrants are unassertable**, and *a genuine contradiction does not
+  exist in this corpus* — closing that needs a **document**, not a cleverer
+  question. See Day 43 §4.6, which reads §C properly.
 
-**Current validity.** The rules are well-evidenced; the path's *overall* behaviour
-is the least measured in the system.
+**Current validity.** The rules are well-evidenced. The path's *coverage* is
+partial — five of the eight reconciliation outcomes are asserted; a real
+contradiction is not, because the corpus contains none.
 
 **At 10×.** More subsidiaries means `SUBSIDIARY_TO_PARENT` grows by hand — the
 same shape as `CAVEAT-019` (company onboarding requires a code edit).
@@ -906,8 +917,10 @@ Open `backend/app/engines/cross_engine.py` and
 **System design**
 19. `SUBSIDIARY_TO_PARENT` is hand-maintained. Propose a better home and say what
     it costs.
-20. The cross path is built but unmeasured against the golden set. Design the
-    measurement.
+20. **[PREMISE CORRECTED — see §8 and the key.]** The cross path *is* measured,
+    by six golden questions. But **no golden question asserts a real
+    contradiction**, because the corpus contains none. Design that measurement,
+    and say why writing a cleverer question cannot produce it.
 
 ---
 
@@ -1022,24 +1035,54 @@ Open `backend/app/engines/cross_engine.py` and
     field that is `None` for most profiles. **What it does not fix:** onboarding
     still requires a code edit — the same shape as `CAVEAT-019`. Moving it makes
     the fact single-sourced; it does not make it data.
-20. **The measurement.** `IMPLEMENTATION_DELTAS.md` §C records the cross path as
-    *built but unmeasured*, and the reason is that there is no golden category for
-    it. So: **add a `cross` category to the golden dataset** with questions whose
-    correct outcome is known — including at least one where the commentary
-    genuinely **agrees** with the figure (expect zero contradictions), one where it
-    genuinely disagrees (expect one, with a stated severity), one naming no metric
-    (expect Stage 0c to skip the quant half and emit no gap note), and one where
-    the metric is identified but unverifiable (expect
-    `CROSS_NO_VERIFIED_FIGURE_NOTE`). **What makes it hard:** the *correct* answer
-    for a contradiction question is not a value but a **judgement**, so the
-    assertions have to be on structure — `len(contradictions)`, `severity`, which
-    note appears — rather than on answer text. That is actually an advantage: those
-    are checkable without keyword matching, which `CLAUDE.md` §5 warns is the
-    fragile part of semantic scoring. **Cost:** each question is two LLM calls
-    (router + synthesis) plus the DSL call, so a ten-question cross category is
-    ~30 calls against 500/day — affordable, and it needs approval per `CLAUDE.md`
-    §5. **Do this before trusting any cross-path change**, because today a
-    regression there would be invisible.
+20. > **CORRECTION, 2026-08-23.** The original version of this answer opened
+    > *"`IMPLEMENTATION_DELTAS.md` §C records the cross path as built but
+    > unmeasured, and the reason is that there is no golden category for it."*
+    > **Both halves are false**, and §C says so itself directly under the heading
+    > this day quoted. **The design below was right; its premise was wrong**, and
+    > it is kept rather than deleted because most of it is what the repository
+    > actually built — which is the useful thing to notice.
+
+    **What already exists** (measured 2026-08-23): a `cross_examination` category
+    with **six** questions, a dedicated `score_result` branch asserting
+    `expected_contradictions`, `expected_sql_verified` and `expected_tier_low`,
+    and **six** questions carrying `expected_path="cross"`. The structural
+    assertions the answer below proposed — `len(contradictions)`, which note
+    appears, the tier — are exactly what that branch checks. **Assertions on
+    structure rather than on answer text**, for the reason given below, and PQ019
+    carries **no keywords at all by design**, because a scoped negative has no
+    stable vocabulary.
+
+    **What is genuinely missing, and why no question can supply it.** §C:
+    *a genuine contradiction does not exist in this corpus.* Three zero-quota
+    retrieval probes looked for one. Every profitability-framed query returns
+    financial statements, because in a results filing that is where profit
+    lives, while the narrative discusses NOV, order mix and store counts —
+    **the two halves address different subjects, so there is nothing to disagree
+    about.** Closing this needs a **document** containing a real disagreement (an
+    earnings-call transcript, an investor presentation making directional
+    claims), **not another question**. And §C names the trap: *"a manufactured
+    contradiction would train the system to fire on approximation, which is
+    Trap 7 inverted and worse than no test at all."*
+
+    **The original design, retained as written:** add questions whose correct
+    outcome is known — one where the commentary genuinely **agrees** (expect zero
+    contradictions), one where it genuinely disagrees (expect one, with a stated
+    severity), one naming no metric (expect Stage 0c to skip the quant half and
+    emit no gap note), and one where the metric is identified but unverifiable
+    (expect `CROSS_NO_VERIFIED_FIGURE_NOTE`). **What makes it hard:** the
+    *correct* answer for a contradiction question is not a value but a
+    **judgement**, so the assertions have to be on structure rather than on
+    answer text — which is an advantage, since structure is checkable without
+    keyword matching, the fragile part `CLAUDE.md` §5 warns about. **Cost:** each
+    question is two LLM calls plus the DSL call, so ten questions is ~30 against
+    500/day, and it needs approval per `CLAUDE.md` §5.
+
+    **The lesson this correction actually teaches**, and the reason it is left
+    visible: **a heading is not a record.** §C's heading has been wrong since
+    2026-08-02 and is *deliberately retained* so the correction has something to
+    attach to — a convention this day read past. **Read to the end of an entry
+    before quoting its title.**
 
 ---
 
@@ -1095,4 +1138,5 @@ Forward references:
 - Severity capping confidence → **Day 30** (already read)
 - `speaker_role` produced by the chunker → **Day 24** (already read)
 - `metric_anchor_phrases()`'s substring risk → **Day 43**
-- The cross path's unmeasured status → **Day 43**
+- The cross path's **actual** golden coverage, and the one outcome no question
+  can assert → **Day 43**
