@@ -18,6 +18,25 @@ Status vocabulary:
 
 Last verified: **2026-08-20**, by reading the tree at commit `1bca3cb`.
 
+> **Staleness notice, added 2026-08-23.** `main` is **47 commits** past
+> `1bca3cb`. The rows below have **not** been re-verified against those commits,
+> and this notice exists instead of a re-stamped date, because moving the date
+> without redoing the reading is exactly the failure this file was written to
+> prevent.
+>
+> What changed in those 47 commits, so you know which rows to distrust:
+>
+> | Change | Rows it can affect |
+> |---|---|
+> | **F14** (`1c23b63`…`63d7f40`) — `QueryState.company: Optional[str]` became `companies: list[str]`, end to end through router, retriever, semantic, quant, cross, API and frontend | any row naming the company filter, entity extraction, or the query response shape |
+> | **Blocked-query confidence** (`7d580df`, `6b4fc17`, `017d97e`) — a Prompt Shield block no longer reports a `confidence_tier` it never computed; the key is omitted | rows about confidence and about blocked-query behaviour |
+> | **Transport retry** (`3cae191`, `e711e53`, `e1ca737`) — one retry on transport-class failure before falling back, for both Gemini and Cohere | rows about failover and reranker backend |
+> | **Audit truncation fix** (`5bff364`) — `response_text` is now bound in full, not as a 500-char prefix | the audit-log row |
+> | **Eval `--api-base`** (`0cf7e7c`) — now required with no default | the test-coverage rows, and see CAVEAT-025 |
+>
+> Re-verification is Day 44 of the course. Until then, treat a row touching any
+> of the above as **unconfirmed**, not as wrong.
+
 ---
 
 ## Query pipeline
