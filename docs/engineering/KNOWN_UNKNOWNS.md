@@ -150,27 +150,102 @@ Were they deliberately retained, or orphaned and forgotten?
 **Repository evidence.**
 - `grep` over `frontend/app`, `frontend/components`, `frontend/lib` finds only
   self-references.
-- `frontend/app/` holds exactly two files, so there is no second entry point.
+- `frontend/app/` holds exactly three files (`page.tsx`, `layout.tsx`,
+  `globals.css`), so there is no second entry point. *(Corrected 2026-08-23: the
+  original entry said two, omitting `globals.css`. The conclusion is unchanged —
+  one `page.tsx` means one route.)*
 - Commit `945b7d4` (2026-08-22) applied a correctness fix to `AnswerCard.tsx`.
 - **No commit message, comment or document states a reason.** Searched.
 
-**Current hypothesis.** *(Guess.)* They belong to an earlier UI that the
-`components/document/` working-paper interface replaced, and were left in place
-rather than removed. The `945b7d4` fix suggests they were not *known* to be
-unreachable at the time.
+**UPDATE 2026-08-23 — the supersession half is no longer a guess.**
 
-**Confidence.** Medium on "superseded by the document UI"; **Low** on whether
-retention was a decision or an oversight. Those are separate questions and only
-the author can answer the second.
+Found while writing Day 40 of the course, using `git log -S` rather than
+`git log --`. The pickaxe finds the commit where a *reference* changed, in a
+file that was never itself deleted:
+
+```
+$ git log --oneline -S "AnswerCard" -- frontend/app/page.tsx
+9ce004a  connected page design
+6b45b8c  Create page.tsx
+```
+
+Two commits: the one that introduced the reference, and the one that removed it.
+
+```
+$ git show 9ce004a -- frontend/app/page.tsx | grep -E "^[-+]import"
+-import SearchBar from "@/components/SearchBar";
+-import AnswerCard from "@/components/AnswerCard";
+-import PipelineTrack from "@/components/PipelineTrack";
+-import CorpusPanel from "@/components/CorpusPanel";
++import { DocumentEnvironment } from "@/components/document/DocumentEnvironment";
++import { DocumentPage } from "@/components/document/DocumentPage";
+...
+```
+
+**`9ce004a`, 2026-07-22 12:26 IST, "connected page design"** — one commit removed
+**four** old component imports and added the `components/document/*` working-paper
+set in the same diff.
+
+**And two of those four were subsequently deleted:**
+
+| Component | Orphaned | Deleted |
+|---|---|---|
+| `SearchBar` | `9ce004a`, 07-22 | **yes** — `c464bd2`, 07-25, *"chore: remove dead SearchBar.tsx component"* |
+| `PipelineTrack` | `9ce004a`, 07-22 | **yes** — `3b0306d`, 07-28, *"chore(frontend): remove dead PipelineTrack.tsx — orphaned, never imported, pre-redesign token set"* |
+| `AnswerCard` | `9ce004a`, 07-22 | **no** |
+| `CorpusPanel` | `9ce004a`, 07-22 | **no** |
+
+Also checked, per "How to verify" below: `git branch -a` shows only `main` and
+its remote; `git stash list` is empty. **There is no other ref.**
+
+**What this settles, and what it does not.**
+
+- **SETTLED — supersession.** "Superseded by the `components/document/` UI" was
+  recorded here as a guess. It is now evidenced: a single commit swapped one
+  component set for the other. Confidence: **high**.
+- **WEAKENED — "they were not known to be unreachable".** This entry reasoned
+  that `945b7d4` suggests nobody knew. But the project **did** find orphans from
+  this exact commit, twice, and deleted them with commit messages that say
+  "dead" and "orphaned, never imported". That makes "nobody noticed" a weaker
+  reading than it looked.
+- **NOT SETTLED — and it is now a sharper question.** Not *"were they forgotten?"*
+  but: **why were these three kept when two siblings orphaned by the same commit
+  were deleted?** Nothing states it. `945b7d4` and `63d7f40` remain real
+  correctness commits applied to a non-rendering component, and both readings —
+  an unchecked sweep, or a deliberate keep-it-current — still survive.
+
+**Two facts added on the same pass** (both from Day 40, both reproducible):
+
+- `CorpusPanel` reads `s.chunksIndexed` and `s.lastIngestedLabel`, **neither of
+  which is a declared field of `CorpusStatus`**. It type-checks only because that
+  interface ends with `[key: string]: any`. Rendered with a real API-shaped
+  object it would throw on `.toLocaleString()`.
+- **Nothing produces a `CorpusStatus`.** No function in `lib/api.ts` returns one,
+  and the backend registers no corpus-status endpoint. Deleting the three
+  components without deleting the type leaves a dead type with a live-looking
+  declaration.
+
+**Current hypothesis.** *(Still a guess, and now only about the retention.)* The
+three were left in place when their two siblings were removed. Whether that was
+a decision or an omission is not recorded.
+
+**Confidence.** **High** on "superseded by the document UI" (was: medium — the
+`9ce004a` evidence closed it). **Low**, unchanged, on whether retention was a
+decision or an oversight. Only the author can answer the second.
 
 **Why it matters.** It decides whether deletion is a cleanup or a loss. It is
 also the only entry here answerable by a person rather than a measurement.
 
-**How to verify.** Ask the author. Failing that: check whether any branch,
-stash or draft references them, and whether the `components/document/` UI landed
-after they were last meaningfully edited.
+**How to verify.** **Ask the author** — specifically: *"you deleted SearchBar and
+PipelineTrack after `9ce004a`; why not AnswerCard and CorpusPanel?"* The
+branch/stash check is now done (none). The "did the document UI land after they
+were last edited" check is also now done, and the answer is **yes for
+supersession and no for editing** — `AnswerCard` was edited on 2026-08-23, a
+month after being orphaned.
 
-**Status:** Open. Components retained untouched by decision (2026-08-23).
+**Status:** Open — **narrowed, not closed** (2026-08-23). The supersession half is
+answered from the repository; the retention half is not answerable from it at
+all. Components retained untouched by decision.
 
 ---
 
