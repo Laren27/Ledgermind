@@ -1,5 +1,31 @@
 "use client";
 
+/**
+ * Sidebar — navigation chrome, role-gated.
+ *
+ * THE ROLE CHECK BELOW IS NOT A SECURITY BOUNDARY, and reading it as one is the
+ * classic frontend mistake. `userRole` comes from session.role, which comes from
+ * a JSON blob in localStorage that the user can edit in DevTools. Change it to
+ * "admin", reload, and the Upload Filing entry appears.
+ *
+ * What actually refuses is require_role("admin") on the backend route, which
+ * reads the role from the SIGNATURE-VERIFIED JWT claim -- the edited localStorage
+ * copy never reaches it. The forged role buys a button and a 403.
+ *
+ * So this is a USABILITY control: showing an entry that always 403s is worse
+ * than not showing it. Keep it, and do not add anything here that a 403 does not
+ * already back.
+ *
+ * `activeView` is narrowed by the caller. page.tsx has FIVE views and this type
+ * has four -- "upload-history" is a continuation of Intake reached only from a
+ * link inside UploadPanel, so page.tsx passes "upload" while it is open, keeping
+ * the Intake entry highlighted. One narrowing at the boundary, rather than a
+ * fifth entry nobody should click.
+ *
+ * `indexedFilings` is passed in as a literal by page.tsx and is NOT fetched.
+ * It is accurate today and will drift on the next ingest -- see CAVEAT-027.
+ */
+
 import React from "react";
 
 interface IndexedFiling {
