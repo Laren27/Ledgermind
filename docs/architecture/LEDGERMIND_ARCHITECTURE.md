@@ -387,7 +387,13 @@ Two structural facts that explain a lot of downstream behaviour:
 
 ## 10. Data model
 
-### PostgreSQL (`sql/init.sql` + 19 migrations)
+### PostgreSQL (`sql/init.sql` + 17 migrations)
+
+> `sql/` holds **19 `.sql` files**: `init.sql`, `seed.sql`, and **17** numbered
+> migrations under `sql/migrations/`. The earlier "19 migrations" here counted
+> the directory, not the migrations. Numbering is not contiguous — it starts at
+> `003` and includes a `007a` — so neither the file count nor the highest number
+> is a reliable migration count. Count the files in `sql/migrations/`.
 
 | Table | Purpose | Key columns |
 |---|---|---|
