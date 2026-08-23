@@ -857,6 +857,143 @@ invariant is expressible as a test in this project's current tooling. `CLAUDE.md
 
 ---
 
+## [CAVEAT-028] The audit trail is append-only against DELETE only, and the two databases disagree about DELETE
+
+**Location:** `sql/init.sql:126-130`; `docs/security/SECURITY_MODEL.md:149-151`
+
+Found 2026-08-23 while writing Day 44. **Two claims about database privileges,
+both measured against both databases.**
+
+### The measurement
+
+```sql
+SELECT table_name, privilege_type
+FROM information_schema.table_privileges
+WHERE grantee = 'ledgermind_app' AND table_schema = 'public'
+ORDER BY table_name, privilege_type;
+```
+
+| Table | Local Docker (`postgres:5432`) | Supabase (`aws-0-ap-northeast-1.pooler…`) |
+|---|---|---|
+| `audit_log` | SELECT · INSERT · **UPDATE** | SELECT · INSERT · **UPDATE** |
+| `documents` | SELECT · INSERT · UPDATE · **DELETE** | SELECT · INSERT · UPDATE |
+| `financials` | SELECT · INSERT · UPDATE · **DELETE** | SELECT · INSERT · UPDATE |
+| `tenants`, `users` | SELECT · INSERT · UPDATE | SELECT · INSERT · UPDATE |
+| `pending_uploads` | — *(migration 008 not applied locally)* | SELECT · INSERT · UPDATE |
+| `schema_migrations` | — | SELECT |
+
+**Both databases queried on 2026-08-23**, as required by `CLAUDE.md` §7. The
+Supabase read was made from inside the backend container using the `.env`
+`DATABASE_URL`; the connection string was never printed.
+
+---
+
+### (a) `audit_log` HAS an `UPDATE` grant — on both databases
+
+`sql/init.sql`:
+
+```sql
+126: GRANT SELECT, INSERT, UPDATE ON
+127:     tenants, users, documents, financials, audit_log
+128: TO ledgermind_app;
+129:
+130: -- audit_log is append-only — no UPDATE or DELETE granted, ever
+```
+
+**Line 130 contradicts line 126, four lines above it.** `audit_log` is in the
+grant list, so `UPDATE` is granted, and both databases confirm it.
+
+`SECURITY_MODEL.md:150-151` repeats the comment's version:
+
+> `audit_log` additionally has no `UPDATE` grant: it is append-only by
+> permission, not by convention.
+
+**Measured: false on both databases.**
+
+**What is actually true, and it is still worth something.** `DELETE` is genuinely
+absent on `audit_log` everywhere, so **a row cannot be made to disappear**. What
+is not true is that a row cannot be **rewritten in place**. `query_text`,
+`response_text`, `confidence_score`, `llm_provider` and `created_at` are all
+mutable by the application role.
+
+**Impact.** No victim today: nothing in `app/` or `scripts/` issues an `UPDATE`
+against `audit_log`, so the property holds *by convention* — which is precisely
+what the document says it does not rely on. The exposure is that a compromised or
+buggy application role can alter history silently while row counts stay
+consistent, and the security document says that cannot happen.
+
+---
+
+### (b) `DELETE` on `documents` and `financials` exists locally and is granted by nothing in the repository
+
+`SECURITY_MODEL.md:149-150`:
+
+> `ledgermind_app` is `NOSUPERUSER NOCREATEDB NOCREATEROLE` with `SELECT,
+> INSERT, UPDATE` only — **no DDL, and no DELETE anywhere**.
+
+**Measured: true on Supabase, false on the local Docker database**, where
+`documents` and `financials` both carry `DELETE`.
+
+**And no file in the repository grants it.** `sql/init.sql` grants only
+`SELECT, INSERT, UPDATE`; the only `GRANT` statements in `sql/migrations/` are
+`008_pending_uploads.sql` (`SELECT, INSERT, UPDATE`) and
+`012_schema_migrations.sql` (`SELECT`). **The local grant was applied out of
+band and is not reproducible from a fresh `docker compose up`.**
+
+**Why it matters operationally — this is the concrete part.** Three code paths
+issue `DELETE` against these tables:
+
+| Path | Statement |
+|---|---|
+| `scripts/purge_orphaned_metrics.py:198` | `DELETE FROM financials WHERE id = ANY(%s::uuid[])` |
+| `scripts/purge_mangled_metrics.py:89` | `DELETE FROM financials …` |
+| `app/ingestion/db_loader.py:591,593` | `DELETE FROM financials …` then `documents` — test cleanup |
+
+**All three succeed locally and would fail with a permission error on
+Supabase.** A maintenance procedure verified locally therefore proves nothing
+about production, which is `CAVEAT-015`'s two-database problem appearing in
+**permissions** rather than in row counts — a dimension not previously recorded.
+
+**Why the local grant exists.** The repository does not say. **Likely rationale —
+inferred:** someone ran `purge_orphaned_metrics --apply` or the `db_loader`
+cleanup locally, hit a permission error, and granted `DELETE` by hand in psql.
+**Do not assert this.** No commit, comment or document records it.
+
+---
+
+**Impact.** (a) Medium: a documented security property is overstated on both
+databases, and the overstatement is in the permissive direction. (b) Medium: a
+privilege difference between dev and prod that no file in the repository
+explains, silently changing whether three maintenance scripts can run.
+
+**Current workaround.** For (a): none — the property holds by convention.
+For (b): **state which database any purge was verified against**, and expect the
+Supabase run to fail where the local one succeeded.
+
+**Correct long-term solution.**
+
+- **(a)** Decide which side is right. If `audit_log` should be immutable, write a
+  migration issuing `REVOKE UPDATE ON audit_log FROM ledgermind_app;` — and
+  first confirm nothing updates it, including any future retention job. If the
+  `UPDATE` is wanted, fix `init.sql:130` and `SECURITY_MODEL.md:150` instead.
+  **Both are approval-gated:** one is a migration, the other is a claim about
+  intent.
+- **(b)** Decide whether `DELETE` on `documents`/`financials` is intended. If it
+  is, it belongs in a **migration**, applied to both databases, so a fresh stack
+  reproduces it. If it is not, revoke it locally and change the three scripts to
+  retire rows rather than delete them — which is already the model `ED-018`
+  describes for restatements (*"restatements retire rows; they never delete or
+  overwrite them"*).
+
+**Why it was not caught.** No test asserts a grant, and `check_migrations`
+compares `schema_migrations` and `information_schema` for **objects**, not for
+**privileges**.
+
+**Severity:** Medium. **Status:** Open, recorded 2026-08-23. Not to be changed
+without approval — both halves require a migration.
+
+---
+
 ## Closed / superseded
 
 | ID | Item | Outcome |
