@@ -19,7 +19,7 @@ which mutates it and returns it. That dict *is* the architecture.
 class QueryState(TypedDict):
     query: str; tenant_id: str; user_id: str; request_id: str; start_time: float
     is_blocked: bool; block_reason: Optional[str]          # ← prompt_shield writes
-    company: Optional[str]; fiscal_year: Optional[str]     # ← router writes
+    companies: list[str]; fiscal_year: Optional[str]       # ← router writes
     path: Optional[Literal["semantic","quantitative","cross"]]
     retrieved_chunks: List[ChunkResult]                    # ← semantic_engine writes
     dsl_object: Optional[DSLObject]; sql_verified: bool    # ← quant_engine writes
@@ -29,8 +29,19 @@ class QueryState(TypedDict):
 ```
 
 ### Where it appears
-`backend/app/engines/state.py:66`. Every node in `backend/app/engines/` has the
+`backend/app/engines/state.py`. Every node in `backend/app/engines/` has the
 signature `def X_node(state: QueryState) -> QueryState`.
+
+> **Corrected 2026-08-23.** This entry was written on 2026-08-20 and the listing
+> above originally read `company: Optional[str]`. F14 landed on 2026-08-22 and
+> made it `companies: list[str]`, because a single-valued field made "no issuer
+> named" and "two issuers named" the same value. The line number cited here also
+> drifted and has been dropped rather than re-pinned — a line number is the
+> weakest possible reference into a file that is still changing.
+>
+> Keep the correction visible rather than silently rewriting the entry: a
+> journal that quietly matches HEAD stops being a record of what you believed
+> and when. This is the same drift class the course studies on Day 36.
 
 ### Why it matters
 It makes the pipeline **inspectable at every boundary**. Because there is one
