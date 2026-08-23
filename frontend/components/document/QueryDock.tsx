@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * QueryDock — the question input, and the peer-comparison entity selector.
+ *
+ * Owns `query` and `selectedEntities` LOCALLY, and does not lift them. Nothing
+ * above needs the half-typed text; the parent receives the finished string
+ * through onSubmit. `isLoading` arrives as a prop from page.tsx and is what
+ * makes double-submission impossible while a query is in flight -- the same
+ * flag guards the early return and the button's disabled state.
+ *
+ * The entity selector is a DIFFERENT interaction from the text box, not a
+ * variant of it. Selecting two entities WRITES a query string into the input via
+ * buildComparisonQuery(), so the user still submits a real question and the
+ * router still classifies it -- the pills are a shortcut to phrasing, not a
+ * bypass of the pipeline. (page.tsx separately attaches an execution_context
+ * on the peer view; see SECURITY_MODEL.md section 7 on why that field is
+ * unvalidated and what bounds it.)
+ *
+ * INDEX_TABS are suggested questions, not capabilities. They are literals here
+ * because nothing in the API enumerates answerable questions; each is simply a
+ * query that has been observed to work against the current corpus, and each will
+ * stop being a good suggestion when the corpus changes. Same class as the
+ * hardcoded indexedFilings in Sidebar -- accurate, unwired, and it will drift.
+ */
+
 import { useState } from "react";
 import { EntityPillSelector } from "./EntityPillSelector";
 
