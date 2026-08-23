@@ -25,8 +25,9 @@ By tonight you can:
   about dead code.
 - Decide whether deleting the three would be safe, and list what you would check
   first — *without inventing a reason they were kept.*
-- Name two documented invariants that the code no longer satisfies, and explain
-  why the correct action is to **record** the drift, not to fix it.
+- Name the documented invariants that the code no longer satisfies — **there
+  are three instances, and one of them is inside today's own subject** — and
+  explain why the correct action is to **record** the drift, not to fix it.
 
 ---
 
@@ -275,11 +276,11 @@ coupling: the *reason* is documented, the *logic* is not duplicated.
 
 ---
 
-### 4.4 Two documented invariants the code no longer satisfies
+### 4.4 Three documented invariants the code no longer satisfies
 
 **The course's rule is that the code is the authority.** Today that rule bites
-twice, and in both cases the correct action is to **record the drift, not fix
-it** (`CODE_DOCUMENTATION_LOG.md` rule 5: *anything that looks wrong gets
+three times, and in every case the correct action is to **record the drift, not
+fix it** (`CODE_DOCUMENTATION_LOG.md` rule 5: *anything that looks wrong gets
 DOCUMENTED, not fixed*).
 
 #### Drift 1 — the glass/blur invariant is inverted
@@ -346,6 +347,53 @@ visual group as the three that are not**, which is what makes it credible.
 
 **Also recorded in CAVEAT-027.** The fix is a backend field, which is a
 functional change.
+
+#### Drift 3 — a `Source Table:` that names a table which does not exist
+
+This one lives inside today's own subject, `composeDocumentBody`, at **three**
+call sites:
+
+```bash
+grep -n "sourceTable" frontend/app/page.tsx
+```
+
+```
+140:        <SectionHeading sourceTable="audited_financials">
+174:        <SectionHeading sourceTable="audited_financials">
+217:        <SectionHeading sourceTable="audited_financials">
+```
+
+`SectionHeading` renders that as **`Source Table: audited_financials`**, in the
+heading immediately above a SQL-verified figure.
+
+**Now measure the claim:**
+
+```bash
+grep -n "CREATE TABLE" sql/init.sql
+grep -rn "audited_financials" backend/ sql/ docs/ CLAUDE.md
+```
+
+The tables are `tenants`, `users`, `documents`, **`financials`**, `audit_log`.
+The string `audited_financials` appears **nowhere** outside those three frontend
+literals.
+
+**This is the sharpest instance of the mandate in the whole repository, and it is
+the one that is violated.** Everything else on that sheet is earned: the ✓ comes
+from `sql_verified` (Day 34), the figure comes from a compiled parameterised
+query (Day 33), the period comes from the DSL. **The one line that says where the
+number came from is invented** — and it is *more* trustworthy-looking than the
+rest, because it names a relation, in monospace, like a citation.
+
+**Be precise about what is wrong.** The figure is real. The verification is real.
+It genuinely came from an extracted financial statement in Postgres. **Only the
+identifier is fictional.** That is what makes it a mandate violation rather than
+a correctness bug: nothing computed is wrong, and something asserted is.
+
+**Recorded as CAVEAT-027(c), severity Medium** — the highest in that entry.
+And note the fix the caveat recommends: **not** `sourceTable="financials"`, but
+**omitting the prop**. Correcting the string swaps one hand-maintained literal
+for another; omitting it asserts nothing, which is what the mandate actually
+asks for. Deriving it properly would need a field `QueryResponse` does not carry.
 
 > **Note for the reader who wants to be fair to the author.** Neither drift is
 > incompetence. The first is what happens when a design language evolves and an
@@ -924,6 +972,7 @@ change first, a frontend simplification second.
 | `(unknown)` on every citation | The `financial_type` guard removed |
 | `NO ISSUER RESOLVED — SEARCH UNFILTERED` on a normal answer | `companies` is `[]` — a **backend** signal, not a UI bug. `_build_filter` dropped the filter (Day 27) |
 | Every header reads a corpus name | A "safe default" restored after F14 |
+| `Source Table:` names a relation nobody can find | CAVEAT-027(c) — a hand-written literal, not a derived field |
 | An empty confidence cell | `{undefined}` rendered directly instead of `?? "—"` |
 | `relevance NaN` for a viewer | `.toFixed()` called without the `!= null` guard |
 | The evidence list disagrees with the prose | `cleanProseText` no longer strips `Sources:`, so both are shown |
@@ -1025,9 +1074,13 @@ echo "── how it moved ──"
 git log --oneline -S "backdropFilter" -- frontend
 echo "── the hardcoded date ──"
 grep -n "Generated:" frontend/components/document/WorkingPaperHeader.tsx
+echo "── the source table ──"
+grep -n "sourceTable" frontend/app/page.tsx
+grep -n "CREATE TABLE" sql/init.sql
+grep -rn "audited_financials" backend/ sql/ docs/ CLAUDE.md || echo "(nowhere else)"
 ```
 
-**Do not fix either.** Read CAVEAT-027, then re-read
+**Do not fix any of them.** Read CAVEAT-027, then re-read
 `CODE_DOCUMENTATION_LOG.md` rule 5.
 
 ### Experiment 8 — write the four categories yourself
@@ -1290,8 +1343,10 @@ Open `frontend/app/page.tsx` and `frontend/components/AnswerCard.tsx`:
 - 9ce004a (2026-07-22, "connected page design") orphaned FOUR components.
   SearchBar and PipelineTrack were deleted; AnswerCard and CorpusPanel were not
 - AnswerCard · ConfidenceBadge · CorpusPanel: RETAINED UNTOUCHED (CAVEAT-026)
-- CAVEAT-027: the glass/blur invariant is INVERTED, and WorkingPaperHeader
-  hardcodes "Generated: 2026-07-25". Recorded, NOT fixed
+- CAVEAT-027, three instances, RECORDED and NOT fixed: the glass/blur
+  invariant is INVERTED; WorkingPaperHeader hardcodes "Generated: 2026-07-25";
+  and `Source Table: audited_financials` names a table that DOES NOT EXIST
+  (it is `financials`) directly above a verified figure
 ```
 
 ## 17. MUST UNDERSTAND
