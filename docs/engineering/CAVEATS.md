@@ -677,11 +677,21 @@ or modified.
 
 **Location:** `CLAUDE.md:230`; `frontend/components/document/Sidebar.tsx:47-48`,
 `frontend/components/document/PageNavigator.tsx:23`,
-`frontend/components/document/WorkingPaperHeader.tsx:88`
+`frontend/components/document/WorkingPaperHeader.tsx:88`,
+`frontend/app/page.tsx:140,174,217`,
+`frontend/components/document/AuditLogTable.tsx:28`
 
-Found 2026-08-23 while writing Day 40 of the course. Two separate drifts, filed
-together because they are the same class — a stated invariant and the tree
-disagreeing, with no record of the disagreement.
+Found 2026-08-23 while writing Days 40–41 of the course. **Two invariants**, one
+of them violated three separate ways, filed together because they are the same
+class — a stated invariant and the tree disagreeing, with no record of the
+disagreement.
+
+| | Invariant | Instance |
+|---|---|---|
+| **(a)** | `CLAUDE.md` §6 — glass/blur in exactly one component | inverted |
+| **(b)** | Zero UI-Hallucination Mandate | a hardcoded `Generated:` date |
+| **(c)** | Zero UI-Hallucination Mandate | a `Source Table:` naming a table that does not exist |
+| **(d)** | Zero UI-Hallucination Mandate | `Immutable System Log` over session-local state |
 
 ---
 
@@ -750,11 +760,72 @@ new one.
 
 ---
 
+### (c) A `Source Table:` that names a table which does not exist
+
+`app/page.tsx`, at **three** call sites (lines 140, 174, 217 — the two comparison
+branches and the quantitative branch of `composeDocumentBody`):
+
+```tsx
+<SectionHeading sourceTable="audited_financials">
+```
+
+`SectionHeading` renders that as **`Source Table: audited_financials`**, in the
+heading directly above a SQL-verified figure.
+
+**Measured.** The table is `financials` (`sql/init.sql:72`). The string
+`audited_financials` appears **nowhere** in `backend/`, `sql/`, `docs/` or
+`CLAUDE.md` — only at these three frontend call sites.
+
+**This is the most consequential of the three mandate violations**, because it is
+a **provenance claim attached to a verified number**. The ✓ beside the figure is
+earned (`sql_verified`, Day 34); the line naming where it came from is not, and
+names a relation that has never existed. A reader who trusts the ✓ has every
+reason to trust the line above it.
+
+**Note what is *not* wrong:** the figure, the verification, and the fact that it
+came from an extracted financial statement in Postgres are all real. Only the
+identifier is invented.
+
+---
+
+### (d) `Immutable System Log` over React state
+
+`AuditLogTable.tsx:28` renders the subtitle **"Immutable System Log"** under the
+heading "Execution & Lineage Registry".
+
+**Measured.** Its rows come from `app/page.tsx`:
+
+```tsx
+<AuditLogTable entries={pages.map((p, i) => ({ … }))} … />
+```
+
+`pages` is `useState<Page[]>([])` — **in-memory React state**. It is emptied on
+sign-out and on any `UnauthorizedError`, and it does not survive a page reload.
+
+**The durable audit trail is real and is somewhere else.** `audit_log` is
+append-only by grant (no DELETE for `ledgermind_app`), written by
+`audit_writer_node` on every query including blocks and refusals. **The backend
+exposes no endpoint that reads it** — the six registered routes are
+`/auth/login`, `/api/query`, `/api/query/stream`, `/api/documents/upload`,
+`/api/documents/pending`, `/api/metrics`. So the frontend *cannot* show the real
+thing today.
+
+**Partially self-disclosed.** The empty state reads *"No audit entries logged in
+the current workspace session"*, which is accurate and scoped. The subtitle
+directly above it is not.
+
+**Severity is genuinely lower than (b) and (c)** — every rendered row is real
+data from a real response, and nothing is fabricated. What is asserted is a
+**durability property** the data does not have, in the one panel a reader would
+consult to check durability.
+
+---
+
 **Impact.** (a) is documentation-only: no user sees it, but the next person
 applying the invariant will either propagate a false rule or "fix" three
-components on the strength of it. (b) is user-visible and asserts a false fact
-on every answer, in a product whose stated value is that nothing is asserted
-without a producer.
+components on the strength of it. (b), (c) and (d) are user-visible. (c) is the
+worst of them: a false provenance claim sitting above a figure whose ✓ is real,
+in a product whose stated value is that nothing is asserted without a producer.
 
 **Current workaround.** None. Both are recorded and left in place.
 
@@ -769,13 +840,20 @@ without a producer.
   to a real timestamp. The response carries no generation timestamp today;
   `audit_log.created_at` exists but is not returned by `role_filtered_response`,
   so wiring it is a backend change.
+- **(c)** Cheapest correct fix: `sourceTable="financials"`. Better: derive it
+  from the response rather than from a literal — but nothing in `QueryResponse`
+  names a table, so that is a backend change. **Cheapest mandate-compliant fix:
+  omit the prop**, which is one deletion at three call sites and asserts nothing.
+- **(d)** Either retitle to something the data supports (*"this session"*), or
+  add a `GET /api/audit` endpoint (admin-only, RLS-scoped) and render the real
+  rows. The second is the honest version and is a backend change.
 
 **Why it was not caught.** No CI (CAVEAT-022), no frontend tests, and neither
 invariant is expressible as a test in this project's current tooling. `CLAUDE.md`
 §6's invariants are enforced by reading.
 
-**Severity:** (a) Low · (b) Low-Medium. **Status:** Open, recorded 2026-08-23.
-Not to be fixed without approval.
+**Severity:** (a) Low · (b) Low-Medium · **(c) Medium** · (d) Low.
+**Status:** Open, recorded 2026-08-23. Not to be fixed without approval.
 
 ---
 
