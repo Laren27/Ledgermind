@@ -146,7 +146,7 @@ The suite scores *answers*, not citation provenance, not retrieval quality, and 
 | API | FastAPI + LangGraph | Async, typed; LangGraph gives the router an inspectable state machine rather than nested conditionals |
 | Frontend | Next.js on Vercel | The working-paper document model needs real layout control |
 | LLM — primary | Gemini `gemini-3.1-flash-lite` | Free tier, fast, structured-output support |
-| LLM — fallback | Groq `llama-3.3-70b-versatile` | Fires on timeout, transport failure, 429, 5xx — never on auth errors, so a bad key can't masquerade as an outage |
+| LLM — fallback | Groq `openai/gpt-oss-120b` | Fires on timeout, transport failure, 429, 5xx — never on auth errors, so a bad key can't masquerade as an outage |
 | Embeddings | `bge-small-en-v1.5` via fastembed ONNX | 384-dim, CPU-only; torch does not fit Render's 512MB tier |
 | Reranking | Cohere Rerank, local ONNX fallback | Same memory constraint; the fallback changes score *scale*, so confidence thresholds are backend-aware |
 | Vector DB | Qdrant Cloud | Hybrid dense + sparse with native RRF and payload pre-filtering |
