@@ -673,6 +673,112 @@ or modified.
 
 ---
 
+## [CAVEAT-027] Two documented UI invariants that the code no longer satisfies
+
+**Location:** `CLAUDE.md:230`; `frontend/components/document/Sidebar.tsx:47-48`,
+`frontend/components/document/PageNavigator.tsx:23`,
+`frontend/components/document/WorkingPaperHeader.tsx:88`
+
+Found 2026-08-23 while writing Day 40 of the course. Two separate drifts, filed
+together because they are the same class — a stated invariant and the tree
+disagreeing, with no record of the disagreement.
+
+---
+
+### (a) The glass/blur invariant is inverted
+
+`CLAUDE.md` §6 states:
+
+> Glass/blur is permitted in exactly one component: `QueryDock`.
+
+**Measured.**
+
+```
+$ grep -rn "backdrop-blur\|backdropFilter\|blur(" frontend/app frontend/components
+components/document/Sidebar.tsx:47:        backdropFilter: "blur(12px)",
+components/document/Sidebar.tsx:48:        WebkitBackdropFilter: "blur(12px)",
+components/document/PageNavigator.tsx:23:          backdropFilter: "blur(8px)",
+```
+
+`QueryDock.tsx` has **none**. The one component the invariant names is the only
+one without it, and two components it does not name have it.
+
+**How it moved** (`git log --oneline -S "backdropFilter" -- frontend`):
+
+| Commit | Date | Change |
+|---|---|---|
+| `2532d1a` | 2026-07-24 | *"transform QueryDock into an embedded archival paper input"* — **removed** `backdropFilter: "blur(14px)"` from `QueryDock` |
+| `ff1dcbc` | 2026-07-25 | *"anchor pagination to desk as an engraved 15px archival tray control"* — **added** `blur(8px)` to `PageNavigator` |
+| `0c07da9` | 2026-07-25 | *"upgrade library archive aesthetic…"* — **added** `blur(12px)` to `Sidebar` (verified absent before this commit) |
+
+So the invariant was **true before 2026-07-24 and false after 2026-07-25**.
+Three styling commits moved it; none mentions it.
+
+**What the evidence does not establish.** Whether the design language was
+deliberately changed — glass moving from the *paper* to the *furniture*, which
+is coherent with the working-paper metaphor — or whether the invariant was
+simply never re-checked. **No commit message, comment or document says.** Do not
+assert a reason.
+
+---
+
+### (b) A hardcoded date on every working paper
+
+```tsx
+<div>Generated: <span style={{ color: "var(--ink-metadata)" }}>2026-07-25</span></div>
+```
+
+`WorkingPaperHeader.tsx` is live — `app/page.tsx` renders it on every sheet — so
+this string appears on **every** answer, including answers produced today.
+
+This is a **stat as static copy**, which the Zero UI-Hallucination Mandate
+(`CLAUDE.md` §6, ED-024) forbids directly. It is also *wrong*, because it is a
+date and a date is read as a claim about when.
+
+The three fields beside it in the same visual group are correctly wired —
+`wpRef` from `request_id`, `revision` from the `revisions` map, `preparer` from
+`session.role`. One field in four is fabricated, and its neighbours are what make
+it credible.
+
+**Related, and NOT filed as a violation:** `app/page.tsx` passes `Sidebar` a
+hardcoded `indexedFilings` array (`ETERNAL FY26`, `PAYTM FY26`, `TITAN Q1FY26`)
+and a hardcoded `PEER_ENTITIES`. Both are currently **accurate**, and
+`PEER_ENTITIES` carries a comment stating why TITAN is excluded. They are
+configuration that will drift on the next ingest rather than assertions that are
+already false — a lesser problem, recorded here so it is not rediscovered as a
+new one.
+
+---
+
+**Impact.** (a) is documentation-only: no user sees it, but the next person
+applying the invariant will either propagate a false rule or "fix" three
+components on the strength of it. (b) is user-visible and asserts a false fact
+on every answer, in a product whose stated value is that nothing is asserted
+without a producer.
+
+**Current workaround.** None. Both are recorded and left in place.
+
+**Correct long-term solution.**
+
+- **(a)** Someone with authority over the design language decides which side is
+  right, then either `CLAUDE.md` §6 is amended to describe the furniture-vs-paper
+  rule, or the two components lose their blur. **Both are approval-gated** —
+  amending `CLAUDE.md` is a claim about intent, and editing three components is a
+  functional change.
+- **(b)** Either omit the field (mandate-compliant, zero backend work) or wire it
+  to a real timestamp. The response carries no generation timestamp today;
+  `audit_log.created_at` exists but is not returned by `role_filtered_response`,
+  so wiring it is a backend change.
+
+**Why it was not caught.** No CI (CAVEAT-022), no frontend tests, and neither
+invariant is expressible as a test in this project's current tooling. `CLAUDE.md`
+§6's invariants are enforced by reading.
+
+**Severity:** (a) Low · (b) Low-Medium. **Status:** Open, recorded 2026-08-23.
+Not to be fixed without approval.
+
+---
+
 ## Closed / superseded
 
 | ID | Item | Outcome |
