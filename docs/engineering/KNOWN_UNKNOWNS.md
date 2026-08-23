@@ -313,6 +313,52 @@ that has not fired yet.
 
 ---
 
+## [KU-007] Where did the local `DELETE` grant on `documents` and `financials` come from?
+
+**Question.** The local Docker database grants `ledgermind_app` `DELETE` on
+`documents` and `financials`. **No file in the repository grants it.** Was it
+applied deliberately, and does anyone intend it to be reproducible?
+
+**Repository evidence.**
+- Measured 2026-08-23 on both databases:
+
+  | Table | Local Docker | Supabase |
+  |---|---|---|
+  | `documents` | SELECT · INSERT · UPDATE · **DELETE** | SELECT · INSERT · UPDATE |
+  | `financials` | SELECT · INSERT · UPDATE · **DELETE** | SELECT · INSERT · UPDATE |
+
+- `sql/init.sql:126` grants `SELECT, INSERT, UPDATE` only.
+- The only `GRANT` statements in `sql/migrations/` are `008_pending_uploads.sql`
+  (`SELECT, INSERT, UPDATE`) and `012_schema_migrations.sql` (`SELECT`).
+- **Therefore the grant was applied out of band**, in a psql session, and is not
+  reproducible from a fresh `docker compose up`.
+- `SECURITY_MODEL.md:149-150` states *"no DDL, and **no DELETE anywhere**"* —
+  which is **true on Supabase and false locally.**
+
+**Current hypothesis.** *(Guess.)* Someone ran `purge_orphaned_metrics --apply`,
+`purge_mangled_metrics`, or `db_loader`'s test cleanup against the local
+database, hit `42501 insufficient privilege`, and granted `DELETE` by hand to
+get past it. All three of those code paths issue `DELETE` against exactly these
+two tables.
+
+**Confidence.** **High** that it was applied out of band — that is arithmetic
+over the repository, not a guess. **Low** on whether it was deliberate, and
+**nothing at all** on whether the divergence is intended to persist.
+
+**Why it matters.** It decides what a locally-verified maintenance procedure
+proves. Today: **nothing about production** — all three purge paths succeed
+locally and would fail on Supabase with a permission error. It also decides
+whether `SECURITY_MODEL.md`'s claim should be narrowed or the local grant
+revoked, which is CAVEAT-028(b)'s open decision.
+
+**How to verify.** **Ask the author.** Failing that, `~/.psql_history` on the
+development machine, or a shell history search for `GRANT DELETE`. Neither is in
+the repository, and neither will say *why*.
+
+**Status:** Open. Recorded 2026-08-23 while writing Day 44. See **CAVEAT-028**.
+
+---
+
 ## Adding an entry
 
 Add one whenever you catch yourself writing "presumably", "it seems", "probably
