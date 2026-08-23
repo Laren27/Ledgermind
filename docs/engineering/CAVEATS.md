@@ -569,6 +569,110 @@ container hardening setting.
 
 ---
 
+## [CAVEAT-025] 25 tests have errored since 2026-08-22, and the baseline said green
+
+**Location:** `backend/tests/conftest.py:135`, `backend/scripts/eval_runner.py`
+
+**Problem.** The whole of `tests/test_eval_helpers.py` — 25 tests — errors at
+fixture setup. Measured 2026-08-23: `218 passed, 25 errors in 4.97s`.
+
+```
+eval_runner.py: error: the following arguments are required: --api-base
+E   SystemExit: 2
+```
+
+**Why it exists.** The `eval_runner` session fixture imports
+`scripts/eval_runner.py` by substituting `sys.argv`, because that module calls
+`parse_args()` at module scope. The substituted argv is:
+
+```python
+sys.argv = ["eval_runner.py", "--model", "unused-by-these-tests"]
+```
+
+Commit `0cf7e7c` (2026-08-22) made `--api-base` **required with no default**.
+The fixture was written on 2026-08-11 (`215224b`) and was never updated —
+`git log -- backend/tests/conftest.py` shows `215224b` as its most recent touch.
+
+**Impact.** Two layers, and the second is worse than the first.
+
+1. Twenty-five real tests over `eval_runner`'s scoring helpers have not run for
+   a day. Those helpers decide whether a golden question passes.
+2. `CLAUDE.md` described the suite as "177 tests… ~2s" with no failure count, so
+   the documented baseline was *green*. Anyone running the suite and seeing 25
+   errors would reasonably read them as something they had just broken. A stated
+   baseline that does not match the observed one is worse than no baseline: it
+   converts an existing defect into a false attribution. `CLAUDE.md` now states
+   `218 passed / 25 errors` as the comparison point.
+
+**Why it was not caught.** There is no CI (CAVEAT-022). The suite is cheap
+enough to run on every change, and that is exactly why nobody notices when it is
+not run.
+
+**Current workaround.** Compare against 218/25, not against green.
+
+**Correct long-term solution.** One line — give the fixture the argument the
+parser now requires:
+
+```python
+sys.argv = ["eval_runner.py", "--model", "unused-by-these-tests",
+            "--api-base", "http://unused-by-these-tests"]
+```
+
+Then re-run and confirm 243 passed. The deeper fix is CAVEAT-022: with CI, a
+required-argument change breaks the build in the same push that introduces it.
+
+**Severity:** Medium. **Status:** Open — found 2026-08-23, not fixed, because
+`conftest.py` is source and this pass is documentation-only.
+
+---
+
+## [CAVEAT-026] Three frontend components are unreachable
+
+**Location:** `frontend/components/AnswerCard.tsx` (139 lines),
+`frontend/components/ConfidenceBadge.tsx` (30), `frontend/components/CorpusPanel.tsx` (33)
+
+**Problem — repository evidence.** Nothing under `frontend/app/`,
+`frontend/components/` or `frontend/lib/` imports `AnswerCard` or `CorpusPanel`.
+The only import of `ConfidenceBadge` is from `AnswerCard`, which is itself
+unreachable. `frontend/app/` contains exactly two files — `layout.tsx` and
+`page.tsx` — so there is no second entry point they could be mounted from.
+
+```
+$ grep -rn "AnswerCard\|CorpusPanel" frontend/app frontend/components frontend/lib
+frontend/components/CorpusPanel.tsx:10:export default function CorpusPanel(...)
+frontend/components/AnswerCard.tsx:17:export default function AnswerCard(...)
+```
+
+Self-references only.
+
+**Repository evidence, second part.** Commit `945b7d4` (2026-08-22),
+*"fix(frontend): AnswerCard does not hand ConfidenceBadge a tier that was never
+computed"*, modified `AnswerCard.tsx` — a component that does not render. Its two
+sibling commits in the same series, `6b4fc17` (`AuditLogTable.tsx`) and
+`017d97e` (`lib/api.ts`), both touched live code and were correct.
+
+**What the evidence does *not* establish.** Nothing in the git history or in any
+document states *why* these three are unreferenced — whether they were superseded
+by the `components/document/` working-paper UI and left deliberately, or simply
+orphaned. **Do not assert a reason.** The repository does not contain one.
+
+**Impact.** Low functionally — dead code ships nothing to the user. Real as a
+maintenance cost: it consumed one commit of correctness work, and a reader
+looking for "where is the answer rendered" finds a plausible wrong answer first.
+
+**Current workaround.** None needed.
+
+**Correct long-term solution.** Deliberately left open. Before deleting: confirm
+no dynamic import or string-keyed component map references them, confirm no
+branch or open work depends on them, and record the decision. Retained for now
+as teaching material — Day 40 of the course uses them as the worked example of
+identifying dead code and deciding whether removal is safe.
+
+**Severity:** Low. **Status:** Open by decision (2026-08-23). Not to be deleted
+or modified.
+
+---
+
 ## Closed / superseded
 
 | ID | Item | Outcome |
@@ -576,7 +680,7 @@ container hardening setting.
 | F1 | Substring company matching misfiled distinct issuers | **Closed 2026-08-11** — exact-alias-only; `tests/test_entity_resolver.py` guards it |
 | F2 | Router failure → unfiltered whole-tenant search | **Closed 2026-08-12** — refusal edge to `audit_writer`; see ED-010. Partial by construction |
 | F8 | Ingest Gate 4 could not observe its own run | **Closed** — gates rescoped to this run's `doc_ids` |
-| F10 | No test suite | **Partially closed** — 177 tests exist; no CI |
+| F10 | No test suite | **Partially closed** — 194 test functions exist (243 collected); no CI, and 25 have errored since 2026-08-22 — CAVEAT-025 |
 | F11 | `check_migrations` gave wrong advice about two databases | **Closed** (the tool); the two databases remain — CAVEAT-015 |
 | F12 | Documented-vs-actual drift | **Closed** for the named instances; F12(b) is asserted as current behaviour in tests |
 | F13 | Loose ends (`Ellipsis` collection, dead payload fields) | **Closed** |
