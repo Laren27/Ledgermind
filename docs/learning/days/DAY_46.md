@@ -30,6 +30,28 @@ gap marked and fed into `LEARNING_PROGRESS.md` Part 3.
 
 ---
 
+## 0.5 Why now
+
+**Because recall and recognition are different, and only one of them is what you
+came for.**
+
+Forty-five days of reading produce a powerful illusion: every file is familiar,
+every term lands, nothing surprises you. **That is recognition.** It is real and
+it is not the same as being able to produce the system from nothing — and the
+only instrument that separates them is a blank page.
+
+There is a second reason, specific to this course. Every day so far has been
+*given* to you in an order chosen for you. Today you supply the order. **A trace
+is a claim about what depends on what**, and you have been told the dependency
+graph twelve times without ever having to construct it.
+
+And a third, which is operational rather than pedagogical: **Day 47's material is
+selected by today's output.** `LEARNING_PROGRESS.md` Part 4 says tomorrow covers
+*"whatever Day 46 exposed as thin."* If §10 of your document is empty, tomorrow
+has nothing to work on.
+
+---
+
 ## 1. The protocol
 
 Four passes, in this order. **Do not merge them.**
