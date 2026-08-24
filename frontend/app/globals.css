@@ -46,6 +46,23 @@
   --color-slate-100: #ECEDEF;
   --color-slate-300: #A8AEB8;
   --color-slate-500: #7B8290;
+  /* Extends the same blue-grey ramp to the dark end: the auth card surface.
+     Kept out of --color-charcoal-* on purpose -- that ramp carries two
+     different hues already (950/900 are blue-grey, 850/800 are warm brown)
+     and its numbering is not monotonic in lightness, so adding a fifth step
+     would have meant picking a number that lies about where the colour sits. */
+  --color-slate-900: #14171D;
+
+  /* THE SIGN-IN AFFORDANCE, and the only cyan-family colour in this layer.
+     Named turquoise rather than teal even though teal is now free: 4.2
+     vacated that name three commits ago, when --color-teal-500 turned out to
+     be #2E6B4A, a green. Re-using a name whose meaning changed that recently
+     re-creates the exact defect 4.2 removed -- one name, two colours -- along
+     the time axis instead of the layer axis, and every `teal` in this repo's
+     git log and docs would need a date attached to be read correctly.
+     Turquoise is accurate for this hue and unambiguous in history. */
+  --color-turquoise-500: #3ED9C0;
+  --color-turquoise-700: #1F8B7A; /* gradient foot on the wordmark badge */
 
   /* NOT teal, and the name mattered. Tailwind's theme (tailwind.config.ts)
      also defines `teal`, at #3ED9C0 -- an actual cyan-teal, and a different
@@ -116,6 +133,7 @@
   --theme-surface-paper: var(--color-cream-200);
   --theme-surface-paperRaised: var(--color-cream-100);
   --theme-surface-paperUnder: var(--color-cream-300);
+  --theme-surface-card: var(--color-slate-900);
 
   --theme-text-primary: var(--ink-primary);
   --theme-text-secondary: var(--ink-secondary);
@@ -127,6 +145,13 @@
   --theme-border-subtle: var(--ink-divider);
   --theme-border-strong: rgba(42, 38, 34, 0.38);
   --theme-border-sidebar: rgba(255, 255, 255, 0.05);
+  /* NOT the same value as the sidebar border above -- 0.07 against 0.05.
+     Close enough to look interchangeable and not be, which is why this gets
+     its own name rather than borrowing that one. */
+  --theme-border-hairline: rgba(255, 255, 255, 0.07);
+  /* Focus ring on the auth inputs. An alpha of the action colour, written out
+     because a var() cannot carry an opacity modifier on its own. */
+  --theme-border-focus: rgba(62, 217, 192, 0.40);
 
   --shadow-sidebar: 4px 0 20px rgba(0, 0, 0, 0.50);
   --shadow-querydock: inset 0 1px 2px rgba(42, 36, 30, 0.06);
