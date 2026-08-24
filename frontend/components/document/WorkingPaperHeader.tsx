@@ -13,6 +13,20 @@ interface WorkingPaperHeaderProps {
   wpRef?: string;
   revision?: number;
   preparer?: string;
+  /**
+   * Epoch ms recorded on the CLIENT when the query was dispatched.
+   *
+   * This line used to be a hardcoded date literal, stamped on every working
+   * paper this app has ever rendered regardless of when it actually ran.
+   *
+   * It is not a server timestamp and must not be presented as one: the query
+   * response carries no time field at all (audit_log has created_at, but no
+   * endpoint returns audit_log rows). The browser clock is the only honest
+   * source available, hence the LOCAL label on the rendered value.
+   *
+   * null/undefined = no query has been dispatched for this sheet yet.
+   */
+  generatedAt?: number | null;
 }
 
 export function WorkingPaperHeader({
@@ -23,7 +37,22 @@ export function WorkingPaperHeader({
   wpRef = "WP-PENDING",
   revision = 1,
   preparer = "analyst",
+  generatedAt,
 }: WorkingPaperHeaderProps) {
+  // Formatted from the local clock deliberately, not toLocaleString(): a fixed
+  // format keeps the stamp aligned in a monospace column and cannot drift with
+  // the viewer's locale.
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const generatedLabel =
+    generatedAt == null
+      ? "—"
+      : (() => {
+          const d = new Date(generatedAt);
+          return (
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+            `${pad(d.getHours())}:${pad(d.getMinutes())} LOCAL`
+          );
+        })();
   // The previous fallback stood in for a falsy scalar company. After F14 that
   // field stopped existing, so the fallback became the label on EVERY working
   // paper -- a corpus name asserted even for answers that named one issuer.
@@ -84,7 +113,7 @@ export function WorkingPaperHeader({
         <div>REF: <span style={{ color: "var(--ink-metadata)" }}>{wpRef}</span></div>
         <div>REV: <span style={{ color: "var(--ink-metadata)" }}>{String(revision).padStart(2, "0")}</span></div>
         <div>Prepared By: <span className="lowercase font-medium" style={{ color: "var(--ink-secondary)" }}>{preparer}</span></div>
-        <div>Generated: <span style={{ color: "var(--ink-metadata)" }}>2026-07-25</span></div>
+        <div>Generated: <span style={{ color: "var(--ink-metadata)" }}>{generatedLabel}</span></div>
       </div>
     </div>
   );
