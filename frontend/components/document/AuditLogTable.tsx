@@ -24,8 +24,22 @@ export function AuditLogTable({ entries, onJump }: { entries: AuditLogEntry[]; o
         <h3 className="font-semibold tracking-tight text-lg" style={{ fontFamily: "var(--font-editorial, Georgia, serif)", color: "var(--ink-primary, #2A241E)" }}>
           Execution & Lineage Registry
         </h3>
+        {/* The strapline used to claim this was an immutable system log. It is
+            not a log and it is not immutable: `entries` is derived from the
+            `pages` array in app/page.tsx -- React state, built from answers
+            received in THIS browser tab and cleared on sign-out and on a 401.
+
+            The real audit_log is not reachable from here at all. No endpoint
+            returns its rows: api/metrics.py issues five aggregate queries over
+            it and projects no row identity, and nothing else in the API touches
+            the table. As of 2026-08-22 that is 834 rows on Supabase and 4,301
+            locally that this view cannot see.
+
+            So the strapline now says what the table below actually contains,
+            matching the empty state's own wording ("current workspace
+            session"), which was already accurate. */}
         <span className="font-mono text-xs tracking-widest uppercase" style={{ color: "var(--ink-metadata, #8B8378)" }}>
-          Immutable System Log
+          Current Session Only &middot; Not Persisted
         </span>
       </div>
 
