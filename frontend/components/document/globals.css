@@ -25,7 +25,16 @@
 
   --font-document-title: 'IBM Plex Serif', serif;
   --font-body: 'IBM Plex Mono', monospace;
-  --font-ui: 'Inter', sans-serif;
+
+  /* The UI face is NOT redeclared here. app/globals.css owns that token and
+     binds it to the family layout.tsx actually registers through next/font.
+     This file's version named a face nothing loads, so importing the two
+     together silently dropped the whole application's base type -- both blocks
+     sit on bare :root, specificity ties, and the later import wins.
+     A definition-position scan over both files (comments stripped first, so a
+     declaration after a trailing comment is not missed) puts the intersection
+     at exactly one name, and this was it. Re-run that scan before adding any
+     unprefixed token to either file. */
 
   --spacing-page: 48px;
   --spacing-section: 28px;
