@@ -31,6 +31,22 @@
   --color-charcoal-800: #14110E;
   --color-leather-900: rgba(18, 14, 12, 0.97); /* Smoked leather sidebar */
 
+  /* DARK-SURFACE TEXT RAMP -- the counterpart to the 4-level ink system above,
+     which is for paper. The sidebar had no primitive to inherit: its three
+     semantic aliases were raw hex, so there was no single place to redefine
+     and a palette change could not reach it.
+
+     Numbered light-to-dark like --color-cream-*, not dark-to-light like
+     --color-charcoal-*, because these are text ON a dark ground and 100 is
+     the highest-contrast one.
+
+     These are also byte-identical to Tailwind's text-primary/secondary/muted,
+     which is not a coincidence -- it is the same ramp written twice. Whichever
+     way Layer 2's deletion goes, this is where the values live afterwards. */
+  --color-slate-100: #ECEDEF;
+  --color-slate-300: #A8AEB8;
+  --color-slate-500: #7B8290;
+
   /* NOT teal, and the name mattered. Tailwind's theme (tailwind.config.ts)
      also defines `teal`, at #3ED9C0 -- an actual cyan-teal, and a different
      colour entirely. One name, two colours, two layers.
@@ -104,9 +120,9 @@
   --theme-text-primary: var(--ink-primary);
   --theme-text-secondary: var(--ink-secondary);
   --theme-text-muted: var(--ink-metadata);
-  --theme-text-sidebarPrimary: #ECEDEF;
-  --theme-text-sidebarSecondary: #A8AEB8;
-  --theme-text-sidebarMuted: #7B8290;
+  --theme-text-sidebarPrimary: var(--color-slate-100);
+  --theme-text-sidebarSecondary: var(--color-slate-300);
+  --theme-text-sidebarMuted: var(--color-slate-500);
 
   --theme-border-subtle: var(--ink-divider);
   --theme-border-strong: rgba(42, 38, 34, 0.38);
