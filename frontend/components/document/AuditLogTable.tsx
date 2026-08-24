@@ -78,7 +78,7 @@ export function AuditLogTable({ entries, onJump }: { entries: AuditLogEntry[]; o
                   {/* Stamped Ledger Tick: Green (✓) for Success, Red (✗) for Failure */}
                   <td className="py-3.5 pr-4 text-center text-sm font-bold select-none">
                     {e.isSuccess ? (
-                      <span title="Execution Verified" style={{ color: "var(--color-teal-500, #2E6B4A)" }}>✓</span>
+                      <span title="Execution Verified" style={{ color: "var(--color-green-500, #2E6B4A)" }}>✓</span>
                     ) : (
                       <span title="Execution Failed / Blocked" style={{ color: "var(--color-coral-500, #E2665A)" }}>✗</span>
                     )}
@@ -90,7 +90,7 @@ export function AuditLogTable({ entries, onJump }: { entries: AuditLogEntry[]; o
                   <td className="py-3.5 pr-4 uppercase tracking-wider text-[11px]" style={{ color: "var(--ink-secondary, #5F574D)" }}>
                     {e.path ?? "—"}
                   </td>
-                  <td className="py-3.5 pr-4 uppercase tracking-wider text-[11px]" style={{ color: e.confidenceTier === "high" ? "var(--color-teal-500, #2E6B4A)" : "var(--ink-metadata, #8B8378)" }}>
+                  <td className="py-3.5 pr-4 uppercase tracking-wider text-[11px]" style={{ color: e.confidenceTier === "high" ? "var(--color-green-500, #2E6B4A)" : "var(--ink-metadata, #8B8378)" }}>
                     {/* Same em-dash idiom as the admin-only Latency column
                         below: a field that is not available reads as absent,
                         never as a value. A bare {undefined} renders an empty
