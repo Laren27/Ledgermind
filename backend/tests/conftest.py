@@ -114,8 +114,11 @@ def eval_runner():
     """
     scripts/eval_runner.py, imported as a module.
 
-    It calls parser.parse_args() at module scope with --model marked required,
-    so a bare import raises SystemExit(2). sys.argv is substituted for the
+    It calls parser.parse_args() at module scope with --model AND --api-base
+    marked required, so a bare import raises SystemExit(2). Both are supplied
+    below; adding a third required flag to the runner breaks every test using
+    this fixture, and no type checker sees an argv list built by hand.
+    sys.argv is substituted for the
     duration of the import, matching what scripts/test_eval_matcher.py already
     does -- this fixture is the same manoeuvre, not a second approach to it.
 
@@ -132,7 +135,8 @@ def eval_runner():
     module_path = os.path.join(scripts_dir, "eval_runner.py")
 
     saved_argv = sys.argv
-    sys.argv = ["eval_runner.py", "--model", "unused-by-these-tests"]
+    sys.argv = ["eval_runner.py", "--model", "unused-by-these-tests",
+                "--api-base", "http://unused-by-these-tests"]
     try:
         spec = importlib.util.spec_from_file_location(
             "eval_runner_under_unit_test", module_path
