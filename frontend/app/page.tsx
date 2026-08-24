@@ -254,7 +254,11 @@ export default function Home() {
     setSessionChecked(true);
   }, []);
 
-  interface Page { response: QueryResponse; originView: "workbench" | "peer"; trace: TraceEvent[]; }
+  // dispatchedAt: the client clock when this query was SENT, kept per page so
+  // the working paper carries a real generation time instead of a literal.
+  // Client-side because the response has no time field; the header labels it
+  // LOCAL so it is never mistaken for a server timestamp.
+  interface Page { response: QueryResponse; originView: "workbench" | "peer"; trace: TraceEvent[]; dispatchedAt: number; }
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -357,6 +361,11 @@ export default function Home() {
     const collected: TraceEvent[] = [];
     setTraceEvents([]);
 
+    // Read BEFORE the await, not after: this is the moment the question was
+    // asked, and a semantic query can spend 20s in the pipeline before the
+    // page object is built.
+    const dispatchedAt = Date.now();
+
     try {
       const result = await submitQueryStreaming(
         query,
@@ -367,7 +376,7 @@ export default function Home() {
         executionContext as any
       );
       setPages((prev) => {
-        const next = [...prev, { response: result, originView: activeView === "peer" ? "peer" as const : "workbench" as const, trace: collected }];
+        const next = [...prev, { response: result, originView: activeView === "peer" ? "peer" as const : "workbench" as const, trace: collected, dispatchedAt }];
         setCurrentPageIndex(next.length);
         return next;
       });
@@ -414,6 +423,7 @@ export default function Home() {
             wpRef={targetAnswer ? `WP-${(targetAnswer.path ?? "GEN").toUpperCase()}-${targetAnswer.request_id.slice(0, 4)}` : "WP-PENDING"}
             revision={targetAnswer ? revisions[targetAnswer.query] ?? 1 : 1}
             preparer={session?.role ?? ""}
+            generatedAt={targetPage?.dispatchedAt ?? null}
           />
 
           <DocumentTitle>{targetTitle}</DocumentTitle>
