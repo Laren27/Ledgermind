@@ -69,10 +69,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body
-        className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable} font-body`}
-      >
+    // The next/font variables live on the ROOT element now, not on the body
+    // element.
+    //
+    // globals.css declares --font-editorial / --font-ui / --font-archival on
+    // :root, and each is `var(--font-<face>), <stack>` with no fallback inside
+    // the var(). While the face variables sat one level lower, that reference
+    // was unresolvable AT :root, so all three tokens computed to the
+    // guaranteed-invalid value and inherited that way down the whole tree.
+    // Measured 2026-08-23: all three read invalid at both levels, and every
+    // consumer was silently serving its literal fallback -- Georgia,
+    // monospace, sans-serif -- while three self-hosted faces sat loaded and
+    // unused.
+    //
+    // Moved the classes UP rather than moving the declarations down. :root is
+    // the highest scope there is, so no descendant can render outside it. The
+    // alternative leaves anything above the body box unstyled, and it would
+    // also split the token layer, parking three font tokens somewhere other
+    // than where the other 77 live.
+    //
+    // font-body stays put: it is a Tailwind utility, not a variable
+    // definition, and it wants to set the base face on the body box.
+    <html lang="en" className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}>
+      <body className="font-body">
         {children}
         <SpeedInsights />
       </body>
