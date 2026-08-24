@@ -28,6 +28,17 @@ import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
+// AFTER app/globals.css, deliberately and necessarily. This file had never
+// been imported -- Next does not auto-load CSS by proximity -- so its 26
+// tokens were dead and 37 var(--paper-*) references across ten mounted
+// components resolved to nothing at all.
+//
+// Order matters because both files declare on bare :root, where specificity
+// ties and the later import wins. That is safe only because the two
+// declaration sets are now disjoint; the one name they shared was removed in
+// the commit before this one. Re-run the definition-position intersection scan
+// before adding any unprefixed token to either file.
+import "../components/document/globals.css";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
