@@ -465,6 +465,18 @@ export default function Home() {
   return (
     <DocumentEnvironment surface="desk">
       <div className="flex h-screen w-full overflow-hidden">
+        {/* No indexedFilings prop. It was three literals rendered as the live
+            corpus index, with ETERNAL flagged `active` and coloured green
+            against no backend state -- identical output after a successful
+            ingest, a failed one, and against a nine-document database or an
+            eleven-document one.
+
+            Nothing produces this. No endpoint returns
+            documents.ingestion_state, and GET /api/documents/pending reads a
+            different table with a different value domain and is admin-only, so
+            it is not a substitute. Sidebar renders an explicit "not available"
+            naming that reason; the prop is still in its signature, so
+            restoring the panel is one line here. */}
         <Sidebar
           userRole={session?.role ?? ""}
           tenantId={session?.tenantId ?? ""}
@@ -480,11 +492,6 @@ export default function Home() {
             setCurrentPageIndex(0);
             setError(null);
           }}
-          indexedFilings={[
-            { company: "ETERNAL", period: "FY26", active: true },
-            { company: "PAYTM", period: "FY26" },
-            { company: "TITAN", period: "Q1FY26" },
-          ]}
         />
 
         {activeView === "upload" ? (
