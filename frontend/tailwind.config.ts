@@ -22,9 +22,18 @@ const config: Config = {
         amber: "#E8A93B",
         coral: "#E2665A",
       },
+      // Bound to the three variables layout.tsx actually registers through
+      // next/font. The previous display/body bindings named variables that are
+      // defined nowhere in this repo, so both utilities fell through to the
+      // generic fallback -- including on <body className="... font-body">,
+      // which is why the document's base type was the browser default.
+      //
+      // These resolve where the old :root font tokens do not: next/font puts
+      // its variables on <body>, and a utility class applied to body or below
+      // can see them. A token declared on :root cannot.
       fontFamily: {
-        display: ["var(--font-instrument)", "sans-serif"],
-        body: ["var(--font-manrope)", "sans-serif"],
+        display: ["var(--font-fraunces)", "serif"],
+        body: ["var(--font-plex-sans)", "sans-serif"],
         mono: ["var(--font-plex-mono)", "monospace"],
       },
       borderRadius: {
