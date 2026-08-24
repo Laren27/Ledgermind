@@ -155,21 +155,73 @@ engine.
 
 > **STOP unless Pass 1 and Pass 2 are done.**
 
-Below is a **completeness check only**: how many arrows each trace should have,
-and the boundaries each must cross. **No names, no order, no content.** If your
-trace has six arrows in a stage that should have nine, you know where to look —
-without being told what is missing.
+Below is a **completeness check only**. **No names, no order, no content** — it
+tells you *whether* something is missing, never *what*.
 
-| Stage | Trace A | Trace B | Trace C |
-|---|---:|---:|---:|
-| Browser → HTTP | 4 | 4 | 4 |
-| HTTP → graph entry | 5 | 5 | 5 |
-| Graph traversal | 6 | 7 | **2** |
-| Engine internals | 7 | 11 | 0 |
-| Response shaping → render | 6 | 7 | 5 |
-| **Total** | **28** | **34** | **16** |
+### 3.1 Node counts — measured, not estimated
 
-**Boundaries every trace must cross**, and name what changes shape at each:
+The only countable unit in a trace is a **graph node**, because the graph
+defines them. Everything else — "an arrow" — is a granularity you chose, and
+yours will differ from mine.
+
+| Trace | Nodes | The sequence, by name, is yours to produce |
+|---|---:|---|
+| **A — quantitative** | **6** | |
+| **B — semantic** | **6** | |
+| **C — refusal** | **2** | |
+
+**Measured 2026-08-23** on the running stack, not derived from the source:
+
+```bash
+curl -N -s -X POST http://localhost:8000/api/query/stream \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"query":"<your question>"}' | grep '^data: {"node"'
+```
+
+**Note that A and B are the same count.** The engine slot is one node either
+way — which is exactly why `ExecutionTrace` renders six slots for eight nodes
+(Day 39). If you expected the semantic path to be longer, that is a gap worth
+writing down: **retrieval's eleven steps all happen inside one node.**
+
+### 3.2 What must appear — a checklist, not a count
+
+Tick these against your own trace. Each is checkable; none is a number.
+
+```text
+TRACE A — quantitative
+[ ] the node that runs before routing, and the edge it can take instead
+[ ] the field the model emits, and the fact that it is not SQL
+[ ] the component that compiles SQL, and what it compiles it FROM
+[ ] the statement that must precede the SELECT, and what happens without it
+[ ] all three pre-LLM guards, by what each refuses
+[ ] the repair loop's bound, and what it repairs
+[ ] the thing that sets sql_verified, and when
+[ ] the reason the answer text is not generated
+
+TRACE B — semantic
+[ ] two retrieval signals, and where each comes from
+[ ] the fusion method, and why it ignores raw scores
+[ ] where the tenant filter is applied, and why THERE
+[ ] the second model class, and how its output differs in KIND
+[ ] two threshold pairs, and the field that selects between them
+[ ] dedup, and which chunk is the denominator
+[ ] the bounded ladder, and what it filters
+[ ] where citations come from — and where they do NOT
+
+TRACE C — refusal
+[ ] the entry node
+[ ] the edge, and every node it skips
+[ ] what happens to confidence_tier, and why
+[ ] the LLM call count
+[ ] the row that is still written, and two of its columns
+[ ] the render branch
+```
+
+**If a box will not tick, that is a §10 entry.** Not a failure — the output.
+
+### 3.3 The boundaries
+
+**Every trace crosses all ten.** Name what changes shape at each:
 
 ```
 1. keypress            → JavaScript event
@@ -184,8 +236,9 @@ without being told what is missing.
 10. QueryResponse      → JSX
 ```
 
-**Ten boundaries. Trace C crosses all ten too** — which is part of why it is
-required.
+**Trace C crosses all ten as well** — including boundary 7, where
+`role_filtered_response` *removes* a field rather than filtering one. That is
+part of why the refusal trace is required.
 
 ---
 
@@ -423,6 +476,7 @@ course adapts to you**, and it only works if §10 of your document is honest.
 ```text
 [ ] Traces A, B and C are complete, keypress to pixels
 [ ] Every arrow carries file · function · in · out · why · fails
+[ ] §3.2's checklist ticks, or the gap is written into §10
 [ ] No `why` field reads "to process the query"
 [ ] All ten boundaries appear, with what changes shape at each
 [ ] The divergence/rejoin section names both bypass edges
@@ -614,6 +668,9 @@ else to read.
 - KEYPRESS TO PIXELS. Starting at POST /api/query is the most common
   incomplete answer
 - TEN boundaries, and every trace crosses all ten
+- SIX nodes on the quantitative path, SIX on the semantic, TWO on a refusal --
+  MEASURED off the SSE stream. A and B are the same count because the engine
+  slot is ONE node either way
 - Corrections in Pass 3 must be VISIBLE. A correction you cannot see is a gap
   you will repeat
 - Part 3's rows are literally tomorrow's syllabus (Part 4: Day 47 covers

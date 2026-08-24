@@ -657,7 +657,7 @@ fails.
 | [`BUGS_AND_LESSONS.md`](../../journal/BUGS_AND_LESSONS.md) | 14 bugs, 8 recurring classes. **Read before proposing a fix** |
 | [`DEBUGGING_GUIDE.md`](../../engineering/DEBUGGING_GUIDE.md) | 12 sections. **Read when something is wrong** |
 | [`LEARNING_PROGRESS.md`](../LEARNING_PROGRESS.md) | Part 3 is now yours. Part 5 is the final exam |
-| [`MASTER_REQUEST_TRACE.md`](../../architecture/MASTER_REQUEST_TRACE.md) | **Yours, from Day 46.** Re-check it after any structural change |
+| `docs/architecture/MASTER_REQUEST_TRACE.md` | **Yours, from Day 46** — it does not exist until you write it. Re-check it after any structural change |
 
 **And the standing obligations**, which are not optional and are not covered by
 any of the above:
