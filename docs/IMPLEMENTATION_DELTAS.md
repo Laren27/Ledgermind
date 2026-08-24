@@ -3918,3 +3918,162 @@ because nothing about the digits is corrupt.
 
 **TRIGGER:** the first ingest of a filing declaring a non-crore scale, or any
 issuer switching scale within one document. Neither exists in this corpus today.
+
+### The 90/91 baseline was measured against local Docker and an 11-document corpus
+
+Found 2026-08-22. Same family as *"The instrument moves with the commit you
+check out"* — the thing measured with was not the thing assumed.
+
+**THE SWEEP RECORDED EVERY GATE EXCEPT THE ONE THAT MATTERED.** `eval_runner`'s
+`meta` block carried `stated_model`, `providers`, `models_served`,
+`reranker_backends`, `excluded_count` — and no `api_base`. `--api-base`
+defaulted to `http://localhost:8000` and nothing printed the resolved value.
+Identical defect to the one this file already solved one field over: `--model`
+was *"only ever a label"* until `models_served` was added.
+
+**MEASURED, BY PROBE, NOT INFERRED.** Supabase `audit_log` held **zero** rows
+between 2026-08-20 and 2026-08-22 18:13Z. Local Postgres held **153** spanning
+2026-08-21 03:22:19Z -> 2026-08-22 13:04:09Z — exactly the sweep window. A
+1-question probe against `ledgermind-shaz.onrender.com` produced a Supabase row
+within seconds (`4236f403-…`, `gemini` / `gemini-3.1-flash-lite`,
+`length(response_text)=786`). Every query reaching Render leaves a Supabase row.
+The sweeps left none.
+
+**RENDER WAS NOT DOWN, NOT STALE, AND NOT FAILING TO AUDIT.** All three
+alternatives were excluded by direct observation: HTTP 200 with postgres/redis/
+qdrant `ok`; a completed 19.9s cross-examination with 5 chunks and `cohere`
+reranking; a response omitting `company` and carrying `companies`, i.e. code at
+or after `6764d03`; and `length(response_text)=786`, i.e. at or after `5bff364`.
+`audit_writer` catches every exception and only logs, so a silent audit failure
+is a real shape this system can take — it just is not what happened.
+
+**THIS IS NOT A LABELLING PROBLEM.** Local is **11 documents**, Supabase **9**.
+The delta is two ZOMATO rows from `sql/seed.sql`: registered, never ingested,
+synthetic doc_ids, placeholder checksums, **zero chunks, zero financials**, and
+corrected from `indexed` to `uploaded` **local only**. A retrieval number
+measured against an 11-document corpus is not a baseline for a 9-document one.
+
+**WHAT 90/91 IS AND IS NOT.** It remains a real measurement of `e1ca737` with
+clean provider, model and reranker gates. It is **not** a measurement of the
+deployment, and it is **not** comparable to the 2026-08-15/16 entry, which names
+Render explicitly. Provenance now reads three ways, not two: one real fix
+(PQ018), two expectation corrections (TQ008, ETQ001), **and measured against a
+corpus the deployment does not have**.
+
+**CLOSED AT THE INSTRUMENT.** `abfbb08` records `api_base` in `meta` and prints
+it at startup; `0cf7e7c` makes the flag required with no default. RUNBOOK's gate
+read order is now api_base -> Providers -> Models served -> Reranker backends ->
+score.
+
+**OPEN:** ETQ001 routed `cross` against Render today; its golden expects
+`semantic` and the 08-22 local sweep scored transcript 1/1. **No cause
+assigned** — three live candidates (local-vs-Render code difference, F14's
+schema change, classifier nondeterminism) and a single pair cannot separate
+them. Second question after TQ008 where a corrected `expected_path` then did not
+hold.
+
+---
+
+### An argparse contract change requires running the suite — fixtures build sys.argv by hand
+
+Found 2026-08-22, immediately after `0cf7e7c`. Same family as the pyflakes rule,
+one layer over: a name-resolution pass cannot cross into an argv list.
+
+`0cf7e7c` made `--api-base` required. `tests/conftest.py`'s `eval_runner`
+fixture constructs `sys.argv = ["eval_runner.py", "--model", …]` by hand, so
+`parse_args()` began exiting 2 and **all 25 tests in `test_eval_helpers.py`
+errored at setup**. No type checker sees an argv list. The commit's guard
+asserted the CLI exits 2 on a missing flag — which it did, correctly — and never
+ran the suite.
+
+The fixture's own docstring named `--model` as the only required argument, so
+the comment agreed with the code right up until it didn't. Fixed in `0cedfc3`;
+suite back to 243 passed.
+
+**RULE:** a change to any script's argparse contract requires running the full
+test suite before commit.
+
+---
+
+### The paper token layer cannot be imported: `--font-ui` is defined in both `:root` stylesheets
+
+Found 2026-08-22 by the precondition on an edit that would otherwise have
+shipped. **Live defect, unfixed.**
+
+`components/document/globals.css` defines a complete 24-property paper token set
+and **is never imported** — Next.js does not auto-load CSS by proximity, and the
+only `globals.css` import in the tree is `app/globals.css`. Consequence: **37
+`var(--paper-*)` references across 10 mounted components resolve to nothing, 33
+of them with no fallback.** `ExecutionTrace`'s entire done-vs-pending colour
+distinction is `var(--paper-text)` against `var(--paper-text-muted)`; both are
+invalid, both fall back to `inherit`, and **completed and pending pipeline
+stages render in identical colour.** `DocumentEnvironment`'s paper surface and
+`EntityComparisonTable`'s winner highlight fail the same way.
+
+**THE ONE-LINE FIX IS A TRAP.** Both files declare on bare `:root`, so
+specificity is equal and the later import wins. The intersection of the two
+property sets is exactly one name — `--font-ui` — and `app/globals.css` binds
+`body { font-family: var(--font-ui); }`. The document layer's value is
+`'Inter'`, which `layout.tsx` **never registers** (it registers Fraunces, IBM
+Plex Sans, IBM Plex Mono). Importing the second stylesheet would silently drop
+the entire application's base font to browser default, plus seven explicit
+component call sites.
+
+**FIX IS A RENAME OR A SCOPE**, not an import: rename the document layer's
+`--font-ui`, or scope its tokens under a class instead of `:root`. Deferred to
+the token-layer commit.
+
+---
+
+### Titan has no annual-aggregate revenue, and the only record of that is a UI comment
+
+Found 2026-08-22. A corpus limitation discovered during earlier measurement and
+recorded nowhere except a trailing comment on `PEER_ENTITIES` in
+`frontend/app/page.tsx`: *"Titan excluded: no annual-aggregate revenue in
+corpus."*
+
+`PEER_ENTITIES = ["Eternal", "Paytm"]` is **query-affecting**, not decorative —
+it populates the peer-comparison entity pills and the selections build the query
+text. Same class as the `indexedFilings` literals removed in the same session,
+but with a functional consequence rather than a display one, and it cannot be
+removed the way those were: removing it removes the feature.
+
+**A constraint that only exists as a UI comment is one refactor away from being
+lost.** Recording it here is the point of this entry.
+
+---
+
+### `confidence_tier` is omitted on a block, because nulling it moves the score
+
+Landed 2026-08-22 (`7d580df`). Related to *"`expected_confidence_tier` is
+carried in golden rows and asserted by nobody"* — the same field's weak contract,
+from the other end.
+
+On a Prompt Shield block the `confidence` node is skipped and nothing writes
+confidence, so the client received `make_initial_state`'s defaults `"low"` /
+`0.0` — **indistinguishable on the wire from a measured low-confidence answer.**
+Observed live against Render, not inferred. Same null-overloading shape as
+`company_unresolved`.
+
+**THE REPRESENTATION WAS MEASURED, NOT ARGUED.** Running the real `score_result`
+over one golden row per category with the field set three ways:
+
+    key ABSENT   ->  identical verdict in all 12 categories
+    None         ->  out_of_corpus FLIPS pass -> fail
+                     ("Unexpected: sql_verified=False error=None tier=None")
+
+An absent key is scoring-neutral because `.get("confidence_tier", "low")`
+supplies the old value; an explicit `None` is not. **Nullability is
+load-bearing.** The field is therefore omitted — matching the rule `companies`
+already follows six lines above it in the same function. The 90/91 baseline is
+unmoved by construction.
+
+**HALF-SCOPE, DELIBERATE.** `confidence_score` stays `0.0` on the blocked path.
+It is a stored `audit_log` column and `metrics.py` aggregates over it
+(`refusal_rate_pct`, `confidence_distribution`); nulling it would retroactively
+change what those mean for every blocked row already written. Pinned by
+`test_blocked_confidence_score_is_unchanged` so the boundary cannot drift.
+
+**ADJACENT, NOT CHANGED:** `eval_runner`'s `out_of_corpus` branch sits *before*
+the generic `is_blocked` check, so a blocked `out_of_corpus` row would be scored
+by a tier-reading branch. No such row exists today.
