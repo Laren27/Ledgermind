@@ -22,8 +22,18 @@
  * the Intake entry highlighted. One narrowing at the boundary, rather than a
  * fifth entry nobody should click.
  *
- * `indexedFilings` is passed in as a literal by page.tsx and is NOT fetched.
- * It is accurate today and will drift on the next ingest -- see CAVEAT-027.
+ * `indexedFilings` HAS NO PRODUCER. It was three literals passed in by
+ * page.tsx and rendered as the live corpus index, with one entry flagged
+ * `active` and coloured green against no backend state at all -- it read
+ * identically after a successful ingest, after a failed one, and against a
+ * nine-document database or an eleven-document one.
+ *
+ * No endpoint returns `documents.ingestion_state`. `GET /api/documents/pending`
+ * is NOT a substitute: different table, different value domain
+ * (pending|processing|done|failed, the pre-ingestion queue), and admin-only.
+ *
+ * So the panel says what it does not know. The prop stays in the signature,
+ * unchanged, so wiring it up later is one call site and no refactor.
  */
 
 import React from "react";
@@ -133,14 +143,26 @@ export function Sidebar({
         </div>
 
         {/* Active Archive Registry with Brass Tab Cues */}
-        {indexedFilings.length > 0 && (
-          <div className="space-y-2 pt-5 border-t border-white/[0.04]">
+        <div className="space-y-2 pt-5 border-t border-white/[0.04]">
+          <div
+            className="px-3 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
+            style={{ color: "#8B8378", fontFamily: "var(--font-archival, monospace)" }}
+          >
+            Active Corpus
+          </div>
+          {indexedFilings.length === 0 ? (
+            /* NAMES THE REASON. "No filings indexed" would be a claim about
+               the corpus; the corpus is fine and this component simply has no
+               way to see it. The distinction is the whole point of the
+               zero-UI-hallucination mandate -- omit rather than substitute,
+               and say which one you are doing. */
             <div
-              className="px-3 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
-              style={{ color: "#8B8378", fontFamily: "var(--font-archival, monospace)" }}
+              className="px-3.5 py-2 text-[10px] leading-relaxed"
+              style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}
             >
-              Active Corpus
+              Not available &mdash; no endpoint reports filing ingestion state.
             </div>
+          ) : (
             <div className="space-y-1">
               {indexedFilings.map((filing, idx) => (
                 <div
@@ -153,7 +175,7 @@ export function Sidebar({
                   }}
                 >
                   {filing.active && (
-                    <span 
+                    <span
                       className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-sm"
                       style={{ background: "#2E6B4A" }}
                     />
@@ -163,8 +185,8 @@ export function Sidebar({
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Sign Out Footer */}
