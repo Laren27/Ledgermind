@@ -31,7 +31,18 @@
   --color-charcoal-800: #14110E;
   --color-leather-900: rgba(18, 14, 12, 0.97); /* Smoked leather sidebar */
 
-  --color-teal-500: #2E6B4A; /* Calm accounting green */
+  /* NOT teal, and the name mattered. Tailwind's theme (tailwind.config.ts)
+     also defines `teal`, at #3ED9C0 -- an actual cyan-teal, and a different
+     colour entirely. One name, two colours, two layers.
+
+     This one is renamed rather than Tailwind's, on the evidence: `amber` and
+     `coral` are declared in BOTH layers at byte-identical values, so the
+     -500 slots were meant to mirror Tailwind's palette. `teal` was the single
+     slot where this layer put a different colour under a shared name -- and
+     #2E6B4A is a green, which its own comment always said.
+
+     Value unchanged. This is a rename, not a palette decision. */
+  --color-green-500: #2E6B4A; /* Calm accounting green */
   --color-amber-500: #E8A93B;
   --color-coral-500: #E2665A;
 
