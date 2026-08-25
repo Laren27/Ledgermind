@@ -57,6 +57,35 @@ function issuerLabel(companies: string[] | null | undefined): string | null {
   return companies.join(" / ");
 }
 
+/**
+ * The relation the answer's SQL actually read, taken from the SQL itself.
+ *
+ * The three call sites below used to pass a literal naming a relation that does
+ * not exist in this schema -- not in sql/init.sql, not in any migration, not
+ * anywhere in the backend. It rendered under a "Source Table:" label, which is
+ * a provenance claim, so it was the worst-sited of its class.
+ *
+ * Derived rather than corrected, because a provenance line should come from the
+ * thing it claims to describe. The DSL compiler is deterministic Python and
+ * every statement it emits reads one relation today, but reading it from the
+ * executed statement means a future join or a renamed table reports itself
+ * instead of silently disagreeing with a hardcoded string.
+ *
+ * RETURNS UNDEFINED FOR VIEWER, ON PURPOSE. `sql_query` is analyst+ in
+ * role_filtered_response, so a viewer has nothing to derive from -- and
+ * SectionHeading omits the whole label when this is absent. A viewer sees no
+ * provenance line rather than a plausible table name nothing verified.
+ */
+function executedTable(data: QueryResponse): string | undefined {
+  const sql = data.sql_query;
+  if (!sql) return undefined;
+  const names = new Set<string>();
+  const re = /\b(?:from|join)\s+([a-z_][a-z0-9_]*)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(sql)) !== null) names.add(m[1].toLowerCase());
+  return names.size > 0 ? [...names].join(" + ") : undefined;
+}
+
 function buildCitationItems(data: QueryResponse) {
   return (data.citations ?? []).map((c, i) => {
     // financial_type is UNKNOWN for every non-FINANCIAL_STATEMENT chunk by
@@ -137,7 +166,7 @@ function composeDocumentBody(data: QueryResponse) {
           </p>
         </div>
 
-        <SectionHeading sourceTable="audited_financials">
+        <SectionHeading sourceTable={executedTable(data)}>
           {row.metric} — {data.fiscal_year ?? "Period"}
         </SectionHeading>
 
@@ -171,7 +200,7 @@ function composeDocumentBody(data: QueryResponse) {
           </p>
         </div>
 
-        <SectionHeading sourceTable="audited_financials">
+        <SectionHeading sourceTable={executedTable(data)}>
           {row.metric} — {row.fiscal_year}
         </SectionHeading>
         
@@ -214,7 +243,7 @@ function composeDocumentBody(data: QueryResponse) {
     return (
       <>
         {rows.length > 0 && (
-          <SectionHeading sourceTable="audited_financials">
+          <SectionHeading sourceTable={executedTable(data)}>
             {[issuerLabel(data.companies), data.fiscal_year ?? "Period"]
               .filter(Boolean)
               .join(" — ")}
