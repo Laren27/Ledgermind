@@ -152,6 +152,12 @@
   /* Focus ring on the auth inputs. An alpha of the action colour, written out
      because a var() cannot carry an opacity modifier on its own. */
   --theme-border-focus: rgba(62, 217, 192, 0.40);
+  /* The paper pane's scrollbar. Its right edge sits over the desk, not over
+     the sheet, so the thumb is a low-alpha white that reads as a groove in the
+     wood rather than as browser furniture. Measured 15px of native scrollbar
+     at every viewport height before this existed. */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.09);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.16);
 
   --shadow-sidebar: 4px 0 20px rgba(0, 0, 0, 0.50);
   --shadow-querydock: inset 0 1px 2px rgba(42, 36, 30, 0.06);
@@ -200,4 +206,33 @@ body::after {
 .tabular-metrics {
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
+}
+
+/* The paper pane's own scroll furniture.
+   Applied to the ONE element that owns the scroll -- measured, it is the only
+   ancestor of DocumentPage with overflow-y != visible and content taller than
+   its box. A default scrollbar renders 15px of bright system chrome against
+   the walnut, which reads louder than anything else on the desk.
+   Cannot be an inline style: pseudo-elements are unreachable from the style
+   attribute. */
+.paper-scroll {
+  scrollbar-width: thin;                                   /* Firefox */
+  scrollbar-color: var(--scrollbar-thumb) transparent;     /* Firefox */
+}
+.paper-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.paper-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.paper-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: var(--radius-pill);
+  /* Transparent border + content-box clip insets the thumb inside the gutter,
+     so it reads as a thin rule rather than filling the channel. */
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.paper-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
 }
