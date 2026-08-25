@@ -140,6 +140,43 @@ budget before the request starts.
 
 ---
 
+## Frontend token scans — run them, they have real failure modes
+
+    docker compose exec -T -w /app frontend npm run check:tokens
+    docker compose exec -T -w /app frontend npm run check:tokens:self-test
+
+Two checks in `frontend/scripts/check-tokens.mjs`. Non-zero exit if either
+fails. Node, no dependencies, no network.
+
+**Scan A — definition-position intersection. Run BEFORE adding any token to
+either `:root` stylesheet.** `app/globals.css` and
+`components/document/globals.css` are both imported globally at equal
+specificity, so the later import silently wins any name they share. That is not
+hypothetical: both once declared `--font-ui`, and the document layer's value
+named a face `next/font` never registers. A prefixed name (`--paper-*`,
+`--ink-*`) is safe by construction; an unprefixed one is what this catches.
+
+**Scan B — undeclared `var()` sweep. Run AFTER any component edit.** A `var()`
+whose name nothing declares is not a soft failure. With no fallback the whole
+declaration is invalid at computed-value time and the property falls back to
+inheritance — **the rule is deleted, not degraded**, and it can inherit the
+right answer by luck and look fine. `--text-primary` did exactly that for
+months. The scan reports every undeclared reference and flags the no-fallback
+ones separately as the more severe class.
+
+Both strip comments before scanning. Without that, Scan A misses any
+declaration whose predecessor ended in a trailing comment (it missed 25 that
+way, including one with 8 live references), and Scan B reports `var(--token)`
+written inside an explanatory comment as a finding.
+
+**The self-test is five negative controls, and each has been observed failing.**
+Reintroducing the old semicolon-anchored regex makes the trailing-comment
+control report `CONTROL DID NOT FIRE` and exit 1. If you change either scan, run
+`check:tokens:self-test` — a check whose passing condition cannot fail is worse
+than no check, and this repo has produced five of those.
+
+---
+
 ## NEVER run `next build` in the container running `next dev`
 
 Both use the same `.next/`, and `./frontend` is bind-mounted, so a build run
