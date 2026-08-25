@@ -591,28 +591,42 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 py-12 h-full overflow-y-auto paper-scroll">
-            <DocumentPage
-              docId={getDocId(ledgerCurrentPage)}
-              pageNumber={ledgerCurrentPage}
-              totalPages={ledgerTotalPages}
-              footerLabelOverride={
-                activeView === "audit"
-                  ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED`
-                  : activeView === "upload-history"
-                  ? `${pending.length} ${pending.length === 1 ? "UPLOAD" : "UPLOADS"} LOGGED`
-                  : undefined
-              }
-              confidential
-              isLoading={isLoading}
-              shiftPhase={shiftPhase}
-              onSheetTransitionEnd={handleSheetTransitionEnd}
-              underneathContent={pendingPageIndex !== null ? renderSheetContent(pendingPageIndex) : undefined}
-              underneathPageNumber={pendingPageIndex !== null ? pendingPageIndex : undefined}
-              underneathDocId={pendingPageIndex !== null ? getDocId(pendingPageIndex) : undefined}
-            >
-              {renderSheetContent(ledgerCurrentPage)}
-            </DocumentPage>
+          // PINNED NAVIGATOR. The scroll now belongs to the inner div; this
+          // outer column holds it and the navigator as siblings, so the
+          // navigator stays put while the sheet scrolls under it. It is an
+          // instrument, and an instrument should not scroll away from you.
+          //
+          // min-h-0 on both is load-bearing: a flex child defaults to
+          // min-height:auto and refuses to shrink below its content, which
+          // would push the navigator off the bottom instead of scrolling it.
+          //
+          // Page-turn logic is untouched. PageNavigator keeps the same four
+          // props, and DocumentPage's transition effect does not depend on
+          // where either element is mounted.
+          <div className="flex-1 h-full flex flex-col min-h-0">
+            <div className="flex-1 min-h-0 py-12 overflow-y-auto paper-scroll">
+              <DocumentPage
+                docId={getDocId(ledgerCurrentPage)}
+                pageNumber={ledgerCurrentPage}
+                totalPages={ledgerTotalPages}
+                footerLabelOverride={
+                  activeView === "audit"
+                    ? `${totalPages} ${totalPages === 1 ? "ENTRY" : "ENTRIES"} LOGGED`
+                    : activeView === "upload-history"
+                    ? `${pending.length} ${pending.length === 1 ? "UPLOAD" : "UPLOADS"} LOGGED`
+                    : undefined
+                }
+                confidential
+                isLoading={isLoading}
+                shiftPhase={shiftPhase}
+                onSheetTransitionEnd={handleSheetTransitionEnd}
+                underneathContent={pendingPageIndex !== null ? renderSheetContent(pendingPageIndex) : undefined}
+                underneathPageNumber={pendingPageIndex !== null ? pendingPageIndex : undefined}
+                underneathDocId={pendingPageIndex !== null ? getDocId(pendingPageIndex) : undefined}
+              >
+                {renderSheetContent(ledgerCurrentPage)}
+              </DocumentPage>
+            </div>
 
             {activeView !== "audit" && activeView !== "upload-history" && (
               <PageNavigator
