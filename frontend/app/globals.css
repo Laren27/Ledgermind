@@ -8,8 +8,18 @@
      ========================================================================== */
   --color-gold-500: #B58A3C;
   --color-gold-400: #C99B4A;
+  /* Completes the ramp downwards. The sidebar's active marker is a three-stop
+     gradient and its darkest stop had no token, so it stayed a literal while
+     the two above it were tokens -- half a ramp is worse than none, because
+     redefining gold would have moved two stops and left the third behind.
+     The document layer carries this same value under a paper-accent name; that
+     one is for footnote numerals on cream and is not this. */
+  --color-gold-700: #8A6D3B;
   --color-gold-dim: rgba(181, 138, 60, 0.18);
   --color-gold-fade: rgba(181, 138, 60, 0.05);
+  /* The marker's cast light. An alpha of the same hue, written out because a
+     var() cannot carry an opacity modifier on its own. */
+  --color-gold-glow: rgba(181, 138, 60, 0.40);
 
   --color-cream-100: #F0E8DC;
   --color-cream-200: #E7DED0; /* Archival warm ivory paper (#E7DED0) */
