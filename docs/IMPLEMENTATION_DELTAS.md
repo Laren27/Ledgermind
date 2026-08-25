@@ -3998,7 +3998,9 @@ test suite before commit.
 ### The paper token layer cannot be imported: `--font-ui` is defined in both `:root` stylesheets
 
 Found 2026-08-22 by the precondition on an edit that would otherwise have
-shipped. **Live defect, unfixed.**
+shipped. **RESOLVED 2026-08-23** in `92537ef` (duplicate declaration removed)
+and `441fd54` (layer imported). **The blast radius below is overstated — see
+the correction at the end of this entry.**
 
 `components/document/globals.css` defines a complete 24-property paper token set
 and **is never imported** — Next.js does not auto-load CSS by proximity, and the
@@ -4019,9 +4021,30 @@ Plex Sans, IBM Plex Mono). Importing the second stylesheet would silently drop
 the entire application's base font to browser default, plus seven explicit
 component call sites.
 
-**FIX IS A RENAME OR A SCOPE**, not an import: rename the document layer's
-`--font-ui`, or scope its tokens under a class instead of `:root`. Deferred to
-the token-layer commit.
+**FIXED BY REMOVING THE DUPLICATE, NOT BY RENAMING OR SCOPING.** The seven
+`var(--font-ui, ...)` consumers already resolved that token from
+`app/globals.css` and resolve identically afterwards, so a rename would have
+added a token with zero consumers to the very file being made live. Scoping was
+rejected on the 4.0 axis: it needs a DOM carrier, and any consumer rendered
+outside that subtree loses its tokens silently — the same failure this fix
+removes, in a form that renders plausibly instead of not at all.
+
+**CORRECTION — THE CONSEQUENCE WAS SMALLER THAN THIS ENTRY CLAIMED.** Measured
+2026-08-23, not inferred. Two things above are wrong:
+
+- **`body { font-family: var(--font-ui) }` never applied.** `<body>` carries the
+  Tailwind class `font-body`, and a class outranks an element selector. The rule
+  has been dead the whole time.
+- **`--font-ui` was already invalid**, so its consumers were already serving
+  their literal fallback. Importing the Inter definition would have moved seven
+  call sites from `sans-serif` to `Inter → sans-serif` — both generic sans, no
+  visible difference.
+
+The collision was real and declining was correct: two declarations of one name
+at different values is a defect whether or not it is currently visible. But
+"would silently drop the entire application's base font" was not true, and it
+was asserted from reading the source rather than from a measurement. Both of us
+repeated it.
 
 ---
 
@@ -4077,3 +4100,157 @@ change what those mean for every blocked row already written. Pinned by
 **ADJACENT, NOT CHANGED:** `eval_runner`'s `out_of_corpus` branch sits *before*
 the generic `is_blocked` check, so a blocked `out_of_corpus` row would be scored
 by a tier-reading branch. No such row exists today.
+---
+
+### The three `--font-*` tokens were declared where their dependencies were not
+
+`app/globals.css` declares `--font-editorial`, `--font-ui` and `--font-archival`
+on `:root`, each as `var(--font-<face>)` followed by a stack, with **no fallback
+inside the `var()`**. `layout.tsx` put next/font's variables on `<body>`. A
+custom property whose value contains an unresolvable `var()` with no fallback
+computes to the guaranteed-invalid value **at its declaring element**, and that
+inherits. So all three tokens were invalid at `:root` and invalid everywhere
+below it. **The declarations had never worked.**
+
+Measured 2026-08-23 in the running app:
+
+    --font-editorial  INVALID  -> consumers rendered Georgia / Fraunces-by-name
+    --font-ui         INVALID  -> consumers rendered sans-serif
+    --font-archival   INVALID  -> consumers rendered monospace
+
+**Nothing failed loudly because every consumer carried a literal fallback, and
+those fallbacks turned out to be load-bearing.** This is what makes 42 of the 44
+"fallback differs from token" entries counted in the 4.5 audit load-bearing
+rather than redundant: the fallback was the only thing rendering. None of the
+three self-hosted faces reached any component through a token.
+
+**Two sites had no fallback and rendered the wrong typeface CLASS, not a plainer
+one.** `page.tsx:132` (an editorial serif heading) and `page.tsx:135` (its
+fixed-width sub-line) had their whole `font-family` declaration invalidated and
+inherited body's IBM Plex Sans. A serif heading and a mono metadata line were
+both rendering in sans.
+
+Fixed `55047c5` by moving the variable classes to `<html>` rather than moving
+the declarations down to `body`. `:root` is the highest scope there is, so no
+descendant can render outside it; the alternative leaves anything above the body
+box unstyled and splits the token layer, parking three font tokens away from the
+other 77.
+
+Same shape as the dead paper layer one scope up: tokens that read as deliberate,
+resolve to nothing, and are rescued only by fallbacks nobody knew were doing the
+work.
+
+---
+
+### The definition-position scanner had a false negative, and the conclusion it gated held by luck
+
+The scan that decided whether the two `:root` stylesheets could be merged
+matched each declaration via the `;` that preceded it. Any declaration whose
+predecessor ended in a trailing `/* comment */` was therefore **invisible**.
+
+Corrected 2026-08-23 to strip comments first, then match `^\s*--name:`:
+
+    app/globals.css                  54 -> 77 declarations
+    components/document/globals.css  24 -> 26 declarations
+    intersection                      1 ->  1  (--font-ui, unchanged)
+
+**23 app-layer and 2 document-layer names were missing**, including
+`--paper-verified`, which has 8 live references and reported as *having no
+definition* — the exact question the scan existed to answer. The
+single-collision conclusion survived, but it survived by luck: a different file
+layout and the same bug hides a real collision and ships the silent palette
+change the check was written to prevent.
+
+Fourth instance this session of a check whose passing condition could not have
+failed in the way it was understood to test. The others: a hostname loop that
+counted successes without timing them, an eval fixture asserting an argparse
+contract it no longer satisfied, and a `getComputedStyle` probe run against a
+page serving no CSS.
+
+---
+
+### The comment rule is AND, not OR: paraphrase *and* scope the guard to code
+
+An absence-assertion — "this string must no longer appear" — fails when the
+replacement comment explaining the change contains the string being asserted on.
+Recorded earlier as *paraphrase in comments, or scope the assertion to code*.
+**That "or" is wrong. Both are needed**, and each failed alone:
+
+- **Paraphrase alone is not enough.** A comment explaining why `<html>` now
+  carries the font classes contains the literal `<html>`, which a guard grepping
+  the JSX for that tag matches before it reaches the code.
+- **Code-scoping alone is not enough.** A guard slicing from `return (` still
+  contains every comment inside the returned expression.
+
+Three catches across this session: the `GENERAL CORPUS ARCHIVE` removal, the
+hardcoded-date removal, and the font-scope move. Each fired correctly and wrote
+nothing, because the assertions run before the write — which is the other half
+of the rule and the reason none of them reached a commit.
+
+A related trap, same class: a **substring** absence-check on a class name
+matches inside a token name. `border-hairline` reports as surviving because
+`--theme-border-hairline` contains it. Match on class-token boundaries with a
+negative lookbehind for `-` or a word character.
+
+---
+
+### `frontend/README.md` was the origin of the dead font bindings
+
+`tailwind.config.ts` bound `display` and `body` to `var(--font-instrument)` and
+`var(--font-manrope)`. Neither variable is defined anywhere in this repo, so
+both utilities fell through to a generic fallback — including on
+`<body className="... font-body">`, which is why the document's base type was
+the browser default.
+
+The two names are not arbitrary. `frontend/README.md`'s file map said:
+
+    layout.tsx       — fonts (Instrument Sans, Manrope, IBM Plex Mono)
+
+`layout.tsx` has never loaded either face. **A false document propagated into
+config, and from there into two rendering defects** — the base font and the
+`font-display` utility — and survived four packets of work on the symptoms
+before anyone read the line that started it.
+
+Bindings repointed `5ffc32a`; the README corrected `3bfcb6b`. The general form
+is worth more than the instance: a stale doc is not inert. Someone will
+implement from it.
+
+---
+
+### An inline style beats every class rule, including pseudo-class variants
+
+Measured 2026-08-23 during the `LoginForm` migration, on a focused input:
+
+    class-driven base + focus: variant      -> rgba(62, 217, 192, 0.4)
+    same, plus an inline borderColor        -> rgba(255, 255, 255, 0.07)
+    inline removed again                    -> rgba(62, 217, 192, 0.4)
+
+Setting a property inline suppresses `:focus`, `:hover` and every other variant
+for that property outright — this is not a specificity contest that the variant
+can win. Any resting value that a state needs to override has to stay a class.
+
+**This applies to almost every component in `components/document/`**, which
+style by inline `style={{ }}` throughout. `Sidebar` is the case to watch: its
+entire active/inactive treatment is inline ternaries, so any `:hover` or
+`:focus-visible` added to it in Packet 5 will silently do nothing.
+
+Found the honest way and worth saying so: the reading that first suggested it
+was itself void — `input.focus()` does not set `:focus` in a background browser
+tab, so nothing was focused and the rule looked broken when it was not. The
+inline-vs-class claim was then tested directly rather than argued from the
+specification.
+
+---
+
+### Two correctness fixes were spent on a file that could not render
+
+`945b7d4` (the confidence-tier guard) and `63d7f40` (the F14 `companies` rename)
+both modified `components/AnswerCard.tsx`. Nothing imported it; the App Router
+serves one route and no dynamic imports exist in the frontend. Both changes were
+made **solely so an unreachable file would keep typechecking** after a type it
+consumed changed shape.
+
+That is the running cost of dead code in a checked language: it does not sit
+inert, it levies a tax on every contract change that touches it. `AnswerCard`,
+`ConfidenceBadge` and `CorpusPanel` were deleted in `9914cda`, `553f25a` and
+`782db3f`.
