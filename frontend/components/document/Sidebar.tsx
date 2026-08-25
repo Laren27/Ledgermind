@@ -97,11 +97,35 @@ export function Sidebar({
               LedgerMind
             </span>
           </div>
-          <div className="mt-1 flex items-center space-x-1.5 text-xs opacity-75" style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}>
-            <span className="uppercase text-[9.5px] tracking-widest px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08]">
+          {/* IDENTITY, ON TWO LINES INSTEAD OF ONE WRAPPED ONE.
+              The tenant id was rendered whole: 36 characters of UUID beside
+              the role badge in a 200px rail, so it wrapped across three lines
+              and broke mid-string. It was also the first thing in the sidebar.
+
+              A SHORT PREFIX, NOT A NAME. The tenants table does carry a `name`
+              column, but no endpoint returns it, so this component cannot know
+              it and a friendly label here would be invented. The prefix is
+              honest about being an identifier; `title` carries the whole value
+              for anyone who needs to read or copy it.
+
+              No user identity line: the JWT carries `sub`, `tenant_id`, `role`,
+              `iat` and `exp` and no email or display name, so there is nothing
+              to show that would not be fabricated. */}
+          <div
+            className="mt-1.5 flex flex-col gap-1"
+            style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}
+          >
+            <span className="uppercase text-[9.5px] tracking-widest px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] self-start">
               {userRole}
             </span>
-            {tenantId && <span className="text-[10px]">• {tenantId}</span>}
+            {tenantId && (
+              <span
+                className="text-[9.5px] tracking-wider whitespace-nowrap overflow-hidden text-ellipsis opacity-70"
+                title={`Tenant ${tenantId}`}
+              >
+                TENANT {tenantId.slice(0, 8).toUpperCase()}
+              </span>
+            )}
           </div>
         </div>
 
