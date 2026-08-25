@@ -24,17 +24,6 @@ export interface ContradictionResponse {
   severity: string;
 }
 
-export interface CorpusStatus {
-  companies: number;
-  filings?: number;
-  documents?: number;
-  total_chunks?: number;
-  chunks?: number;
-  last_updated?: string;
-  status?: string;
-  [key: string]: any;
-}
-
 export interface QueryResponse {
   request_id: string;
   query: string;
