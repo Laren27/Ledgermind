@@ -24,44 +24,64 @@ You'll need a seeded user (email/password) in your `users` table to log in
 - **Query**: `lib/api.ts`'s `submitQuery()` calls `POST /api/query` with
   `Authorization: Bearer <token>`, typed against the exact `QueryResponse`
   Pydantic model from your backend — no invented fields.
-- **AnswerCard**: renders `response_text`, `confidence_tier`,
-  `sql_verified`, `citations[]` (using the real `reranker_score` field —
-  there's no separate similarity score in your schema, so that's gone),
-  `contradictions[]`, and handles `is_blocked` (Prompt Shield) and
-  `error` (graph failure) as distinct states, not folded into a generic
-  error.
+- **Answer rendering**: `composeDocumentBody()` in `app/page.tsx` is the
+  single place aware of path/engine internals. It renders `response_text`,
+  `citations[]` (on the real `reranker_score` — there is no separate
+  similarity score in the schema), `contradictions[]`, and handles
+  `is_blocked` (Prompt Shield) and `error` (graph failure) as distinct
+  states rather than one generic error. `confidence_tier` is optional on
+  the wire: the backend omits it on a Prompt Shield block, because the
+  confidence node never runs there, and absent means not scored — it does
+  not mean low.
+- **Streaming**: `submitQueryStreaming()` reads `POST /api/query/stream`
+  as SSE and reports each LangGraph node as it completes; `ExecutionTrace`
+  renders those events. Only a dropped socket falls back to the
+  non-streaming endpoint — a server-side pipeline error and a non-2xx are
+  surfaced as distinct error classes rather than re-run.
 - **401 handling**: an expired/invalid token clears the session and
   bounces back to the login screen, rather than silently failing.
 
-## What's still illustrative, not live
+## What is not wired, and says so on screen
 
-- **PipelineTrack**: your `/api/query` endpoint is one synchronous call
-  that returns a final result — there's no stage-by-stage event stream
-  from the backend, so the pipeline can't authentically animate node-by-
-  node per query. It's shown as a static illustration of the process, not
-  wired to per-request state. Making it real would mean the backend
-  streaming progress events (SSE/WebSocket) — a real feature to design
-  later, not a frontend bug.
-- **CorpusPanel**: no `/api/corpus-status` endpoint exists yet — numbers
-  are hardcoded, matching the earlier decision to keep this static with
-  a disclaimer rather than build a live endpoint for it right now.
+Both of the components this section used to describe have been deleted.
+`PipelineTrack` was superseded by `ExecutionTrace`, which is driven by
+real SSE node events. `CorpusPanel` was removed rather than kept as a
+static placeholder: every value it displayed was a literal, and its
+real-data path could not have worked — its fallback object used two
+fields its own type never declared, and typechecked only because that
+type carried an `any` index signature.
+
+What remains unwired is now stated in the UI instead of in this file:
+
+- **Sidebar → Active Corpus**: renders "not available — no endpoint
+  reports filing ingestion state". No endpoint returns
+  `documents.ingestion_state`. `GET /api/documents/pending` is a different
+  table with a different value domain and is admin-only, so it is not a
+  substitute.
+- **Audit Trail**: labelled "Current Session Only · Not Persisted". It is
+  built from React state for this browser tab. The real `audit_log` is
+  unreachable — no endpoint returns its rows.
 
 ## File map
 
 ```
 app/
-  page.tsx         — auth gate, search, answer card, pipeline
-  layout.tsx       — fonts (Instrument Sans, Manrope, IBM Plex Mono)
+  page.tsx         — auth gate, view routing, composeDocumentBody()
+  layout.tsx       — Fraunces, IBM Plex Sans, IBM Plex Mono via next/font
+  globals.css      — THE palette: primitives + --theme-* aliases
 components/
   LoginForm.tsx
-  SearchBar.tsx
-  AnswerCard.tsx        — handles normal / blocked / error states
-  ConfidenceBadge.tsx
-  PipelineTrack.tsx
-  CorpusPanel.tsx        — still static, see above
+  document/        — the working-paper UI (Sidebar, QueryDock,
+                     DocumentPage, ExecutionTrace, AuditLogTable,
+                     UploadPanel, WorkingPaperHeader, tables, …)
+  document/globals.css — paper-surface tokens, imported by layout.tsx
+  environment/     — desk background, lighting, paper stack
 lib/
   auth.ts          — login, token storage, session check
-  api.ts           — submitQuery(), typed to the real QueryResponse
+  api.ts           — submitQuery(), submitQueryStreaming(), typed to the
+                     real response shape
+  api.retry.guard.ts — executable guard for the retry policy; run with
+                     sucrase-node (there is no test runner here)
 ```
 
 ## Next steps
