@@ -7,30 +7,26 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        "bg-base": "#08090C",
-        "bg-elevated": "#101318",
-        "card-solid": "#14171D",
-        "hairline": "rgba(255,255,255,0.07)",
-        "text-primary": "#ECEDEF",
-        "text-secondary": "#A8AEB8",
-        "text-muted": "#7B8290",
-        teal: "#3ED9C0",
-        "teal-dim": "rgba(62,217,192,0.12)",
-        sky: "#4FB8E8",
-        "sky-dim": "rgba(79,184,232,0.12)",
-        amber: "#E8A93B",
-        coral: "#E2665A",
-      },
+      // NO colours here. This project has ONE palette and it is the custom
+      // properties in app/globals.css. A second one declared here disagreed
+      // with the first on a shared name -- both defined `teal`, at two
+      // unrelated colours -- and styled four components, three of which were
+      // unreachable. Those three are deleted; the fourth reads the custom
+      // properties now.
+      //
+      // Adding a colour back here re-opens that split. Add it to
+      // app/globals.css instead, and run the definition-position intersection
+      // scan afterwards.
       // Bound to the three variables layout.tsx actually registers through
       // next/font. The previous display/body bindings named variables that are
       // defined nowhere in this repo, so both utilities fell through to the
       // generic fallback -- including on <body className="... font-body">,
       // which is why the document's base type was the browser default.
       //
-      // These resolve where the old :root font tokens do not: next/font puts
-      // its variables on <body>, and a utility class applied to body or below
-      // can see them. A token declared on :root cannot.
+      // Both these utilities and the :root font tokens now resolve: 4B moved
+      // next/font's variables up to the root element, so every scope can see
+      // them. Before that move only utilities applied at or below the body box
+      // could, which is why these worked while --font-editorial did not.
       fontFamily: {
         display: ["var(--font-fraunces)", "serif"],
         body: ["var(--font-plex-sans)", "sans-serif"],
