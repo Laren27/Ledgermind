@@ -591,7 +591,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 py-12 h-full overflow-y-auto">
+          <div className="flex-1 py-12 h-full overflow-y-auto paper-scroll">
             <DocumentPage
               docId={getDocId(ledgerCurrentPage)}
               pageNumber={ledgerCurrentPage}
