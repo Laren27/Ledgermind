@@ -140,6 +140,36 @@ budget before the request starts.
 
 ---
 
+## NEVER run `next build` in the container running `next dev`
+
+Both use the same `.next/`, and `./frontend` is bind-mounted, so a build run
+inside the live dev container **deletes the dev server's output from under it**.
+The page then serves with no CSS at all and 404s every static chunk. It
+recovers on the next recompile, so it looks transient -- which is the danger:
+any measurement taken in that window is void and does not announce itself.
+
+Measured 2026-08-22: a `getComputedStyle` probe taken during that window
+reported every font on the page as Times New Roman. That was read as a font
+defect and cost a wrong conclusion before the 404s in `docker compose logs
+frontend` explained it.
+
+Build in a throwaway container instead. The anonymous volume masks the
+bind-mounted `.next/`, so the build writes into the container's own layer and
+the dev server is untouched:
+
+    docker compose run --rm --no-deps -v /app/.next -w /app frontend       sh -c 'node_modules/.bin/next build'
+
+Verified 2026-08-23: the dev server kept serving 200 with correct markup
+across every build in that session. `tsc --noEmit` is safe either way -- it
+writes nothing.
+
+**Before trusting any computed-style reading, assert the CSS actually loaded.**
+`getComputedStyle(document.body).backgroundColor` must be `rgb(16, 13, 11)`
+(`--color-charcoal-850`). A reading taken against an unstyled page is not a
+null result, it is a wrong one.
+
+---
+
 ## A local semantic failure is not a defect until it reproduces on a WARM process
 
 Every hand-probe via `docker compose exec` is a fresh process carrying ~30s of
