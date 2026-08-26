@@ -19,14 +19,17 @@
  *   live instances were found this way (--text-primary, --space-12), one of them
  *   silently inheriting the right answer and therefore invisible.
  *
- * SCAN C — font tokens must route through an injected variable.
- *   A --font-* token may name real families, but the FIRST entry has to be a
- *   var() reference to a variable next/font injects, or the token resolves to
+ * SCAN C — a font family is named in exactly one place, and it is not here.
+ *   C1: a --font-* token may name real families, but the FIRST entry has to be
+ *   a var() reference to a variable next/font injects, or the token resolves to
  *   whatever the viewer's machine happens to have installed under that name and
  *   never reaches a self-hosted face. Three tokens were found in that state,
  *   two of them feeding every surface in the product that prints a financial
  *   figure. Nothing about the declaration looks wrong, which is the whole
  *   problem: it reads as deliberate and renders as a system fallback.
+ *   C2: no component may set a family by name either. layout.tsx's docstring
+ *   asserts that, and an assertion verified by one grep is verified for one
+ *   instant; this makes it standing.
  *
  * COMMENTS ARE STRIPPED BEFORE EVERY SCAN. Both scans previously produced false
  * results from comment prose: Scan A missed 25 declarations by anchoring on the
@@ -255,16 +258,39 @@ function scanC(root, log) {
     });
   }
 
-  log("SCAN C — font tokens route through an injected variable");
-  log(`  ${checked} family-stack token(s) checked`);
-
-  if (findings.length === 0) {
-    log("  every one leads with a var(--font-*) reference");
-    return true;
+  // C2 — no component sets a family by name. stripAll() removes comments first,
+  // so prose describing the defect is not itself a finding.
+  const inComponents = [];
+  const sourceFiles = SOURCE_DIRS.flatMap((d) => walk(join(root, d)));
+  for (const file of sourceFiles) {
+    let text;
+    try {
+      text = stripAll(readFileSync(file, "utf8"));
+    } catch {
+      continue;
+    }
+    text.split("\n").forEach((line, i) => {
+      const m = line.match(/fontFamily\s*:\s*(["'`])((?:(?!\1).)*)\1/);
+      if (!m) return;
+      const value = m[2];
+      if (value.includes("var(--font")) return;
+      inComponents.push({ rel: relative(root, file).split(sep).join("/"), line: i + 1, value });
+    });
   }
-  log(`  ${findings.length} TOKEN(S) NAMING A FAMILY DIRECTLY`);
-  for (const f of findings) log(`    ${f.rel}:${f.line}  ${f.name} -> ${f.first}`);
-  log("  FAIL: the first entry decides. A token that leads with a literal");
+
+  log("SCAN C — a font family is named in one place, and it is not a component");
+  log(`  C1: ${checked} family-stack token(s) checked`);
+  if (findings.length === 0) {
+    log("      every one leads with a var(--font-*) reference");
+  } else {
+    log(`      ${findings.length} TOKEN(S) NAMING A FAMILY DIRECTLY`);
+    for (const f of findings) log(`        ${f.rel}:${f.line}  ${f.name} -> ${f.first}`);
+  }
+  log(`  C2: ${inComponents.length === 0 ? "no component sets a family by name" : `${inComponents.length} COMPONENT SITE(S) NAMING A FAMILY`}`);
+  for (const f of inComponents) log(`        ${f.rel}:${f.line}  fontFamily: "${f.value}"`);
+
+  if (findings.length === 0 && inComponents.length === 0) return true;
+  log("  FAIL: the first entry decides. A declaration that leads with a literal");
   log("  family resolves to whatever the viewer has installed, never to a");
   log("  self-hosted face, and looks correct while doing it.");
   return false;
@@ -355,6 +381,22 @@ function selfTest() {
         "components/document/globals.css":
           ":root {\n  --font-body: var(--font-plex-mono), 'IBM Plex Mono', monospace;\n  --font-size-body: 18px;\n}\n",
       },
+      expect: null, // must PASS
+    },
+    {
+      name: "C2: a component setting a family BY NAME must fail",
+      scan: scanC,
+      files: {
+        ...CLEAN,
+        // The shape layout.tsx's docstring promises cannot exist.
+        "components/Probe.tsx": 'const s = { fontFamily: "\'Fraunces\', serif" };\n',
+      },
+      expect: ["Probe.tsx", "NAMING A FAMILY"],
+    },
+    {
+      name: "C2: a component going through a var() PASSES",
+      scan: scanC,
+      files: { ...CLEAN, "components/Probe.tsx": 'const s = { fontFamily: "var(--font-body)" };\n' },
       expect: null, // must PASS
     },
     {
