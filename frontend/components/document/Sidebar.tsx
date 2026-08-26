@@ -118,36 +118,11 @@ export function Sidebar({
               LedgerMind
             </span>
           </div>
-          {/* IDENTITY, ON TWO LINES INSTEAD OF ONE WRAPPED ONE.
-              The tenant id was rendered whole: 36 characters of UUID beside
-              the role badge in a 200px rail, so it wrapped across three lines
-              and broke mid-string. It was also the first thing in the sidebar.
-
-              A SHORT PREFIX, NOT A NAME. The tenants table does carry a `name`
-              column, but no endpoint returns it, so this component cannot know
-              it and a friendly label here would be invented. The prefix is
-              honest about being an identifier; `title` carries the whole value
-              for anyone who needs to read or copy it.
-
-              No user identity line: the JWT carries `sub`, `tenant_id`, `role`,
-              `iat` and `exp` and no email or display name, so there is nothing
-              to show that would not be fabricated. */}
-          <div
-            className="mt-1.5 flex flex-col gap-1"
-            style={{ color: "var(--color-slate-500)", fontFamily: "var(--font-archival)" }}
-          >
-            <span className="uppercase text-[9.5px] tracking-widest px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] self-start">
-              {userRole}
-            </span>
-            {tenantId && (
-              <span
-                className="text-[9.5px] tracking-wider whitespace-nowrap overflow-hidden text-ellipsis opacity-70"
-                title={`Tenant ${tenantId}`}
-              >
-                TENANT {tenantId.slice(0, 8).toUpperCase()}
-              </span>
-            )}
-          </div>
+          {/* The identity lines used to sit here, directly under the wordmark.
+              They are in the session dock at the base of the rail now; see the
+              comment there for why. What is left at the top is the wordmark
+              alone, which is the only thing at the top that is about the
+              product rather than about the viewer. */}
         </div>
 
         {/* Workspace Views Navigation */}
@@ -257,8 +232,49 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Sign Out Footer */}
-      <div className="pt-[var(--rhythm-para)] border-t border-[color:var(--theme-border-sidebar)]">
+      {/* SESSION DOCK -- one bounded cluster, not three floating things.
+
+          The role badge and the tenant prefix used to sit at the top under the
+          wordmark, and Sign Out floated alone at the base behind a hairline.
+          They are all the same fact -- WHO THIS SESSION IS -- and splitting
+          them put the least important control on the rail's most prominent
+          edge while the identity it belongs to sat two hundred pixels away.
+
+          Bounded by a full border rather than the top hairline it replaces, so
+          the three read as one dock. No background fill: the border alone
+          carries the boundary, and a fill would have meant a new untokened
+          white-alpha literal for no gain.
+
+          A SHORT PREFIX, NOT A NAME, unchanged from where this used to live.
+          The tenant id was once rendered whole -- 36 characters of UUID in a
+          200px rail, wrapping across three lines and breaking mid-string.
+          `tenants.name` does exist in Postgres, but NO ENDPOINT RETURNS IT, so
+          this component cannot know it and a friendly label here would be
+          invented. The prefix is honest about being an identifier; `title`
+          carries the whole value for anyone who needs to read or copy it.
+
+          NO USER IDENTITY LINE, for the same reason. The JWT carries `sub`,
+          `tenant_id`, `role`, `iat` and `exp` -- no email, no display name. A
+          name or an address here would be fabricated, and the dock is exactly
+          the place someone would expect to find one. */}
+      <div className="rounded-sm border border-[color:var(--theme-border-sidebar)] px-3 py-2.5">
+        <div
+          className="flex flex-col gap-1"
+          style={{ color: "var(--color-slate-500)", fontFamily: "var(--font-archival)" }}
+        >
+          <span className="uppercase text-[9.5px] tracking-widest px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] self-start">
+            {userRole}
+          </span>
+          {tenantId && (
+            <span
+              className="text-[9.5px] tracking-wider whitespace-nowrap overflow-hidden text-ellipsis opacity-70"
+              title={`Tenant ${tenantId}`}
+            >
+              TENANT {tenantId.slice(0, 8).toUpperCase()}
+            </span>
+          )}
+        </div>
+
         {/* NO SECOND ACCENT. Coral put a warning colour on the least important
             control in the rail, under a direction that carries ONE accent --
             the gold of the active marker. Two accents do not read as two
@@ -277,7 +293,7 @@ export function Sidebar({
             the same thing twice, and colour says it in one place. */}
         <button
           onClick={onSignOut}
-          className="w-full text-left px-3 py-1.5 rounded text-xs transition-colors text-[color:var(--color-slate-500)] hover:text-[color:var(--color-slate-100)]"
+          className="mt-2.5 w-full text-left rounded text-xs transition-colors text-[color:var(--color-slate-500)] hover:text-[color:var(--color-slate-100)]"
           style={{ fontFamily: "var(--font-archival)" }}
         >
           Sign Out →
