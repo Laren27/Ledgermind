@@ -11,9 +11,22 @@
  *                            client bundle exists. A Client Component cannot
  *                            export it.
  *
- *   next/font/google         Fonts are fetched AT BUILD TIME and self-hosted;
- *                            no request reaches Google at page load. The import
- *                            never ships to the browser.
+ *   next/font/local          The ten WOFF2 faces are committed under
+ *                            frontend/fonts/ and read off disk. Nothing is
+ *                            fetched during the build, and nothing is fetched at
+ *                            page load. The import never ships to the browser.
+ *
+ *                            This replaced next/font/google, which fetched all
+ *                            ten files from fonts.gstatic.com AT BUILD TIME with
+ *                            no fallback. On this machine that failed
+ *                            intermittently -- socket hang up / ETIMEDOUT on
+ *                            individual font assets while the same host's root
+ *                            path answered in under a second -- and a failed
+ *                            fetch fails the build outright, which blocked every
+ *                            frontend commit behind it. Vercel's builders carry
+ *                            the identical dependency. Build-time fetching was
+ *                            never the safe half of "fetched at build time and
+ *                            self-hosted"; it was the failing half.
  *
  * THE THREE FONT VARIABLES ARE THE POINT OF THIS FILE.
  * Each loader returns an object carrying a CSS custom property name, applied to
@@ -25,7 +38,7 @@
  */
 
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 // AFTER app/globals.css, deliberately and necessarily. This file had never
@@ -40,21 +53,50 @@ import "./globals.css";
 // before adding any unprefixed token to either file.
 import "../components/document/globals.css";
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+// The ten files in ../fonts are the latin, normal-style WOFF2s shipped by
+// @fontsource/fraunces, @fontsource/ibm-plex-sans and @fontsource/ibm-plex-mono
+// (all 5.3.0), obtained with `npm pack` and copied in. Fontsource is not a
+// dependency of this project -- nothing was added to package.json -- because
+// only the binaries are wanted, not its CSS or its version resolution. The
+// weight is in the filename rather than in a hash, so a wrong mapping here is
+// readable rather than invisible.
+//
+// `display: "swap"` is stated rather than assumed. It is also next/font's
+// default, so it was in force under next/font/google without appearing in this
+// file; writing it out keeps the behaviour identical AND visible, so a future
+// default change cannot move it silently.
+//
+// There is no `subsets` key: that option tells the Google loader which subset to
+// FETCH. The subsetting already happened -- these files are latin-only on disk.
+
+const fraunces = localFont({
+  src: [
+    { path: "../fonts/fraunces-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/fraunces-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "../fonts/fraunces-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "../fonts/fraunces-latin-700-normal.woff2", weight: "700", style: "normal" },
+  ],
+  display: "swap",
   variable: "--font-fraunces",
 });
 
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const plexSans = localFont({
+  src: [
+    { path: "../fonts/ibm-plex-sans-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/ibm-plex-sans-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "../fonts/ibm-plex-sans-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
+  display: "swap",
   variable: "--font-plex-sans",
 });
 
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const plexMono = localFont({
+  src: [
+    { path: "../fonts/ibm-plex-mono-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/ibm-plex-mono-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "../fonts/ibm-plex-mono-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
+  display: "swap",
   variable: "--font-plex-mono",
 });
 
