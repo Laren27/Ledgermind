@@ -152,9 +152,21 @@ export function Sidebar({
 
         {/* Workspace Views Navigation */}
         <div className="space-y-1">
+          {/* COOL, NOT WARM, AND THAT IS THE WHOLE CHANGE HERE.
+              --ink-metadata is #8B8378 -- byte-identical to the literal this
+              rail used before 5.1b tokenised it, which is why the swap to a
+              token was not a colour change and this is. It is a PAPER ink:
+              a warm grey mixed for cream stock, doing chrome duty on a
+              near-black shell, where warm grey reads as a stain rather than as
+              recessive type. --color-slate-500 is #7B8290, the dark-surface
+              ramp's muted step, cool and slightly darker.
+
+              Three sites move together -- this label, Active Corpus below, and
+              the inactive nav state -- because they are one visual register and
+              splitting them would leave two greys on one rail. */}
           <div
             className="px-3 mb-2.5 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
-            style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
+            style={{ color: "var(--color-slate-500)", fontFamily: "var(--font-archival)" }}
           >
             Archive Index
           </div>
@@ -172,7 +184,7 @@ export function Sidebar({
                   "relative w-full text-left px-3.5 py-2 rounded-sm text-xs transition-all flex items-center justify-between font-normal group",
                   isActive
                     ? "text-[color:var(--color-slate-100)]"
-                    : "text-[color:var(--ink-metadata)]",
+                    : "text-[color:var(--color-slate-500)]",
                 ].join(" ")}
                 style={{
                   background: isActive
@@ -202,7 +214,7 @@ export function Sidebar({
         <div className="space-y-2 pt-[var(--rhythm-para)] border-t border-[color:var(--theme-border-sidebar)]">
           <div
             className="px-3 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
-            style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
+            style={{ color: "var(--color-slate-500)", fontFamily: "var(--font-archival)" }}
           >
             Active Corpus
           </div>
