@@ -79,11 +79,11 @@ export function Sidebar({
     <aside
       className="flex w-[200px] flex-col justify-between p-5 select-none transition-all z-20 shrink-0"
       style={{
-        background: "rgba(16, 13, 11, 0.97)",
+        background: "var(--color-leather-900)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        borderRight: "1px solid rgba(255, 255, 255, 0.04)",
-        boxShadow: "6px 0 30px rgba(0, 0, 0, 0.55)",
+        borderRight: "1px solid var(--theme-border-sidebar)",
+        boxShadow: "var(--shadow-sidebar)",
       }}
     >
       <div className="space-y-8">
@@ -92,7 +92,7 @@ export function Sidebar({
           <div className="flex items-center space-x-2">
             <span
               className="font-semibold tracking-tight text-lg"
-              style={{ fontFamily: "var(--font-editorial, 'Fraunces', serif)", color: "#ECEDEF" }}
+              style={{ fontFamily: "var(--font-editorial)", color: "var(--color-slate-100)" }}
             >
               LedgerMind
             </span>
@@ -113,7 +113,7 @@ export function Sidebar({
               to show that would not be fabricated. */}
           <div
             className="mt-1.5 flex flex-col gap-1"
-            style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}
+            style={{ color: "var(--color-slate-500)", fontFamily: "var(--font-archival)" }}
           >
             <span className="uppercase text-[9.5px] tracking-widest px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] self-start">
               {userRole}
@@ -133,7 +133,7 @@ export function Sidebar({
         <div className="space-y-1">
           <div
             className="px-3 mb-2.5 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
-            style={{ color: "#8B8378", fontFamily: "var(--font-archival, monospace)" }}
+            style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
           >
             Archive Index
           </div>
@@ -143,22 +143,33 @@ export function Sidebar({
               <button
                 key={view}
                 onClick={() => onViewChange(view)}
-                className="relative w-full text-left px-3.5 py-2 rounded-sm text-xs transition-all flex items-center justify-between font-normal group"
+                // The resting colour is a CLASS. An inline colour outranks every
+                // class rule including pseudo-class variants, so leaving it inline
+                // would stop the label hover below from ever firing. The gradient
+                // stays inline: React state switches it, not a CSS state.
+                className={[
+                  "relative w-full text-left px-3.5 py-2 rounded-sm text-xs transition-all flex items-center justify-between font-normal group",
+                  isActive
+                    ? "text-[color:var(--color-slate-100)]"
+                    : "text-[color:var(--ink-metadata)]",
+                ].join(" ")}
                 style={{
-                  background: isActive ? "linear-gradient(90deg, rgba(181, 138, 60, 0.12), transparent)" : "transparent",
-                  color: isActive ? "#ECEDEF" : "#8B8378",
+                  background: isActive
+                    ? "linear-gradient(90deg, var(--color-gold-dim), transparent)"
+                    : "transparent",
                 }}
               >
                 {isActive && (
                   <span 
                     className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-sm transition-all"
                     style={{
-                      background: "linear-gradient(180deg, #C99B4A 0%, #B58A3C 50%, #8A6D3B 100%)",
-                      boxShadow: "1px 0 6px rgba(181, 138, 60, 0.4)",
+                      background:
+                        "linear-gradient(180deg, var(--color-gold-400) 0%, var(--color-gold-500) 50%, var(--color-gold-700) 100%)",
+                      boxShadow: "1px 0 6px var(--color-gold-glow)",
                     }}
                   />
                 )}
-                <span className={isActive ? "font-medium tracking-wide text-[12.5px]" : "group-hover:text-[#ECEDEF] transition-colors text-[12.5px]"}>
+                <span className={isActive ? "font-medium tracking-wide text-[12.5px]" : "group-hover:text-[color:var(--color-slate-100)] transition-colors text-[12.5px]"}>
                   {viewLabels[view]}
                 </span>
               </button>
@@ -167,10 +178,10 @@ export function Sidebar({
         </div>
 
         {/* Active Archive Registry with Brass Tab Cues */}
-        <div className="space-y-2 pt-5 border-t border-white/[0.04]">
+        <div className="space-y-2 pt-5 border-t border-[color:var(--theme-border-sidebar)]">
           <div
             className="px-3 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
-            style={{ color: "#8B8378", fontFamily: "var(--font-archival, monospace)" }}
+            style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
           >
             Active Corpus
           </div>
@@ -182,7 +193,7 @@ export function Sidebar({
                and say which one you are doing. */
             <div
               className="px-3.5 py-2 text-[10px] leading-relaxed"
-              style={{ color: "#7B8290", fontFamily: "var(--font-archival, monospace)" }}
+              style={{ color: "var(--color-slate-500)", fontFamily: "var(--font-archival)" }}
             >
               Not available &mdash; no endpoint reports filing ingestion state.
             </div>
@@ -214,11 +225,11 @@ export function Sidebar({
       </div>
 
       {/* Sign Out Footer */}
-      <div className="pt-5 border-t border-white/[0.04]">
+      <div className="pt-5 border-t border-[color:var(--theme-border-sidebar)]">
         <button
           onClick={onSignOut}
           className="w-full text-left px-3 py-1.5 rounded text-xs transition-colors opacity-65 hover:opacity-100"
-          style={{ color: "#E2665A", fontFamily: "var(--font-archival, monospace)" }}
+          style={{ color: "var(--color-coral-500)", fontFamily: "var(--font-archival)" }}
         >
           Sign Out →
         </button>
