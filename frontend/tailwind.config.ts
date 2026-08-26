@@ -31,6 +31,19 @@ const config: Config = {
         display: ["var(--font-fraunces)", "serif"],
         body: ["var(--font-plex-sans)", "sans-serif"],
         mono: ["var(--font-plex-mono)", "monospace"],
+        // `sans` was never bound, so `font-sans` fell through to Tailwind's own
+        // default stack -- ui-sans-serif, system-ui, ... -- which reaches no
+        // face this app loads. Measured live: four sites (AuditLogTable and
+        // UploadHistoryTable) computed to ui-sans-serif while the mono siblings
+        // beside them in the same tables computed to a hashed face. Same defect
+        // as the two document tokens, in its third form: not a token that names
+        // a family, but a utility with nothing behind it.
+        //
+        // This key also feeds Tailwind preflight's `html` rule, which is why
+        // the root element showed up in ui-sans-serif on a whole-DOM sweep.
+        // Binding it moves that too; body already sets the same face via
+        // font-body, so nothing between them changes.
+        sans: ["var(--font-plex-sans)", "sans-serif"],
       },
       borderRadius: {
         card: "18px",
