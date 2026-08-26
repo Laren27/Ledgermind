@@ -83,8 +83,14 @@ export function Sidebar({
         // on rgb(18,14,12) against rgb(16,13,11) -- a contrast ratio of 1.009,
         // which is no seam at all. 850 lands on rgb(26,20,16) at 1.062.
         background: "var(--color-leather-850)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        // NO BACKDROP FILTER. CLAUDE.md permits glass in exactly one component,
+        // QueryDock, and this rail was the one blurring while QueryDock was not
+        // -- the invariant inverted. It also had little to blur: at alpha 0.97
+        // only 3% of the desk shows through, so twelve pixels of blur were
+        // being spent on almost nothing, and the seam the rail actually needed
+        // came from the surface value instead. Adding it back re-inverts the
+        // rule; if the rail ever needs to sit forward, that is a shadow
+        // decision, not a glass one.
         borderRight: "1px solid var(--theme-border-sidebar)",
         boxShadow: "var(--shadow-sidebar)",
       }}
