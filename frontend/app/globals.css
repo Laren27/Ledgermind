@@ -40,6 +40,24 @@
   --color-charcoal-850: #100D0B; /* Desaturated executive walnut desk base */
   --color-charcoal-800: #14110E;
   --color-leather-900: rgba(18, 14, 12, 0.97); /* Smoked leather sidebar */
+  /* One step up the same ramp, because 900 gave the rail no seam against the
+     desk. Composited over --color-charcoal-850 at its own alpha, 900 lands on
+     rgb(18,14,12) against a desk of rgb(16,13,11): a contrast ratio of 1.009,
+     which is not an edge, it is a rounding error. 850 lands on rgb(26,20,16),
+     ratio 1.062, with red rising fastest of the three channels -- the rail
+     reads warmer as well as lighter, which is what keeps it leather rather
+     than a lighter charcoal.
+
+     NO ORDERING CONSTRAINT AGAINST --color-charcoal-800. An earlier rationale
+     for this value claimed it stays darker than that token; it does not, and
+     the claim would have propagated. rgb(26,20,16) is lighter than
+     rgb(20,17,14) on every channel. Nothing in the code enforces a
+     relationship between the two ramps and nothing should: charcoal is the
+     desk and its furniture, leather is the rail, and they are separate
+     surfaces that happen to sit near each other in value. The real constraint
+     is the one the number was chosen for -- visibly separated from the desk,
+     still clearly recessive against the paper. */
+  --color-leather-850: rgba(26, 20, 16, 0.97); /* Smoked leather, seam against the desk */
 
   /* DARK-SURFACE TEXT RAMP -- the counterpart to the 4-level ink system above,
      which is for paper. The sidebar had no primitive to inherit: its three
