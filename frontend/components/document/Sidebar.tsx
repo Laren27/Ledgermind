@@ -79,7 +79,10 @@ export function Sidebar({
     <aside
       className="flex w-[200px] flex-col justify-between p-5 select-none transition-all z-20 shrink-0"
       style={{
-        background: "var(--color-leather-900)",
+        // 850, not 900. Composited over the desk at its own alpha, 900 landed
+        // on rgb(18,14,12) against rgb(16,13,11) -- a contrast ratio of 1.009,
+        // which is no seam at all. 850 lands on rgb(26,20,16) at 1.062.
+        background: "var(--color-leather-850)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         borderRight: "1px solid var(--theme-border-sidebar)",
