@@ -24,7 +24,26 @@
   --table-rule-double: 3px double var(--paper-rule-double);
 
   --font-document-title: 'IBM Plex Serif', serif;
-  --font-body: 'IBM Plex Mono', monospace;
+  /* Routed through the variable next/font injects, matching how
+     --font-editorial, --font-ui and --font-archival are declared one file over.
+     It named the family directly before, so it resolved to whatever the
+     viewer's operating system happened to have under that name.
+
+     Measured in the running app, admin session live, CSS gate asserted: all 12
+     mounted consumers computed to a stack whose leading entry supplied not one
+     glyph -- plain 'A' included, by advance width against two controls. The
+     named face is not installed on this machine, so LedgerTable, MetricCallout,
+     EntityComparisonTable, ExecutionTrace, UploadPanel, AnalysisSection,
+     EvidenceList and SectionHeading -- every surface that prints a financial
+     figure -- were rendering in the browser's generic monospace, having never
+     once received the self-hosted face.
+
+     SCOPE, checked before writing this: the declaration sits on bare :root, and
+     4B moved next/font's variable classes onto the root element, so the
+     reference resolves at the element that declares it. Confirmed by reading
+     --font-plex-mono at :root in the live document, where it returns a hashed
+     face rather than the empty string an unresolvable name would give. */
+  --font-body: var(--font-plex-mono), 'IBM Plex Mono', monospace;
 
   /* The UI face is NOT redeclared here. app/globals.css owns that token and
      binds it to the family layout.tsx actually registers through next/font.
