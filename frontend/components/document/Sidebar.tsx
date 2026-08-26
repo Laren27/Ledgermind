@@ -95,7 +95,19 @@ export function Sidebar({
         boxShadow: "var(--shadow-sidebar)",
       }}
     >
-      <div className="space-y-8">
+      {/* RHYTHM TOKENS FOR EXACT MATCHES ONLY. space-y-8 is 32px, which is
+          --rhythm-minor exactly, and the two pt-5 below are 20px, which is
+          --rhythm-para exactly. Those three adopt the token.
+
+          THE FLOOR IS DELIBERATE. The 10/8/6/4px gaps further down stay on
+          Tailwind's scale and no --rhythm-tight or --rhythm-hair is added for
+          them. --rhythm-* is a VERTICAL RHYTHM SCALE FOR DOCUMENT TYPOGRAPHY:
+          72/32/20/12 are section and paragraph intervals on the paper. A 4px
+          gap between two nav buttons is component-internal spacing and has
+          nothing to do with that scale. Inventing steps for it would put a
+          third spacing vocabulary in the repo to serve one call site, which is
+          the --space-12 mistake from 4D.2 repeated. */}
+      <div className="space-y-[var(--rhythm-minor)]">
         {/* Brand & Tenant Info */}
         <div>
           <div className="flex items-center space-x-2">
@@ -187,7 +199,7 @@ export function Sidebar({
         </div>
 
         {/* Active Archive Registry with Brass Tab Cues */}
-        <div className="space-y-2 pt-5 border-t border-[color:var(--theme-border-sidebar)]">
+        <div className="space-y-2 pt-[var(--rhythm-para)] border-t border-[color:var(--theme-border-sidebar)]">
           <div
             className="px-3 text-[9.5px] font-medium uppercase tracking-[0.22em] opacity-45"
             style={{ color: "var(--ink-metadata)", fontFamily: "var(--font-archival)" }}
@@ -234,7 +246,7 @@ export function Sidebar({
       </div>
 
       {/* Sign Out Footer */}
-      <div className="pt-5 border-t border-[color:var(--theme-border-sidebar)]">
+      <div className="pt-[var(--rhythm-para)] border-t border-[color:var(--theme-border-sidebar)]">
         <button
           onClick={onSignOut}
           className="w-full text-left px-3 py-1.5 rounded text-xs transition-colors opacity-65 hover:opacity-100"
