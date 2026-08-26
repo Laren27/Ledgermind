@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-tokens — three standing checks on the CSS custom-property layer.
+ * check-tokens — four standing checks on the CSS layer.
  *
  *   docker compose exec -T -w /app frontend node scripts/check-tokens.mjs
  *   docker compose exec -T -w /app frontend node scripts/check-tokens.mjs --self-test
@@ -30,6 +30,12 @@
  *   C2: no component may set a family by name either. layout.tsx's docstring
  *   asserts that, and an assertion verified by one grep is verified for one
  *   instant; this makes it standing.
+ *
+ * SCAN D — glass lives in exactly one component.
+ *   CLAUDE.md section 6 permits backdrop blur in QueryDock and nowhere else.
+ *   That was unenforced, and it had not merely drifted -- Sidebar blurred while
+ *   QueryDock did not, so the invariant was inverted. An architectural rule
+ *   with no check is a comment.
  *
  * COMMENTS ARE STRIPPED BEFORE EVERY SCAN. Both scans previously produced false
  * results from comment prose: Scan A missed 25 declarations by anchoring on the
@@ -296,6 +302,48 @@ function scanC(root, log) {
   return false;
 }
 
+/**
+ * SCAN D — backdrop blur appears in GLASS_COMPONENT and nowhere else.
+ *
+ * Matches the CSS property and the Tailwind utility, since either expresses it.
+ * Comments are stripped first, so the commit prose that necessarily names the
+ * declaration it forbids is not itself a finding -- which is the entire reason
+ * this check exists rather than a comment saying "do not add it back".
+ */
+const GLASS_COMPONENT = "QueryDock.tsx";
+
+function scanD(root, log) {
+  const findings = [];
+  const files = SOURCE_DIRS.flatMap((d) => walk(join(root, d)));
+  for (const file of files) {
+    const rel = relative(root, file).split(sep).join("/");
+    if (rel.endsWith(GLASS_COMPONENT)) continue;
+    let text;
+    try {
+      text = stripAll(readFileSync(file, "utf8"));
+    } catch {
+      continue;
+    }
+    text.split("\n").forEach((line, i) => {
+      if (/backdrop-?[Ff]ilter|backdrop-blur/.test(line)) {
+        findings.push({ rel, line: i + 1, text: line.trim().slice(0, 72) });
+      }
+    });
+  }
+
+  log("SCAN D — glass lives in exactly one component");
+  if (findings.length === 0) {
+    log(`  no backdrop blur outside ${GLASS_COMPONENT}`);
+    return true;
+  }
+  log(`  ${findings.length} BLUR DECLARATION(S) OUTSIDE ${GLASS_COMPONENT}`);
+  for (const f of findings) log(`    ${f.rel}:${f.line}  ${f.text}`);
+  log("  FAIL: CLAUDE.md section 6 permits glass in one component. A second one");
+  log("  does not read as a second glass surface, it reads as neither being");
+  log("  deliberate.");
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Self-test — negative controls
 // ---------------------------------------------------------------------------
@@ -381,6 +429,30 @@ function selfTest() {
         "components/document/globals.css":
           ":root {\n  --font-body: var(--font-plex-mono), 'IBM Plex Mono', monospace;\n  --font-size-body: 18px;\n}\n",
       },
+      expect: null, // must PASS
+    },
+    {
+      name: "D: backdrop blur outside the one glass component must fail",
+      scan: scanD,
+      files: { ...CLEAN, "components/Probe.tsx": 'const s = { backdropFilter: "blur(12px)" };\n' },
+      expect: ["Probe.tsx", "BLUR DECLARATION"],
+    },
+    {
+      name: "D: the Tailwind utility spelling is caught too",
+      scan: scanD,
+      files: { ...CLEAN, "components/Probe.tsx": 'const c = "backdrop-blur-md rounded";\n' },
+      expect: ["Probe.tsx", "BLUR DECLARATION"],
+    },
+    {
+      name: "D: the same declaration inside QueryDock PASSES",
+      scan: scanD,
+      files: { ...CLEAN, "components/QueryDock.tsx": 'const s = { backdropFilter: "blur(12px)" };\n' },
+      expect: null, // must PASS
+    },
+    {
+      name: "D: a blur named only inside a COMMENT is not a finding",
+      scan: scanD,
+      files: { ...CLEAN, "components/Probe.tsx": '// backdropFilter: "blur(12px)" was removed here\nconst x = 1;\n' },
       expect: null, // must PASS
     },
     {
@@ -474,10 +546,12 @@ const b = scanB(root, log);
 log("");
 const c = scanC(root, log);
 log("");
-if (a && b && c) {
+const d = scanD(root, log);
+log("");
+if (a && b && c && d) {
   log("check-tokens: PASS");
   process.exit(0);
 }
-const failed = [!a && "scan A", !b && "scan B", !c && "scan C"].filter(Boolean);
+const failed = [!a && "scan A", !b && "scan B", !c && "scan C", !d && "scan D"].filter(Boolean);
 log(`check-tokens: FAIL (${failed.join(" and ")})`);
 process.exit(1);
