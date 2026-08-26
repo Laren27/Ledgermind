@@ -23,7 +23,24 @@
   --table-rule-single: 1px solid var(--paper-rule-single);
   --table-rule-double: 3px double var(--paper-rule-double);
 
-  --font-document-title: 'IBM Plex Serif', serif;
+  /* Fraunces first, for the same reason as --font-body below, with one extra
+     step of reasoning because there is no injected variable for the family this
+     used to name. next/font registers Fraunces, Plex Sans and Plex Mono and no
+     other serif, so pointing this at a loaded face means pointing it at
+     Fraunces.
+
+     That is not a new design decision being made here. --font-editorial in
+     app/globals.css is already `var(--font-fraunces), 'IBM Plex Serif',
+     Georgia, serif`, so pairing Fraunces with that serif behind it was settled
+     one file over. This token was the fallback half of that pairing, orphaned
+     from the half that does the work.
+
+     VISIBLE CHANGE, deliberately. Section headings rendered in the browser's
+     generic serif before -- the named family is no more installed on this
+     machine than the mono one was, measured the same way. They render Fraunces
+     now. To revert, restore the two-entry literal value; nothing else depends
+     on this token, which has exactly one consumer (SectionHeading). */
+  --font-document-title: var(--font-fraunces), 'IBM Plex Serif', Georgia, serif;
   /* Routed through the variable next/font injects, matching how
      --font-editorial, --font-ui and --font-archival are declared one file over.
      It named the family directly before, so it resolved to whatever the
