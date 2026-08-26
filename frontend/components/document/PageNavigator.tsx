@@ -20,7 +20,10 @@ export function PageNavigator({ current, total, onNavigate, disabled = false }: 
         className="flex items-center space-x-8 px-8 py-2.5 rounded-full border transition-all"
         style={{
           background: "rgba(16, 13, 11, 0.96)",
-          backdropFilter: "blur(8px)",
+          // No glass here either. CLAUDE.md section 6 allows it in QueryDock
+          // and nowhere else, and this tray was the second component past that
+          // line -- at alpha 0.96 it was blurring four percent of the desk.
+          // Found by check-tokens SCAN D, not by reading.
           borderColor: "rgba(255, 255, 255, 0.06)",
           boxShadow: "0 8px 24px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
           fontFamily: "var(--font-archival, monospace)",
