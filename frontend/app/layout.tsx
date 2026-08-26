@@ -30,11 +30,41 @@
  *
  * THE THREE FONT VARIABLES ARE THE POINT OF THIS FILE.
  * Each loader returns an object carrying a CSS custom property name, applied to
- * <body> below. globals.css maps those to the semantic tokens every component
- * actually reads -- var(--font-editorial), var(--font-archival), var(--font-ui).
- * No component names a font family anywhere, so changing a typeface is a
- * one-file change rather than a repository-wide search. If text renders in a
- * fallback face, the break is here or in globals.css, never in the component.
+ * the ROOT element below -- not to <body>, which is where this paragraph used
+ * to say they went, and where they genuinely did until 55047c5 moved them up.
+ *
+ * No component names a font family. That much is true, and SCAN C2 of
+ * scripts/check-tokens.mjs now holds it true rather than leaving it to whoever
+ * greps next.
+ *
+ * WHAT USED TO FOLLOW WAS FALSE: "changing a typeface is a one-file change."
+ * Components read semantic tokens, but those tokens are declared across THREE
+ * files, and two of them named families outright instead of referencing the
+ * variables registered here:
+ *
+ *   app/globals.css                  --font-editorial / --font-ui /
+ *                                    --font-archival. Correctly routed.
+ *   components/document/globals.css  --font-body and --font-document-title.
+ *                                    BOTH named a family literally, so they
+ *                                    resolved to whatever the viewer's machine
+ *                                    had installed and never to a face
+ *                                    registered here. --font-body carries 17
+ *                                    references across eight components,
+ *                                    including every surface that prints a
+ *                                    financial figure; measured live, its
+ *                                    leading entry supplied not one glyph on
+ *                                    this machine, plain 'A' included.
+ *   tailwind.config.ts               display / body / mono / sans. `sans` was
+ *                                    unbound, so `font-sans` fell through to
+ *                                    Tailwind's default stack at four sites.
+ *
+ * All three are routed now, and SCAN C1 keeps them that way. So the honest
+ * version of the old claim: changing a typeface means changing the loader
+ * HERE, and nowhere else -- provided the variable name is kept. Renaming a
+ * variable is a three-file change, and those three files are the list above.
+ *
+ * If text renders in a fallback face, the break is in one of those three, or
+ * here. Never in the component.
  */
 
 import type { Metadata } from "next";
