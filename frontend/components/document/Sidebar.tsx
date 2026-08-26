@@ -259,10 +259,26 @@ export function Sidebar({
 
       {/* Sign Out Footer */}
       <div className="pt-[var(--rhythm-para)] border-t border-[color:var(--theme-border-sidebar)]">
+        {/* NO SECOND ACCENT. Coral put a warning colour on the least important
+            control in the rail, under a direction that carries ONE accent --
+            the gold of the active marker. Two accents do not read as two
+            meanings, they read as neither being deliberate, and the one wearing
+            the alarm colour was the one nobody needs to find quickly.
+
+            Resting is the same muted step as the inactive nav labels, so at
+            rest this sits in the rail rather than on top of it. Emphasis is
+            EARNED ON HOVER, at which point it takes the primary text colour.
+
+            BOTH STATES ARE CLASSES. An inline colour outranks every class rule
+            including pseudo-class variants, so a colour left inline here would
+            silently stop the hover from ever firing -- measured in 4C.2, and
+            the same trap 5.1b had to undo on the nav buttons. The opacity pair
+            this used to carry is gone with it: opacity and colour were saying
+            the same thing twice, and colour says it in one place. */}
         <button
           onClick={onSignOut}
-          className="w-full text-left px-3 py-1.5 rounded text-xs transition-colors opacity-65 hover:opacity-100"
-          style={{ color: "var(--color-coral-500)", fontFamily: "var(--font-archival)" }}
+          className="w-full text-left px-3 py-1.5 rounded text-xs transition-colors text-[color:var(--color-slate-500)] hover:text-[color:var(--color-slate-100)]"
+          style={{ fontFamily: "var(--font-archival)" }}
         >
           Sign Out →
         </button>
