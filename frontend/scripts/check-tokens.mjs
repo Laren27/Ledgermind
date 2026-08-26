@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-tokens — two standing checks on the CSS custom-property layer.
+ * check-tokens — three standing checks on the CSS custom-property layer.
  *
  *   docker compose exec -T -w /app frontend node scripts/check-tokens.mjs
  *   docker compose exec -T -w /app frontend node scripts/check-tokens.mjs --self-test
@@ -19,7 +19,16 @@
  *   live instances were found this way (--text-primary, --space-12), one of them
  *   silently inheriting the right answer and therefore invisible.
  *
- * COMMENTS ARE STRIPPED BEFORE EITHER SCAN. Both scans previously produced false
+ * SCAN C — font tokens must route through an injected variable.
+ *   A --font-* token may name real families, but the FIRST entry has to be a
+ *   var() reference to a variable next/font injects, or the token resolves to
+ *   whatever the viewer's machine happens to have installed under that name and
+ *   never reaches a self-hosted face. Three tokens were found in that state,
+ *   two of them feeding every surface in the product that prints a financial
+ *   figure. Nothing about the declaration looks wrong, which is the whole
+ *   problem: it reads as deliberate and renders as a system fallback.
+ *
+ * COMMENTS ARE STRIPPED BEFORE EVERY SCAN. Both scans previously produced false
  * results from comment prose: Scan A missed 25 declarations by anchoring on the
  * preceding semicolon (invisible when the predecessor ended in a trailing
  * comment), and Scan B reported `var(--paper-*)` written inside an explanatory
@@ -214,6 +223,53 @@ function scanB(root, log) {
   return false;
 }
 
+/**
+ * SCAN C — every --font-* token that declares a FAMILY STACK must lead with a
+ * var() reference.
+ *
+ * Size tokens (--font-size-*) declare lengths, not families, and are skipped by
+ * shape rather than by name: a value with no letters-then-comma family in it is
+ * not a stack. The check is deliberately on the FIRST entry, because a var()
+ * sitting later in the list is a fallback and never wins.
+ */
+function scanC(root, log) {
+  const findings = [];
+  let checked = 0;
+  for (const rel of STYLESHEETS) {
+    let text;
+    try {
+      text = stripAll(readFileSync(join(root, rel), "utf8"));
+    } catch {
+      continue; /* a fixture tree may omit one */
+    }
+    text.split("\n").forEach((line, i) => {
+      const m = line.match(/^\s*(--font-[A-Za-z0-9_-]+)\s*:\s*([^;]+);/);
+      if (!m) return;
+      const [, name, value] = m;
+      // A length or number is not a family stack.
+      if (/^-?[\d.]+(px|rem|em|%|vw|vh|pt)?$/.test(value.trim())) return;
+      checked++;
+      const first = value.split(",")[0].trim();
+      if (/^var\(\s*--font-/.test(first)) return;
+      findings.push({ rel, line: i + 1, name, first });
+    });
+  }
+
+  log("SCAN C — font tokens route through an injected variable");
+  log(`  ${checked} family-stack token(s) checked`);
+
+  if (findings.length === 0) {
+    log("  every one leads with a var(--font-*) reference");
+    return true;
+  }
+  log(`  ${findings.length} TOKEN(S) NAMING A FAMILY DIRECTLY`);
+  for (const f of findings) log(`    ${f.rel}:${f.line}  ${f.name} -> ${f.first}`);
+  log("  FAIL: the first entry decides. A token that leads with a literal");
+  log("  family resolves to whatever the viewer has installed, never to a");
+  log("  self-hosted face, and looks correct while doing it.");
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Self-test — negative controls
 // ---------------------------------------------------------------------------
@@ -268,6 +324,48 @@ function selfTest() {
       scan: scanB,
       files: { ...CLEAN, "components/Probe.tsx": 'const s = { color: "var(--nonexistent)" };\n' },
       expect: ["--nonexistent", "NO FALLBACK"],
+    },
+    {
+      name: "C: a font token leading with a literal family must fail",
+      scan: scanC,
+      files: {
+        ...CLEAN,
+        // The real historical defect, reproduced.
+        "components/document/globals.css":
+          ":root {\n  --font-body: 'IBM Plex Mono', monospace;\n}\n",
+      },
+      expect: ["--font-body", "NAMING A FAMILY DIRECTLY"],
+    },
+    {
+      name: "C: a var() sitting LATER in the stack does not rescue it",
+      scan: scanC,
+      files: {
+        ...CLEAN,
+        // A fallback never wins; only the first entry is selected from.
+        "components/document/globals.css":
+          ":root {\n  --font-body: 'IBM Plex Mono', var(--font-plex-mono);\n}\n",
+      },
+      expect: ["--font-body", "NAMING A FAMILY DIRECTLY"],
+    },
+    {
+      name: "C: a correctly routed token PASSES, and size tokens are skipped",
+      scan: scanC,
+      files: {
+        ...CLEAN,
+        "components/document/globals.css":
+          ":root {\n  --font-body: var(--font-plex-mono), 'IBM Plex Mono', monospace;\n  --font-size-body: 18px;\n}\n",
+      },
+      expect: null, // must PASS
+    },
+    {
+      name: "C: a token named only inside a COMMENT is not a finding",
+      scan: scanC,
+      files: {
+        ...CLEAN,
+        "components/document/globals.css":
+          ":root {\n  /* --font-body: 'IBM Plex Mono', monospace; was the defect */\n  --font-body: var(--font-plex-mono), monospace;\n}\n",
+      },
+      expect: null, // must PASS
     },
     {
       name: "B: a token named only inside a COMMENT is not a finding",
@@ -332,9 +430,12 @@ const a = scanA(root, log);
 log("");
 const b = scanB(root, log);
 log("");
-if (a && b) {
+const c = scanC(root, log);
+log("");
+if (a && b && c) {
   log("check-tokens: PASS");
   process.exit(0);
 }
-log(`check-tokens: FAIL (${!a ? "scan A" : ""}${!a && !b ? " and " : ""}${!b ? "scan B" : ""})`);
+const failed = [!a && "scan A", !b && "scan B", !c && "scan C"].filter(Boolean);
+log(`check-tokens: FAIL (${failed.join(" and ")})`);
 process.exit(1);
